@@ -26,9 +26,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddTransient<StartViewModel>();
         builder.Services.AddTransient<RoundInputViewModel>();
+        builder.Services.AddTransient<PuttingGameViewModel>();
         builder.Services.AddTransient<RoundResultViewModel>();
         builder.Services.AddTransient<StartPage>();
         builder.Services.AddTransient<RoundInputPage>();
+        builder.Services.AddTransient<PuttingGamePage>();
         builder.Services.AddTransient<RoundResultPage>();
 
         return builder.Build();

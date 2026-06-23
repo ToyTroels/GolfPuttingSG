@@ -82,4 +82,46 @@ public sealed class StrokesGainedCalculatorTests
         Assert.AreEqual(9, summary.TwoPutts);
         Assert.AreEqual(-4.23, summary.TotalStrokesGainedPutting, 0.001);
     }
+
+    [TestMethod]
+    public void PuttingGamePresetExpectedPuttsTotalThirty()
+    {
+        var expectedTotal = PuttingGame.PresetDistancesFeet.Sum(distance => PuttingGame.GetExpectedPutts(distance));
+
+        Assert.AreEqual(30.00, expectedTotal, 0.001);
+    }
+
+    [TestMethod]
+    public void PuttingGameStartsAtThreeFeet()
+    {
+        Assert.AreEqual(3, PuttingGame.PresetDistancesFeet[0]);
+    }
+
+    [TestMethod]
+    public void TourRoundGameIsNotIncreasinglyLonger()
+    {
+        var distances = PuttingGame.GetPresetDistances(PuttingGame.TourRoundMode);
+
+        Assert.IsTrue(distances.Where((distance, index) => index > 0 && distance < distances[index - 1]).Any());
+        Assert.AreEqual(30.00, distances.Sum(distance => PuttingGame.GetExpectedPutts(distance, PuttingGame.TourRoundMode)), 0.001);
+    }
+
+    [TestMethod]
+    public void PuttingGameThirtyPuttsIsNeutralStrokesGained()
+    {
+        var holes = PuttingGame.PresetDistancesFeet
+            .Select((distance, index) => PuttingGame.BuildPutt(index + 1, distance, index < 6 ? 1 : 2, PuttingGame.LadderMode))
+            .ToList();
+
+        var round = new Round(
+            Guid.NewGuid().ToString("N"),
+            DateTime.Today,
+            holes,
+            RoundTrackingOptions.PuttingGame);
+
+        var summary = StrokesGainedCalculator.CalculateRoundSummary(round);
+
+        Assert.AreEqual(30, summary.TotalPutts);
+        Assert.AreEqual(0, summary.TotalStrokesGainedPutting, 0.001);
+    }
 }

@@ -1,3 +1,4 @@
+using GolfPuttingSG.Core;
 using GolfPuttingSG.ViewModels;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +37,38 @@ public sealed class StartPage : ContentPage
         };
         newRoundButton.Clicked += async (_, _) =>
             await Navigation.PushAsync(services.GetRequiredService<RoundInputPage>());
+
+        var puttingGameButton = new Button
+        {
+            Text = "Putting Game",
+            BackgroundColor = Colors.White,
+            BorderColor = Color.FromArgb("#0F5132"),
+            BorderWidth = 1,
+            TextColor = Color.FromArgb("#0F5132"),
+            CornerRadius = 8
+        };
+        puttingGameButton.Clicked += async (_, _) =>
+        {
+            var page = services.GetRequiredService<PuttingGamePage>();
+            page.Start(PuttingGame.LadderMode);
+            await Navigation.PushAsync(page);
+        };
+
+        var tourRoundGameButton = new Button
+        {
+            Text = "Tour Round Game",
+            BackgroundColor = Colors.White,
+            BorderColor = Color.FromArgb("#0F5132"),
+            BorderWidth = 1,
+            TextColor = Color.FromArgb("#0F5132"),
+            CornerRadius = 8
+        };
+        tourRoundGameButton.Clicked += async (_, _) =>
+        {
+            var page = services.GetRequiredService<PuttingGamePage>();
+            page.Start(PuttingGame.TourRoundMode);
+            await Navigation.PushAsync(page);
+        };
 
         var rounds = new CollectionView
         {
@@ -82,7 +115,11 @@ public sealed class StartPage : ContentPage
                     FontSize = 16,
                     TextColor = Color.FromArgb("#4E5851")
                 }.Row(1),
-                newRoundButton.Row(2).Margin(new Thickness(0, 16, 0, 18)),
+                new VerticalStackLayout
+                {
+                    Spacing = 10,
+                    Children = { newRoundButton, puttingGameButton, tourRoundGameButton }
+                }.Row(2).Margin(new Thickness(0, 16, 0, 18)),
                 new Label
                 {
                     Text = "Tidligere runder",

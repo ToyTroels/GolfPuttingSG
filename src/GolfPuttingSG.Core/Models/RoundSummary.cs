@@ -8,4 +8,12 @@ public sealed record RoundSummary(
     int ThreePuttsOrWorse,
     double AverageFirstPuttDistance,
     HolePuttingData? BestHole,
-    HolePuttingData? WorstHole);
+    HolePuttingData? WorstHole,
+    double TotalStrokesGainedApproach,
+    int TotalApproachShots,
+    double AverageApproachDistance,
+    HolePuttingData? BestApproachHole,
+    HolePuttingData? WorstApproachHole)
+{
+    public double TotalStrokesGained => TotalStrokesGainedPutting + TotalStrokesGainedApproach;
+}

@@ -38,22 +38,12 @@ public sealed class RoundInputPage : ContentPage
         };
         title.SetBinding(Label.TextProperty, nameof(RoundInputViewModel.ScreenTitle));
 
-        var holes = new CollectionView
+        var holes = new VerticalStackLayout
         {
-            ItemTemplate = HoleTemplate(),
-            SelectionMode = SelectionMode.Single
+            Spacing = 0
         };
-        holes.SetBinding(ItemsView.ItemsSourceProperty, nameof(RoundInputViewModel.Holes));
-        holes.SelectionChanged += async (_, args) =>
-        {
-            if (args.CurrentSelection.FirstOrDefault() is not HoleInputViewModel hole)
-            {
-                return;
-            }
-
-            holes.SelectedItem = null;
-            await Navigation.PushAsync(new HoleEntryPage(viewModel, hole));
-        };
+        BindableLayout.SetItemTemplate(holes, HoleTemplate());
+        holes.SetBinding(BindableLayout.ItemsSourceProperty, nameof(RoundInputViewModel.Holes));
 
         var saveButton = new Button
         {
@@ -76,24 +66,40 @@ public sealed class RoundInputPage : ContentPage
             Padding = 16,
             RowDefinitions =
             {
-                new RowDefinition(GridLength.Auto),
-                new RowDefinition(GridLength.Auto),
                 new RowDefinition(GridLength.Star),
-                new RowDefinition(GridLength.Auto),
                 new RowDefinition(GridLength.Auto)
             },
             Children =
             {
-                title.Row(0),
-                HoleCountPanel().Row(1).Margin(new Thickness(0, 12, 0, 0)),
-                holes.Row(2).Margin(new Thickness(0, 12, 0, 12)),
-                SummaryPanel().Row(3),
-                saveButton.Row(4).Margin(new Thickness(0, 10, 0, 0))
+                new ScrollView
+                {
+                    Content = new VerticalStackLayout
+                    {
+                        Spacing = 0,
+                        Children =
+                        {
+                            title,
+                            HoleCountPanel().Margin(new Thickness(0, 12, 0, 0)),
+                            TrackingPanel(),
+                            SummaryPanel(),
+                            new Label
+                            {
+                                Text = "Huller",
+                                FontSize = 18,
+                                FontAttributes = FontAttributes.Bold,
+                                TextColor = TextColor,
+                                Margin = new Thickness(0, 2, 0, 10)
+                            },
+                            holes
+                        }
+                    }
+                }.Row(0),
+                saveButton.Row(1).Margin(new Thickness(0, 10, 0, 0))
             }
         };
     }
 
-    private static DataTemplate HoleTemplate()
+    private DataTemplate HoleTemplate()
     {
         return new DataTemplate(() =>
         {
@@ -126,7 +132,7 @@ public sealed class RoundInputPage : ContentPage
                 FontSize = 15,
                 TextColor = MutedTextColor
             };
-            distance.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.DistanceText), stringFormat: "{0} m"));
+            distance.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.DetailText));
 
             var putts = new Label
             {
@@ -135,9 +141,9 @@ public sealed class RoundInputPage : ContentPage
                 TextColor = MutedTextColor,
                 HorizontalTextAlignment = TextAlignment.End
             };
-            putts.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.Putts), stringFormat: "{0} putts"));
+            putts.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.StrokesGainedText));
 
-            return Card(new VerticalStackLayout
+            var card = Card(new VerticalStackLayout
             {
                 Spacing = 8,
                 Children =
@@ -180,6 +186,18 @@ public sealed class RoundInputPage : ContentPage
                     }
                 }
             });
+
+            var tap = new TapGestureRecognizer();
+            tap.Tapped += async (_, _) =>
+            {
+                if (card.BindingContext is HoleInputViewModel hole)
+                {
+                    await Navigation.PushAsync(new HoleEntryPage(viewModel, hole));
+                }
+            };
+            card.GestureRecognizers.Add(tap);
+
+            return card;
         });
     }
 
@@ -237,6 +255,52 @@ public sealed class RoundInputPage : ContentPage
         });
     }
 
+    private View TrackingPanel()
+    {
+        var putting = new Switch
+        {
+            OnColor = PrimaryGreen,
+            ThumbColor = Colors.White
+        };
+        putting.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackPutting), BindingMode.TwoWay);
+
+        var approach = new Switch
+        {
+            OnColor = PrimaryGreen,
+            ThumbColor = Colors.White
+        };
+        approach.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackApproach), BindingMode.TwoWay);
+
+        return Card(new VerticalStackLayout
+        {
+            Spacing = 12,
+            Children =
+            {
+                new VerticalStackLayout
+                {
+                    Spacing = 2,
+                    Children =
+                    {
+                        new Label
+                        {
+                            Text = "Tracking",
+                            FontAttributes = FontAttributes.Bold,
+                            TextColor = TextColor
+                        },
+                        new Label
+                        {
+                            Text = "Vælg om runden skal tracke putting, approach eller begge dele",
+                            FontSize = 13,
+                            TextColor = MutedTextColor
+                        }
+                    }
+                },
+                TrackingRow("Putting", "Første putt-afstand og antal putts", putting),
+                TrackingRow("Approach", "Afstand og slag brugt til at komme i hul", approach)
+            }
+        });
+    }
+
     private View SummaryPanel()
     {
         var totalSg = new Label
@@ -245,13 +309,27 @@ public sealed class RoundInputPage : ContentPage
             FontSize = 16,
             TextColor = TextColor
         };
-        totalSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalSgText), stringFormat: "Total SG Putting: {0}"));
+        totalSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalSgText), stringFormat: "Total SG: {0}"));
+
+        var puttingSg = new Label { TextColor = TextColor };
+        puttingSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalPuttingSgText), stringFormat: "SG Putting: {0}"));
+        puttingSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
+
+        var approachSg = new Label { TextColor = TextColor };
+        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachSgText), stringFormat: "SG Approach: {0}"));
+        approachSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackApproach));
 
         var totalPutts = new Label { TextColor = TextColor };
         totalPutts.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalPuttsText), stringFormat: "Total putts: {0}"));
+        totalPutts.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
+
+        var totalApproachShots = new Label { TextColor = TextColor };
+        totalApproachShots.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachShotsText), stringFormat: "Approach-slag: {0}"));
+        totalApproachShots.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackApproach));
 
         var breakdown = new Label { TextColor = TextColor };
         breakdown.SetBinding(Label.TextProperty, nameof(RoundInputViewModel.CountBreakdownText));
+        breakdown.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
 
         return Card(new VerticalStackLayout
         {
@@ -265,10 +343,49 @@ public sealed class RoundInputPage : ContentPage
                     TextColor = TextColor
                 },
                 totalSg,
+                puttingSg,
+                approachSg,
                 totalPutts,
+                totalApproachShots,
                 breakdown
             }
         });
+    }
+
+    private static View TrackingRow(string title, string subtitle, Switch toggle)
+    {
+        return new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            ColumnSpacing = 12,
+            Children =
+            {
+                new VerticalStackLayout
+                {
+                    Spacing = 2,
+                    Children =
+                    {
+                        new Label
+                        {
+                            Text = title,
+                            FontAttributes = FontAttributes.Bold,
+                            TextColor = TextColor
+                        },
+                        new Label
+                        {
+                            Text = subtitle,
+                            FontSize = 13,
+                            TextColor = MutedTextColor
+                        }
+                    }
+                }.Column(0),
+                toggle.Column(1)
+            }
+        };
     }
 
     private static Button StepperButton(string text)

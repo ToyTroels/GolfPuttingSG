@@ -12,6 +12,8 @@ public sealed class RoundInputViewModel : ViewModelBase
     private DateTime date = DateTime.Today;
     private RoundSummary summary = StrokesGainedCalculator.CalculateRoundSummary(Round.Empty());
     private int holeCount = 18;
+    private bool trackPutting = true;
+    private bool trackApproach;
 
     public RoundInputViewModel(IRoundRepository repository)
     {
@@ -38,9 +40,57 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     public string HoleCountText => $"{HoleCount} huller";
 
-    public string TotalSgText => UiFormat.Sg(summary.TotalStrokesGainedPutting);
+    public bool TrackPutting
+    {
+        get => trackPutting;
+        set
+        {
+            if (!value && !TrackApproach)
+            {
+                value = true;
+            }
+
+            if (SetProperty(ref trackPutting, value))
+            {
+                ApplyTrackingToHoles();
+                RefreshSummary();
+                OnTrackingPropertiesChanged();
+            }
+        }
+    }
+
+    public bool TrackApproach
+    {
+        get => trackApproach;
+        set
+        {
+            if (!value && !TrackPutting)
+            {
+                value = true;
+            }
+
+            if (SetProperty(ref trackApproach, value))
+            {
+                ApplyTrackingToHoles();
+                RefreshSummary();
+                OnTrackingPropertiesChanged();
+            }
+        }
+    }
+
+    public string TotalSgText => UiFormat.Sg(
+        (TrackPutting ? summary.TotalStrokesGainedPutting : 0) +
+        (TrackApproach ? summary.TotalStrokesGainedApproach : 0));
+
+    public string TotalPuttingSgText => UiFormat.Sg(summary.TotalStrokesGainedPutting);
+
+    public string TotalApproachSgText => UiFormat.Sg(summary.TotalStrokesGainedApproach);
+
     public string TotalPuttsText => summary.TotalPutts.ToString();
-    public string CountBreakdownText => $"1-putts: {summary.OnePutts} · 2-putts: {summary.TwoPutts} · 3-putts+: {summary.ThreePuttsOrWorse}";
+
+    public string TotalApproachShotsText => summary.TotalApproachShots.ToString();
+
+    public string CountBreakdownText => $"1-putts: {summary.OnePutts} | 2-putts: {summary.TwoPutts} | 3-putts+: {summary.ThreePuttsOrWorse}";
 
     public void IncreaseHoleCount() => SetHoleCount(HoleCount + 1);
 
@@ -61,8 +111,12 @@ public sealed class RoundInputViewModel : ViewModelBase
 
         roundId = round.Id;
         date = round.Date;
+        var options = round.TrackingOptions ?? RoundTrackingOptions.PuttingOnly;
+        trackPutting = options.TrackPutting;
+        trackApproach = options.TrackApproach;
         ScreenTitle = "Rediger runde";
         OnPropertyChanged(nameof(ScreenTitle));
+        OnTrackingPropertiesChanged();
         SetHoleCount(Math.Clamp(round.Holes.Count, 1, 18));
 
         foreach (var hole in round.Holes)
@@ -82,7 +136,11 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     private Round BuildRound()
     {
-        return new Round(roundId, date, Holes.Select(hole => hole.ToHole()).ToList());
+        return new Round(
+            roundId,
+            date,
+            Holes.Select(hole => hole.ToHole()).ToList(),
+            new RoundTrackingOptions(TrackPutting, TrackApproach));
     }
 
     private void SetHoleCount(int count)
@@ -102,6 +160,7 @@ public sealed class RoundInputViewModel : ViewModelBase
         foreach (var hole in Holes)
         {
             hole.SetTotalHoles(clampedCount);
+            hole.SetTracking(new RoundTrackingOptions(TrackPutting, TrackApproach));
         }
 
         RefreshSummary();
@@ -110,6 +169,7 @@ public sealed class RoundInputViewModel : ViewModelBase
     private void AddHole(int holeNumber)
     {
         var hole = new HoleInputViewModel(holeNumber);
+        hole.SetTracking(new RoundTrackingOptions(TrackPutting, TrackApproach));
         hole.PropertyChanged += (_, _) => RefreshSummary();
         Holes.Add(hole);
     }
@@ -118,7 +178,31 @@ public sealed class RoundInputViewModel : ViewModelBase
     {
         summary = StrokesGainedCalculator.CalculateRoundSummary(BuildRound());
         OnPropertyChanged(nameof(TotalSgText));
+        OnPropertyChanged(nameof(TotalPuttingSgText));
+        OnPropertyChanged(nameof(TotalApproachSgText));
         OnPropertyChanged(nameof(TotalPuttsText));
+        OnPropertyChanged(nameof(TotalApproachShotsText));
+        OnPropertyChanged(nameof(CountBreakdownText));
+    }
+
+    private void ApplyTrackingToHoles()
+    {
+        var options = new RoundTrackingOptions(TrackPutting, TrackApproach);
+        foreach (var hole in Holes)
+        {
+            hole.SetTracking(options);
+        }
+    }
+
+    private void OnTrackingPropertiesChanged()
+    {
+        OnPropertyChanged(nameof(TrackPutting));
+        OnPropertyChanged(nameof(TrackApproach));
+        OnPropertyChanged(nameof(TotalSgText));
+        OnPropertyChanged(nameof(TotalPuttingSgText));
+        OnPropertyChanged(nameof(TotalApproachSgText));
+        OnPropertyChanged(nameof(TotalPuttsText));
+        OnPropertyChanged(nameof(TotalApproachShotsText));
         OnPropertyChanged(nameof(CountBreakdownText));
     }
 }

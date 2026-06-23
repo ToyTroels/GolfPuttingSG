@@ -27,6 +27,23 @@ public sealed class HoleEntryPage : ContentPage
 
     private void BuildLayout()
     {
+        var previousHole = GetPreviousHole();
+        var nextHole = GetNextHole();
+
+        var previous = new Button
+        {
+            Text = "Forrige hul",
+            HeightRequest = 40,
+            CornerRadius = 8,
+            BackgroundColor = Colors.White,
+            BorderColor = PrimaryGreen,
+            BorderWidth = 1,
+            TextColor = PrimaryGreen,
+            FontAttributes = FontAttributes.Bold,
+            IsVisible = previousHole is not null
+        };
+        previous.Clicked += async (_, _) => await GoToHoleAsync(GetPreviousHole());
+
         var title = new Label
         {
             FontSize = 28,
@@ -44,46 +61,51 @@ public sealed class HoleEntryPage : ContentPage
         };
         subtitle.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.Subtitle));
 
-        var putts = new Label
+        var puttingDistance = DistanceEntry("0,0", nextHole);
+        puttingDistance.SetBinding(Entry.TextProperty, nameof(HoleInputViewModel.DistanceText), BindingMode.TwoWay);
+        puttingDistance.Completed += async (_, _) =>
         {
-            FontSize = 44,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = TextColor,
-            HorizontalTextAlignment = TextAlignment.Center,
-            VerticalTextAlignment = TextAlignment.Center,
-            WidthRequest = 96,
-            HeightRequest = 64
+            puttingDistance.Unfocus();
+            await GoToNextHoleOrOverviewAsync();
         };
+
+        var putts = CountLabel();
         putts.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.Putts));
 
-        var minus = StepperButton("-");
-        minus.Clicked += (_, _) => viewModel.DecreasePutts();
+        var puttMinus = RoundStepperButton("-");
+        puttMinus.Clicked += (_, _) => viewModel.DecreasePutts();
 
-        var plus = StepperButton("+");
-        plus.Clicked += (_, _) => viewModel.IncreasePutts();
+        var puttPlus = RoundStepperButton("+");
+        puttPlus.Clicked += (_, _) => viewModel.IncreasePutts();
 
-        var distance = new Entry
+        var puttingSg = SgLabel();
+        puttingSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedPuttingText), stringFormat: "SG Putting {0}"));
+
+        var approachDistance = DistanceEntry("0", nextHole);
+        approachDistance.SetBinding(Entry.TextProperty, nameof(HoleInputViewModel.ApproachDistanceText), BindingMode.TwoWay);
+        approachDistance.Completed += async (_, _) =>
         {
-            Placeholder = "0,0",
-            Keyboard = Keyboard.Numeric,
-            BackgroundColor = Colors.Transparent,
-            TextColor = TextColor,
-            PlaceholderColor = MutedTextColor,
-            ClearButtonVisibility = ClearButtonVisibility.WhileEditing,
-            FontSize = 44,
-            HorizontalTextAlignment = TextAlignment.Center,
-            HeightRequest = 92
+            approachDistance.Unfocus();
+            await GoToNextHoleOrOverviewAsync();
         };
-        distance.SetBinding(Entry.TextProperty, nameof(HoleInputViewModel.DistanceText), BindingMode.TwoWay);
 
-        var sg = new Label
-        {
-            FontSize = 22,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = PrimaryGreen,
-            HorizontalTextAlignment = TextAlignment.Center
-        };
-        sg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedText), stringFormat: "SG {0}"));
+        var approachShots = CountLabel();
+        approachShots.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.ApproachShots));
+
+        var approachMinus = RoundStepperButton("-");
+        approachMinus.Clicked += (_, _) => viewModel.DecreaseApproachShots();
+
+        var approachPlus = RoundStepperButton("+");
+        approachPlus.Clicked += (_, _) => viewModel.IncreaseApproachShots();
+
+        var approachSg = SgLabel();
+        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedApproachText), stringFormat: "SG Approach {0}"));
+
+        var puttingSection = PuttingSection(puttMinus, putts, puttPlus, puttingDistance, puttingSg);
+        puttingSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.TrackPutting));
+
+        var approachSection = ApproachSection(approachMinus, approachShots, approachPlus, approachDistance, approachSg);
+        approachSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.TrackApproach));
 
         var done = new Button
         {
@@ -100,7 +122,7 @@ public sealed class HoleEntryPage : ContentPage
 
         var next = new Button
         {
-            Text = GetNextHole() is null ? "Til oversigt" : "Næste hul",
+            Text = nextHole is null ? "Til oversigt" : "Næste hul",
             HeightRequest = 52,
             CornerRadius = 8,
             BackgroundColor = PrimaryGreen,
@@ -121,13 +143,20 @@ public sealed class HoleEntryPage : ContentPage
             },
             Children =
             {
+                previous.Row(0),
                 new VerticalStackLayout
                 {
                     Spacing = 4,
                     Children = { title, subtitle }
-                }.Row(0),
-                PuttsPanel(minus, putts, plus).Row(1).Margin(new Thickness(0, 22, 0, 0)),
-                DistancePanel(distance, sg).Row(2),
+                }.Row(1).Margin(new Thickness(0, 12, 0, 0)),
+                new ScrollView
+                {
+                    Content = new VerticalStackLayout
+                    {
+                        Spacing = 16,
+                        Children = { puttingSection, approachSection }
+                    }
+                }.Row(2).Margin(new Thickness(0, 22, 0, 18)),
                 new Grid
                 {
                     ColumnDefinitions =
@@ -145,7 +174,8 @@ public sealed class HoleEntryPage : ContentPage
             }
         };
 
-        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(250), () => distance.Focus());
+        var focusTarget = viewModel.TrackPutting ? puttingDistance : approachDistance;
+        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(250), () => focusTarget.Focus());
     }
 
     private async Task GoToNextHoleOrOverviewAsync()
@@ -157,9 +187,26 @@ public sealed class HoleEntryPage : ContentPage
             return;
         }
 
-        var nextPage = new HoleEntryPage(roundViewModel, nextHole);
-        Navigation.InsertPageBefore(nextPage, this);
+        await GoToHoleAsync(nextHole);
+    }
+
+    private async Task GoToHoleAsync(HoleInputViewModel? hole)
+    {
+        if (hole is null)
+        {
+            return;
+        }
+
+        var page = new HoleEntryPage(roundViewModel, hole);
+        Navigation.InsertPageBefore(page, this);
         await Navigation.PopAsync(animated: false);
+    }
+
+    private HoleInputViewModel? GetPreviousHole()
+    {
+        var currentIndex = roundViewModel.Holes.IndexOf(viewModel);
+        var previousIndex = currentIndex - 1;
+        return previousIndex >= 0 ? roundViewModel.Holes[previousIndex] : null;
     }
 
     private HoleInputViewModel? GetNextHole()
@@ -171,16 +218,44 @@ public sealed class HoleEntryPage : ContentPage
             : null;
     }
 
-    private static View PuttsPanel(Button minus, Label putts, Button plus)
+    private static View PuttingSection(Button minus, Label putts, Button plus, Entry distance, Label sg)
     {
         return Card(new VerticalStackLayout
+        {
+            Spacing = 16,
+            Children =
+            {
+                CounterPanel("Antal putts", minus, putts, plus),
+                DistancePanel("Første putt-afstand", "m", distance),
+                sg
+            }
+        });
+    }
+
+    private static View ApproachSection(Button minus, Label shots, Button plus, Entry distance, Label sg)
+    {
+        return Card(new VerticalStackLayout
+        {
+            Spacing = 16,
+            Children =
+            {
+                CounterPanel("Approach-slag brugt", minus, shots, plus),
+                DistancePanel("Approach-afstand", "m", distance),
+                sg
+            }
+        });
+    }
+
+    private static View CounterPanel(string title, Button minus, Label count, Button plus)
+    {
+        return new VerticalStackLayout
         {
             Spacing = 12,
             Children =
             {
                 new Label
                 {
-                    Text = "Antal putts",
+                    Text = title,
                     FontSize = 15,
                     TextColor = MutedTextColor,
                     HorizontalTextAlignment = TextAlignment.Center
@@ -189,33 +264,27 @@ public sealed class HoleEntryPage : ContentPage
                 {
                     Spacing = 18,
                     HorizontalOptions = LayoutOptions.Center,
-                    Children = { minus, putts, plus }
+                    Children = { minus, count, plus }
                 }
             }
-        });
+        };
     }
 
-    private static View DistancePanel(Entry distance, Label sg)
+    private static View DistancePanel(string title, string unit, Entry distance)
     {
-        return new Grid
+        return new VerticalStackLayout
         {
-            RowDefinitions =
-            {
-                new RowDefinition(GridLength.Star),
-                new RowDefinition(GridLength.Auto),
-                new RowDefinition(GridLength.Auto),
-                new RowDefinition(GridLength.Star)
-            },
+            Spacing = 12,
             Children =
             {
                 new Label
                 {
-                    Text = "Første putt-afstand",
+                    Text = title,
                     FontSize = 18,
                     FontAttributes = FontAttributes.Bold,
                     TextColor = TextColor,
                     HorizontalTextAlignment = TextAlignment.Center
-                }.Row(1),
+                },
                 new Border
                 {
                     BackgroundColor = InputBackground,
@@ -223,7 +292,6 @@ public sealed class HoleEntryPage : ContentPage
                     StrokeThickness = 2,
                     StrokeShape = new RoundRectangle { CornerRadius = 12 },
                     Padding = new Thickness(18, 0),
-                    Margin = new Thickness(0, 14, 0, 18),
                     Content = new Grid
                     {
                         ColumnDefinitions =
@@ -236,7 +304,7 @@ public sealed class HoleEntryPage : ContentPage
                             distance.Column(0),
                             new Label
                             {
-                                Text = "m",
+                                Text = unit,
                                 FontSize = 28,
                                 TextColor = MutedTextColor,
                                 VerticalTextAlignment = TextAlignment.Center,
@@ -244,13 +312,54 @@ public sealed class HoleEntryPage : ContentPage
                             }.Column(1)
                         }
                     }
-                }.Row(2),
-                sg.Row(3)
+                }
             }
         };
     }
 
-    private static Button StepperButton(string text)
+    private static Entry DistanceEntry(string placeholder, HoleInputViewModel? nextHole)
+    {
+        return new Entry
+        {
+            Placeholder = placeholder,
+            Keyboard = Keyboard.Numeric,
+            ReturnType = nextHole is null ? ReturnType.Done : ReturnType.Next,
+            BackgroundColor = Colors.Transparent,
+            TextColor = TextColor,
+            PlaceholderColor = MutedTextColor,
+            ClearButtonVisibility = ClearButtonVisibility.WhileEditing,
+            FontSize = 44,
+            HorizontalTextAlignment = TextAlignment.Center,
+            HeightRequest = 92
+        };
+    }
+
+    private static Label CountLabel()
+    {
+        return new Label
+        {
+            FontSize = 44,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = TextColor,
+            HorizontalTextAlignment = TextAlignment.Center,
+            VerticalTextAlignment = TextAlignment.Center,
+            WidthRequest = 96,
+            HeightRequest = 64
+        };
+    }
+
+    private static Label SgLabel()
+    {
+        return new Label
+        {
+            FontSize = 22,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = PrimaryGreen,
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+    }
+
+    private static Button RoundStepperButton(string text)
     {
         return new Button
         {

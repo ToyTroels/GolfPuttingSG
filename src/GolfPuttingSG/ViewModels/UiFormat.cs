@@ -10,5 +10,7 @@ public static class UiFormat
 
     public static string Meters(double value) => $"{value.ToString("0.0", DanishCulture)} m";
 
+    public static string WholeMeters(double value) => $"{value.ToString("0", DanishCulture)} m";
+
     public static string Date(DateTime value) => value.ToString("dd. MMM yyyy", DanishCulture);
 }
