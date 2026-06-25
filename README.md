@@ -1,4 +1,4 @@
-# Golf Putting SG
+# Golf SG
 
 .NET MAUI MVP til Visual Studio-suiten, bygget i C# med MVVM-lag og lokal lagring.
 
@@ -6,10 +6,10 @@ Appen tracker strokes gained putting pr. golfrunde mod en PGA Tour-baseline.
 
 ## Struktur
 
-- `GolfPuttingSG.sln`: Visual Studio-løsningen.
-- `src/GolfPuttingSG`: .NET MAUI-appen.
-- `src/GolfPuttingSG.Core`: domænemodeller, PGA-baseline, interpolation og strokes gained-beregning.
-- `tests/GolfPuttingSG.Tests`: MSTest unit tests for beregningerne.
+- `GolfSG.sln`: Visual Studio-løsningen.
+- `src/GolfSG`: .NET MAUI-appen.
+- `src/GolfSG.Core`: domænemodeller, PGA-baseline, interpolation og strokes gained-beregning.
+- `tests/GolfSG.Tests`: MSTest unit tests for beregningerne.
 
 ## Funktioner i MVP
 
@@ -22,23 +22,23 @@ Appen tracker strokes gained putting pr. golfrunde mod en PGA Tour-baseline.
 
 ## Beregning
 
-Baseline-tabellen ligger i `src/GolfPuttingSG.Core/StrokesGainedCalculator.cs`.
+Baseline-tabellen ligger i `src/GolfSG.Core/StrokesGainedCalculator.cs`.
 
 - Afstande mellem to baselinepunkter beregnes med lineær interpolation.
 - Afstande under 0,3 m bruger laveste baseline.
-- Afstande over 27,4 m bruger højeste baseline. Det er valgt i MVP’en, fordi tabellen ikke har nok datapunkter til troværdig ekstrapolation.
+- Afstande over 27,4 m bruger højeste baseline. Det er valgt i MVP'en, fordi tabellen ikke har nok datapunkter til troværdig ekstrapolation.
 
 ## Kør i Visual Studio
 
-1. Åbn `C:\Users\Troel\Documents\Golf\GolfPuttingSG.sln` i Visual Studio.
-2. Vælg startup-projektet `GolfPuttingSG`.
+1. Åbn `C:\Users\Troel\Documents\Golf\GolfSG.sln` i Visual Studio.
+2. Vælg startup-projektet `GolfSG`.
 3. Vælg target, fx `Windows Machine` eller en Android-emulator.
 4. Tryk Run.
 
 ## Kommandoer
 
 ```powershell
-dotnet restore GolfPuttingSG.sln
-dotnet test tests\GolfPuttingSG.Tests\GolfPuttingSG.Tests.csproj
-dotnet build src\GolfPuttingSG\GolfPuttingSG.csproj -f net10.0-windows10.0.19041.0
+dotnet restore GolfSG.sln
+dotnet test tests\GolfSG.Tests\GolfSG.Tests.csproj
+dotnet build src\GolfSG\GolfSG.csproj -f net10.0-windows10.0.19041.0
 ```

@@ -1,0 +1,38 @@
+using GolfSG.Services;
+using GolfSG.ViewModels;
+using GolfSG.Views;
+using Microsoft.Extensions.Logging;
+
+namespace GolfSG;
+
+public static class MauiProgram
+{
+    public static MauiApp CreateMauiApp()
+    {
+        var builder = MauiApp.CreateBuilder();
+        builder
+            .UseMauiApp<App>()
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+            });
+
+#if DEBUG
+        builder.Logging.AddDebug();
+#endif
+
+        builder.Services.AddSingleton<IRoundRepository, FileRoundRepository>();
+        builder.Services.AddSingleton<AppShell>();
+        builder.Services.AddTransient<StartViewModel>();
+        builder.Services.AddTransient<RoundInputViewModel>();
+        builder.Services.AddTransient<PuttingGameViewModel>();
+        builder.Services.AddTransient<RoundResultViewModel>();
+        builder.Services.AddTransient<StartPage>();
+        builder.Services.AddTransient<RoundInputPage>();
+        builder.Services.AddTransient<PuttingGamePage>();
+        builder.Services.AddTransient<RoundResultPage>();
+
+        return builder.Build();
+    }
+}
