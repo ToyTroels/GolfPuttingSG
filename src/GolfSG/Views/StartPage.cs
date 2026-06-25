@@ -84,51 +84,50 @@ public sealed class StartPage : ContentPage
         var rounds = new CollectionView
         {
             SelectionMode = SelectionMode.None,
-            ItemTemplate = RoundTemplate(OpenRoundAsync, DeleteRoundAsync)
+            ItemTemplate = RoundTemplate(OpenRoundAsync, DeleteRoundAsync),
+            Header = new VerticalStackLayout
+            {
+                Spacing = 0,
+                Children =
+                {
+                    new Label
+                    {
+                        Text = "Putting SG",
+                        FontSize = 34,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = Color.FromArgb("#202421")
+                    },
+                    new Label
+                    {
+                        Text = "Track strokes gained putting mod PGA Tour-baseline",
+                        FontSize = 16,
+                        TextColor = Color.FromArgb("#4E5851")
+                    },
+                    new VerticalStackLayout
+                    {
+                        Spacing = 10,
+                        Children = { newRoundButton, puttingGameButton, tourRoundGameButton, settingsButton }
+                    }.Margin(new Thickness(0, 16, 0, 18)),
+                    new Label
+                    {
+                        Text = "Tidligere runder",
+                        FontSize = 18,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = Color.FromArgb("#202421")
+                    }.Margin(new Thickness(0, 0, 0, 8))
+                }
+            },
+            EmptyView = new Label
+            {
+                Text = "Ingen gemte runder endnu.",
+                FontSize = 14,
+                TextColor = Color.FromArgb("#4E5851"),
+                Margin = new Thickness(0, 8, 0, 0)
+            }
         };
         rounds.SetBinding(ItemsView.ItemsSourceProperty, nameof(StartViewModel.Rounds));
 
-        Content = new Grid
-        {
-            Padding = 16,
-            RowDefinitions =
-            {
-                new RowDefinition(GridLength.Auto),
-                new RowDefinition(GridLength.Auto),
-                new RowDefinition(GridLength.Auto),
-                new RowDefinition(GridLength.Auto),
-                new RowDefinition(GridLength.Star)
-            },
-            Children =
-            {
-                new Label
-                {
-                    Text = "Putting SG",
-                    FontSize = 34,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Color.FromArgb("#202421")
-                }.Row(0),
-                new Label
-                {
-                    Text = "Track strokes gained putting mod PGA Tour-baseline",
-                    FontSize = 16,
-                    TextColor = Color.FromArgb("#4E5851")
-                }.Row(1),
-                new VerticalStackLayout
-                {
-                    Spacing = 10,
-                    Children = { newRoundButton, puttingGameButton, tourRoundGameButton, settingsButton }
-                }.Row(2).Margin(new Thickness(0, 16, 0, 18)),
-                new Label
-                {
-                    Text = "Tidligere runder",
-                    FontSize = 18,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = Color.FromArgb("#202421")
-                }.Row(3),
-                rounds.Row(4).Margin(new Thickness(0, 8, 0, 0))
-            }
-        };
+        Content = rounds.Margin(new Thickness(16));
     }
 
     private async Task OpenRoundAsync(RoundListItemViewModel item)

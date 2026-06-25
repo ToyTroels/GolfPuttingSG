@@ -35,7 +35,7 @@ public sealed class RoundListItemViewModel
         {
             if (IsPuttingGame)
             {
-                return $"{PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)} | {TotalPutts}/30 putts";
+                return $"{PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)} | {Round.Holes.Count} putts | {TotalPutts} strokes";
             }
 
             var parts = new List<string>();

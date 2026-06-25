@@ -194,6 +194,76 @@ public sealed class StrokesGainedCalculatorTests
     }
 
     [TestMethod]
+    public void PuttingGameCustomDistancesUseConfiguredInterval()
+    {
+        var distances = PuttingGame.BuildBellCurveDistancesMeters(24, 1, 12);
+
+        Assert.HasCount(24, distances);
+        Assert.IsTrue(distances.All(distance => distance >= 1 && distance <= 12));
+    }
+
+    [TestMethod]
+    public void PuttingGameCustomDistancesFavorMiddleOfInterval()
+    {
+        var distances = PuttingGame.BuildBellCurveDistancesMeters(30, 1, 12);
+        var middleCount = distances.Count(distance => distance >= 4 && distance <= 9);
+        var edgeCount = distances.Count(distance => distance < 4 || distance > 9);
+
+        Assert.IsGreaterThan(edgeCount, middleCount);
+    }
+
+    [TestMethod]
+    public void PuttingGameBenchmarkDistancesHavePresetCounts()
+    {
+        Assert.HasCount(40, PuttingGame.GetBenchmarkDistancesMeters(PuttingGame.ShortBenchmark));
+        Assert.HasCount(75, PuttingGame.GetBenchmarkDistancesMeters(PuttingGame.NormalBenchmark));
+        Assert.HasCount(100, PuttingGame.GetBenchmarkDistancesMeters(PuttingGame.ThoroughBenchmark));
+    }
+
+    [TestMethod]
+    public void PuttingGameCanOrderBenchmarkDistancesAscending()
+    {
+        var distances = PuttingGame.OrderDistances(
+            PuttingGame.GetBenchmarkDistancesMeters(PuttingGame.ShortBenchmark),
+            PuttingDistanceOrder.Ascending);
+
+        Assert.IsTrue(distances.SequenceEqual(distances.Order()));
+    }
+
+    [TestMethod]
+    public void PuttingGameCanOrderBenchmarkDistancesDescending()
+    {
+        var distances = PuttingGame.OrderDistances(
+            PuttingGame.GetBenchmarkDistancesMeters(PuttingGame.ShortBenchmark),
+            PuttingDistanceOrder.Descending);
+
+        Assert.IsTrue(distances.SequenceEqual(distances.OrderDescending()));
+    }
+
+    [TestMethod]
+    public void PuttingGameRandomBenchmarkOrderKeepsSameDistances()
+    {
+        var preset = PuttingGame.GetBenchmarkDistancesMeters(PuttingGame.ShortBenchmark);
+        var distances = PuttingGame.OrderDistances(
+            preset,
+            PuttingDistanceOrder.Random,
+            new Random(123));
+
+        CollectionAssert.AreEqual(preset.Order().ToList(), distances.Order().ToList());
+        Assert.IsFalse(preset.SequenceEqual(distances));
+    }
+
+    [TestMethod]
+    public void PuttingGameCustomPuttUsesRawExpectedPutts()
+    {
+        var distance = PuttingGame.NormalBenchmarkDistancesMeters[0];
+        var expectedPutts = PuttingStrokesGainedCalculator.GetExpectedPutts(distance);
+        var putt = PuttingGame.BuildPutt(1, distance, 1);
+
+        Assert.AreEqual(expectedPutts, putt.ExpectedPutts, 0.001);
+    }
+
+    [TestMethod]
     public void TourRoundGameIsNotIncreasinglyLonger()
     {
         var distances = PuttingGame.GetPresetDistances(PuttingGame.TourRoundMode);

@@ -38,7 +38,9 @@ public sealed class RoundResultViewModel : ViewModelBase
     public string AverageDistanceText => summary is null ? UiFormat.Meters(0) : UiFormat.Meters(summary.AverageFirstPuttDistance);
     public string AverageApproachDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(summary.AverageApproachDistance);
     public string TotalPuttsText => summary?.TotalPutts.ToString() ?? "0";
-    public string TargetPuttsText => IsPuttingGame ? "30" : string.Empty;
+    public string TargetPuttsText => IsPuttingGame && round is not null
+        ? round.Holes.Sum(hole => hole.ExpectedPutts).ToString("0.0")
+        : string.Empty;
     public string TotalApproachShotsText => summary?.TotalApproachShots.ToString() ?? "0";
     public string ThreePuttRateText => summary is null ? "0%" : $"{CalculateThreePuttRate(summary):0}%";
     public string BestHoleText => FormatPuttingResult(summary?.BestHole);
@@ -172,9 +174,7 @@ public sealed class RoundResultViewModel : ViewModelBase
             return $"Hul {hole.HoleNumber} ({UiFormat.Sg(hole.StrokesGainedPutting)})";
         }
 
-        var distances = PuttingGame.GetPresetDistances(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode);
-        var feet = distances[hole.HoleNumber - 1];
-        return $"Putt {hole.HoleNumber}, {feet} ft ({UiFormat.Sg(hole.StrokesGainedPutting)})";
+        return $"Putt {hole.HoleNumber}, {UiFormat.Meters(hole.FirstPuttDistanceMeters)} ({UiFormat.Sg(hole.StrokesGainedPutting)})";
     }
 }
 
@@ -188,9 +188,8 @@ public sealed class HoleResultItemViewModel
         var sg = 0d;
         if (trackingOptions.TrackPutting)
         {
-            var distances = PuttingGame.GetPresetDistances(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode);
             var distance = trackingOptions.IsPuttingGame
-                ? $"{distances[hole.HoleNumber - 1]} ft"
+                ? UiFormat.Meters(hole.FirstPuttDistanceMeters)
                 : UiFormat.Meters(hole.FirstPuttDistanceMeters);
 
             details.Add($"{distance} - {hole.Putts} putts");

@@ -18,6 +18,14 @@
 - [ ] Decide whether periodic evaluations should live on the start page, result page, or a dedicated evaluation/statistics page.
 - [ ] Add tests for date filtering and SG aggregation across multiple rounds.
 
+## Approach SG calculation
+
+- [ ] Rework approach strokes gained so it follows shot-level SG: `expected strokes before shot - 1 - expected strokes after shot`.
+- [ ] Do not calculate approach SG as only `expected approach strokes - approach shots` unless the entered data represents a complete same-category approach sequence and the final expected state is handled.
+- [ ] Preserve shot-category boundaries so tee shots, approach shots, around-the-green shots, penalties, and putts are not mixed into the wrong SG category.
+- [ ] Decide what extra input is needed for the final state after the approach shot, such as remaining putt distance, around-the-green lie, bunker, rough, or penalty.
+- [ ] Add tests for single approach shots, multiple approach shots, penalties, and category transitions into putting or short game.
+
 ## Save rounds
 
 - [ ] Decide how rounds should be saved locally, including storage format, file location, and whether the app should support future migration.
@@ -27,6 +35,19 @@
 - [ ] Support editing or deleting a saved round without corrupting other saved rounds.
 - [ ] Handle save/load failures with a clear user-facing state and avoid losing the active round.
 - [ ] Add tests for round serialization, loading multiple saved rounds, editing, deleting, and malformed saved data.
+
+## Round persistence hardening
+
+- [x] Write saved rounds through a temporary file before replacing `rounds.json`.
+- [x] Keep a `rounds.json.bak` backup before overwriting the active history file.
+- [x] Fall back to the backup file if the active history file is empty, malformed, or unreadable.
+- [ ] Add repository tests for atomic writes, backup fallback, corrupt JSON recovery, empty file recovery, and preserving multiple rounds after save/delete.
+- [ ] Add a user-facing warning if saved rounds could only be recovered from backup.
+- [ ] Add a diagnostic view or export action that shows the active storage path and total saved rounds.
+- [ ] Add migration support for old app identifiers or storage folders, especially if `ApplicationId`, package name, or project metadata changes.
+- [ ] Consider storing a schema/version wrapper around saved rounds so future persistence changes can migrate safely.
+- [ ] Add an optional manual export/import flow for `rounds.json` so users can recover history across installs, devices, or app renames.
+- [ ] Investigate whether any save flow can overwrite history with a single round after app restart, failed deserialization, or app-data path changes.
 
 ## Made percentage by first-putt distance
 

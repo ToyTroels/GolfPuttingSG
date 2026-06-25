@@ -9,10 +9,19 @@ public sealed class PuttingGameViewModel : ViewModelBase
     private readonly IRoundRepository repository;
     private readonly List<HolePuttingData> completedPutts = [];
     private readonly string roundId = Guid.NewGuid().ToString("N");
+    private IReadOnlyList<double> customDistancesMeters = [];
     private string mode = PuttingGame.LadderMode;
     private int currentIndex;
     private int puttsUsed = 2;
+    private bool isSetup = true;
     private bool isComplete;
+    private string holeCountText = PuttingGame.DefaultHoleCount.ToString();
+    private string minimumDistanceMetersText = PuttingGame.DefaultMinimumDistanceMeters.ToString("0");
+    private string maximumDistanceMetersText = PuttingGame.DefaultMaximumDistanceMeters.ToString("0");
+    private string setupErrorText = string.Empty;
+    private string gameTargetText = PuttingGame.TargetPutts.ToString();
+    private PuttingDistanceOrder benchmarkDistanceOrder = PuttingDistanceOrder.Random;
+    private string selectedBenchmarkDistanceOrder = "Random";
 
     public PuttingGameViewModel(IRoundRepository repository)
     {
@@ -20,6 +29,18 @@ public sealed class PuttingGameViewModel : ViewModelBase
     }
 
     public string GameTitle => PuttingGame.GetTitle(mode);
+
+    public bool IsSetup
+    {
+        get => isSetup;
+        private set
+        {
+            if (SetProperty(ref isSetup, value))
+            {
+                OnPropertyChanged(nameof(IsActive));
+            }
+        }
+    }
 
     public bool IsComplete
     {
@@ -33,7 +54,64 @@ public sealed class PuttingGameViewModel : ViewModelBase
         }
     }
 
-    public bool IsActive => !IsComplete;
+    public bool IsActive => !IsSetup && !IsComplete;
+
+    public string HoleCountText
+    {
+        get => holeCountText;
+        set => SetProperty(ref holeCountText, value);
+    }
+
+    public string MinimumDistanceMetersText
+    {
+        get => minimumDistanceMetersText;
+        set => SetProperty(ref minimumDistanceMetersText, value);
+    }
+
+    public string MaximumDistanceMetersText
+    {
+        get => maximumDistanceMetersText;
+        set => SetProperty(ref maximumDistanceMetersText, value);
+    }
+
+    public string SetupErrorText
+    {
+        get => setupErrorText;
+        private set
+        {
+            if (SetProperty(ref setupErrorText, value))
+            {
+                OnPropertyChanged(nameof(HasSetupError));
+            }
+        }
+    }
+
+    public bool HasSetupError => !string.IsNullOrWhiteSpace(SetupErrorText);
+
+    public IReadOnlyList<string> BenchmarkDistanceOrderOptions { get; } = ["Random", "Ascending", "Descending"];
+
+    public string SelectedBenchmarkDistanceOrder
+    {
+        get => selectedBenchmarkDistanceOrder;
+        set
+        {
+            if (SetProperty(ref selectedBenchmarkDistanceOrder, value))
+            {
+                benchmarkDistanceOrder = value switch
+                {
+                    "Ascending" => PuttingDistanceOrder.Ascending,
+                    "Descending" => PuttingDistanceOrder.Descending,
+                    _ => PuttingDistanceOrder.Random
+                };
+            }
+        }
+    }
+
+    public string ShortBenchmarkText => $"{PuttingGame.ShortBenchmark} - {PuttingGame.ShortBenchmarkDistancesMeters.Count} putts";
+
+    public string NormalBenchmarkText => $"{PuttingGame.NormalBenchmark} - {PuttingGame.NormalBenchmarkDistancesMeters.Count} putts";
+
+    public string ThoroughBenchmarkText => $"{PuttingGame.ThoroughBenchmark} - {PuttingGame.ThoroughBenchmarkDistancesMeters.Count} putts";
 
     public int PuttsUsed
     {
@@ -54,13 +132,13 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
     public string CurrentDistanceText => IsComplete
         ? "-"
-        : $"{CurrentDistanceFeet} ft";
+        : UseCustomDistances ? UiFormat.Meters(CurrentDistanceMeters) : $"{CurrentDistanceFeet} ft";
 
     public string PuttsUsedText => PuttsUsed.ToString();
 
     public string CurrentResultText => IsComplete
         ? string.Empty
-        : $"This result: {UiFormat.Sg(PuttingGame.GetExpectedPutts(CurrentDistanceFeet, mode) - PuttsUsed)}";
+        : $"This result: {UiFormat.Sg(CurrentExpectedPutts - PuttsUsed)}";
 
     public string TotalPuttsText => completedPutts.Sum(putt => putt.Putts).ToString();
 
@@ -73,11 +151,11 @@ public sealed class PuttingGameViewModel : ViewModelBase
             var remaining = Distances.Skip(currentIndex).ToList();
             return remaining.Count == 0
                 ? "No distances remaining"
-                : $"{remaining.Count} remaining: {string.Join(", ", remaining)} ft";
+                : $"{remaining.Count} remaining: {string.Join(", ", remaining.Select(FormatDistance))}";
         }
     }
 
-    public string TargetPuttsText => PuttingGame.TargetPutts.ToString();
+    public string TargetPuttsText => gameTargetText;
 
     public string FinalSgText => RunningSgText;
 
@@ -88,8 +166,55 @@ public sealed class PuttingGameViewModel : ViewModelBase
     public void Start(string gameMode)
     {
         mode = PuttingGame.NormalizeMode(gameMode);
+        completedPutts.Clear();
+        currentIndex = 0;
+        PuttsUsed = 2;
+        IsComplete = false;
+        IsSetup = mode != PuttingGame.TourRoundMode;
+        gameTargetText = PuttingGame.TargetPutts.ToString();
+        if (!IsSetup)
+        {
+            customDistancesMeters = [];
+        }
+
         RefreshAll();
     }
+
+    public bool StartConfiguredGame()
+    {
+        if (!int.TryParse(HoleCountText, out var holeCount) || holeCount < 1 || holeCount > 99)
+        {
+            SetupErrorText = "Enter a putt count from 1 to 99.";
+            return false;
+        }
+
+        if (!double.TryParse(MinimumDistanceMetersText, out var minimumDistanceMeters) || minimumDistanceMeters <= 0)
+        {
+            SetupErrorText = "Enter a minimum distance greater than 0.";
+            return false;
+        }
+
+        if (!double.TryParse(MaximumDistanceMetersText, out var maximumDistanceMeters) ||
+            maximumDistanceMeters < minimumDistanceMeters)
+        {
+            SetupErrorText = "Enter a maximum distance that is at least the minimum distance.";
+            return false;
+        }
+
+        customDistancesMeters = PuttingGame.BuildBellCurveDistancesMeters(
+            holeCount,
+            minimumDistanceMeters,
+            maximumDistanceMeters);
+        gameTargetText = customDistancesMeters.Sum(PuttingGame.GetExpectedPutts).ToString("0.0");
+        BeginCustomDistanceGame();
+        return true;
+    }
+
+    public void StartShortBenchmark() => StartBenchmark(PuttingGame.ShortBenchmark);
+
+    public void StartNormalBenchmark() => StartBenchmark(PuttingGame.NormalBenchmark);
+
+    public void StartThoroughBenchmark() => StartBenchmark(PuttingGame.ThoroughBenchmark);
 
     public void IncreasePutts() => PuttsUsed++;
 
@@ -102,7 +227,9 @@ public sealed class PuttingGameViewModel : ViewModelBase
             return roundId;
         }
 
-        completedPutts.Add(PuttingGame.BuildPutt(currentIndex + 1, CurrentDistanceFeet, PuttsUsed, mode));
+        completedPutts.Add(UseCustomDistances
+            ? PuttingGame.BuildPutt(currentIndex + 1, CurrentDistanceMeters, PuttsUsed)
+            : PuttingGame.BuildPutt(currentIndex + 1, CurrentDistanceFeet, PuttsUsed, mode));
         currentIndex++;
 
         if (currentIndex >= Distances.Count)
@@ -118,15 +245,25 @@ public sealed class PuttingGameViewModel : ViewModelBase
         return null;
     }
 
-    private IReadOnlyList<int> Distances => PuttingGame.GetPresetDistances(mode);
+    private IReadOnlyList<double> Distances => UseCustomDistances
+        ? customDistancesMeters
+        : PuttingGame.GetPresetDistances(mode).Select(distance => (double)distance).ToList();
 
-    private int CurrentDistanceFeet => Distances[currentIndex];
+    private bool UseCustomDistances => customDistancesMeters.Count > 0;
+
+    private int CurrentDistanceFeet => (int)Distances[currentIndex];
+
+    private double CurrentDistanceMeters => Distances[currentIndex];
+
+    private double CurrentExpectedPutts => UseCustomDistances
+        ? PuttingGame.GetExpectedPutts(CurrentDistanceMeters)
+        : PuttingGame.GetExpectedPutts(CurrentDistanceFeet, mode);
 
     private async Task SaveAsync()
     {
         var round = new Round(
             roundId,
-            DateTime.Today,
+            DateTime.Now,
             completedPutts.ToList(),
             new RoundTrackingOptions(true, false, true, mode));
 
@@ -136,8 +273,19 @@ public sealed class PuttingGameViewModel : ViewModelBase
     private void RefreshAll()
     {
         OnPropertyChanged(nameof(IsComplete));
+        OnPropertyChanged(nameof(IsSetup));
         OnPropertyChanged(nameof(IsActive));
         OnPropertyChanged(nameof(GameTitle));
+        OnPropertyChanged(nameof(HoleCountText));
+        OnPropertyChanged(nameof(MinimumDistanceMetersText));
+        OnPropertyChanged(nameof(MaximumDistanceMetersText));
+        OnPropertyChanged(nameof(SetupErrorText));
+        OnPropertyChanged(nameof(HasSetupError));
+        OnPropertyChanged(nameof(BenchmarkDistanceOrderOptions));
+        OnPropertyChanged(nameof(SelectedBenchmarkDistanceOrder));
+        OnPropertyChanged(nameof(ShortBenchmarkText));
+        OnPropertyChanged(nameof(NormalBenchmarkText));
+        OnPropertyChanged(nameof(ThoroughBenchmarkText));
         OnPropertyChanged(nameof(ProgressText));
         OnPropertyChanged(nameof(CurrentDistanceText));
         OnPropertyChanged(nameof(PuttsUsedText));
@@ -145,6 +293,7 @@ public sealed class PuttingGameViewModel : ViewModelBase
         OnPropertyChanged(nameof(TotalPuttsText));
         OnPropertyChanged(nameof(RunningSgText));
         OnPropertyChanged(nameof(RemainingDistancesText));
+        OnPropertyChanged(nameof(TargetPuttsText));
         OnPropertyChanged(nameof(FinalSgText));
         OnPropertyChanged(nameof(BestResultText));
         OnPropertyChanged(nameof(WorstResultText));
@@ -157,7 +306,30 @@ public sealed class PuttingGameViewModel : ViewModelBase
             return "-";
         }
 
-        var feet = Distances[putt.HoleNumber - 1];
-        return $"Putt {putt.HoleNumber}, {feet} ft ({UiFormat.Sg(putt.StrokesGainedPutting)})";
+        return $"Putt {putt.HoleNumber}, {FormatDistance(Distances[putt.HoleNumber - 1])} ({UiFormat.Sg(putt.StrokesGainedPutting)})";
+    }
+
+    private string FormatDistance(double distance) => UseCustomDistances
+        ? UiFormat.Meters(distance)
+        : $"{(int)distance} ft";
+
+    private void StartBenchmark(string benchmark)
+    {
+        customDistancesMeters = PuttingGame.OrderDistances(
+            PuttingGame.GetBenchmarkDistancesMeters(benchmark),
+            benchmarkDistanceOrder);
+        gameTargetText = customDistancesMeters.Sum(PuttingGame.GetExpectedPutts).ToString("0.0");
+        BeginCustomDistanceGame();
+    }
+
+    private void BeginCustomDistanceGame()
+    {
+        completedPutts.Clear();
+        currentIndex = 0;
+        PuttsUsed = 2;
+        SetupErrorText = string.Empty;
+        IsComplete = false;
+        IsSetup = false;
+        RefreshAll();
     }
 }

@@ -9,7 +9,7 @@ public sealed class RoundInputViewModel : ViewModelBase
 {
     private readonly IRoundRepository repository;
     private string roundId = Guid.NewGuid().ToString("N");
-    private DateTime date = DateTime.Today;
+    private DateTime date = DateTime.Now;
     private RoundSummary summary = StrokesGainedCalculator.CalculateRoundSummary(Round.Empty());
     private int holeCount = 18;
     private bool trackPutting = true;

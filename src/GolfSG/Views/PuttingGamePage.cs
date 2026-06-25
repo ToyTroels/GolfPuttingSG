@@ -43,6 +43,9 @@ public sealed class PuttingGamePage : ContentPage
         };
         submitButton.Clicked += async (_, _) => completedRoundId = await viewModel.SubmitAsync();
 
+        var setupPanel = SetupPanel();
+        setupPanel.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsSetup));
+
         var activePanel = ActivePanel(submitButton);
         activePanel.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsActive));
 
@@ -58,6 +61,7 @@ public sealed class PuttingGamePage : ContentPage
                 Children =
                 {
                     GameTitleLabel(),
+                    setupPanel,
                     activePanel,
                     completePanel
                 }
@@ -75,6 +79,76 @@ public sealed class PuttingGamePage : ContentPage
         };
         title.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.GameTitle));
         return title;
+    }
+
+    private View SetupPanel()
+    {
+        var holeCount = NumericEntry(nameof(PuttingGameViewModel.HoleCountText));
+        var minimumDistance = NumericEntry(nameof(PuttingGameViewModel.MinimumDistanceMetersText));
+        var maximumDistance = NumericEntry(nameof(PuttingGameViewModel.MaximumDistanceMetersText));
+
+        var error = new Label
+        {
+            TextColor = Colors.DarkRed,
+            FontAttributes = FontAttributes.Bold
+        };
+        error.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.SetupErrorText));
+        error.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.HasSetupError));
+
+        var start = new Button
+        {
+            Text = "Start game",
+            BackgroundColor = PrimaryGreen,
+            TextColor = Colors.White,
+            CornerRadius = 8,
+            HeightRequest = 52,
+            FontAttributes = FontAttributes.Bold
+        };
+        start.Clicked += (_, _) => viewModel.StartConfiguredGame();
+
+        return Card(new VerticalStackLayout
+        {
+            Spacing = 12,
+            Children =
+            {
+                new Label
+                {
+                    Text = "Game setup",
+                    FontSize = 22,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = TextColor
+                },
+                Field("Putts", holeCount),
+                Field("Minimum distance (m)", minimumDistance),
+                Field("Maximum distance (m)", maximumDistance),
+                error,
+                start,
+                new BoxView
+                {
+                    HeightRequest = 1,
+                    BackgroundColor = CardStroke,
+                    Margin = new Thickness(0, 4)
+                },
+                BenchmarkToggleButton(),
+            }
+        });
+    }
+
+    private Button BenchmarkToggleButton()
+    {
+        var button = new Button
+        {
+            Text = "Benchmark",
+            BackgroundColor = Colors.White,
+            BorderColor = PrimaryGreen,
+            BorderWidth = 1,
+            TextColor = PrimaryGreen,
+            CornerRadius = 8,
+            HeightRequest = 50,
+            FontAttributes = FontAttributes.Bold
+        };
+        button.Clicked += async (_, _) => await Navigation.PushAsync(new PuttingBenchmarkPage(viewModel));
+        return button;
     }
 
     private View ActivePanel(Button submitButton)
@@ -265,6 +339,37 @@ public sealed class PuttingGamePage : ContentPage
             FontAttributes = FontAttributes.Bold,
             FontSize = 20,
             Padding = 0
+        };
+    }
+
+    private static Entry NumericEntry(string bindingPath)
+    {
+        var entry = new Entry
+        {
+            Keyboard = Keyboard.Numeric,
+            TextColor = TextColor,
+            BackgroundColor = Colors.White,
+            HeightRequest = 48
+        };
+        entry.SetBinding(Entry.TextProperty, bindingPath, BindingMode.TwoWay);
+        return entry;
+    }
+
+    private static View Field(string labelText, Entry entry)
+    {
+        return new VerticalStackLayout
+        {
+            Spacing = 4,
+            Children =
+            {
+                new Label
+                {
+                    Text = labelText,
+                    TextColor = MutedTextColor,
+                    FontAttributes = FontAttributes.Bold
+                },
+                entry
+            }
         };
     }
 
