@@ -1,3 +1,4 @@
+using GolfSG.Core;
 using GolfSG.Services;
 using GolfSG.ViewModels;
 using GolfSG.Views;
@@ -23,6 +24,9 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<IRoundRepository, FileRoundRepository>();
+        builder.Services.AddSingleton<IStrokesGainedPuttingService, StrokesGainedPuttingService>();
+        builder.Services.AddSingleton<IStrokesGainedAroundGreenService, StrokesGainedAroundGreenService>();
+        builder.Services.AddSingleton<IStrokesGainedApproachService, StrokesGainedApproachService>();
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddTransient<StartViewModel>();
         builder.Services.AddTransient<RoundInputViewModel>();

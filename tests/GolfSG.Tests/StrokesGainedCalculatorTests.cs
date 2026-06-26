@@ -71,6 +71,38 @@ public sealed class StrokesGainedCalculatorTests
     }
 
     [TestMethod]
+    public void RoundSummaryIncludesAroundGreenShots()
+    {
+        var hole = StrokesGainedCalculator.BuildHole(
+            1,
+            2.4,
+            2,
+            aroundGreenShot: new GolfShot
+            {
+                HoleNumber = 1,
+                ShotNumber = 2,
+                StartDistanceToPin = 10,
+                StartDistanceUnit = DistanceUnit.Yards,
+                StartLie = ShotLie.Sand,
+                StartDistanceToGreenEdgeYards = 5,
+                EndLie = ShotLie.Holed,
+                Holed = true
+            });
+
+        var round = new Round(
+            Guid.NewGuid().ToString("N"),
+            DateTime.Today,
+            [hole],
+            new RoundTrackingOptions(true, false, true));
+
+        var summary = StrokesGainedCalculator.CalculateRoundSummary(round);
+
+        Assert.AreEqual(1, summary.TotalAroundGreenShots);
+        Assert.AreEqual(1.45, summary.TotalStrokesGainedAroundGreen, 0.001);
+        Assert.AreEqual(10, summary.AverageAroundGreenDistance, 0.001);
+    }
+
+    [TestMethod]
     public void RoundSummaryIgnoresUnfinishedHoles()
     {
         var round = new Round(

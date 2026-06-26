@@ -45,8 +45,8 @@ public static class PuttingGame
         BuildBellCurveDistancesMeters(100, DefaultMinimumDistanceMeters, DefaultMaximumDistanceMeters);
 
     public static string GetTitle(string mode) => NormalizeMode(mode) == TourRoundMode
-        ? "Tour Round Game"
-        : "Putting Game";
+        ? "Tour-runde"
+        : "Putting-spil";
 
     public static IReadOnlyList<int> GetPresetDistances(string mode) => NormalizeMode(mode) == TourRoundMode
         ? TourRoundDistancesFeet

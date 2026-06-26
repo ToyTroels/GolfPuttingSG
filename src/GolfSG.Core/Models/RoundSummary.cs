@@ -2,7 +2,8 @@ namespace GolfSG.Core.Models;
 
 public sealed record RoundSummary(
     PuttingRoundSummary Putting,
-    ApproachRoundSummary Approach)
+    ApproachRoundSummary Approach,
+    AroundGreenRoundSummary AroundGreen)
 {
     public double TotalStrokesGainedPutting => Putting.TotalStrokesGained;
     public int TotalPutts => Putting.TotalPutts;
@@ -18,7 +19,12 @@ public sealed record RoundSummary(
     public double AverageApproachDistance => Approach.AverageDistance;
     public HolePuttingData? BestApproachHole => Approach.BestHole;
     public HolePuttingData? WorstApproachHole => Approach.WorstHole;
-    public double TotalStrokesGained => TotalStrokesGainedPutting + TotalStrokesGainedApproach;
+    public double TotalStrokesGainedAroundGreen => AroundGreen.TotalStrokesGained;
+    public int TotalAroundGreenShots => AroundGreen.TotalShots;
+    public double AverageAroundGreenDistance => AroundGreen.AverageDistanceYards;
+    public HolePuttingData? BestAroundGreenHole => AroundGreen.BestHole;
+    public HolePuttingData? WorstAroundGreenHole => AroundGreen.WorstHole;
+    public double TotalStrokesGained => TotalStrokesGainedPutting + TotalStrokesGainedApproach + TotalStrokesGainedAroundGreen;
 }
 
 public sealed record PuttingRoundSummary(
@@ -47,5 +53,12 @@ public sealed record ApproachRoundSummary(
     double TotalStrokesGained,
     int TotalShots,
     double AverageDistance,
+    HolePuttingData? BestHole,
+    HolePuttingData? WorstHole);
+
+public sealed record AroundGreenRoundSummary(
+    double TotalStrokesGained,
+    int TotalShots,
+    double AverageDistanceYards,
     HolePuttingData? BestHole,
     HolePuttingData? WorstHole);

@@ -1,5 +1,6 @@
 using GolfSG.ViewModels;
 using Microsoft.Maui.Controls.Shapes;
+using Microsoft.Maui.Layouts;
 
 namespace GolfSG.Views;
 
@@ -82,6 +83,12 @@ public sealed class HoleEntryPage : ContentPage
         var puttPlus = RoundStepperButton("+");
         puttPlus.Clicked += (_, _) => viewModel.IncreasePutts();
 
+        var puttQuickActions = NumberQuickActions(
+            nameof(HoleInputViewModel.Putts),
+            ("1 putt", 1, () => viewModel.SetPutts(1)),
+            ("2 putts", 2, () => viewModel.SetPutts(2)),
+            ("3 putts", 3, () => viewModel.SetPutts(3)));
+
         var puttingSg = SgLabel();
         puttingSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedPuttingText), stringFormat: "SG Putting {0}"));
 
@@ -107,29 +114,173 @@ public sealed class HoleEntryPage : ContentPage
         approachPlus.Clicked += (_, _) => viewModel.IncreaseApproachShots();
 
         var approachSg = SgLabel();
-        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedApproachText), stringFormat: "SG Approach {0}"));
+        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedApproachText), stringFormat: "SG Indspil {0}"));
+
+        var approachStartLie = QuickChoicePanel(
+            "Startleje",
+            nameof(HoleInputViewModel.ApproachStartLieText),
+            ("Fairway", () => viewModel.SelectApproachStartLie("Fairway")),
+            ("Rough", () => viewModel.SelectApproachStartLie("Rough")),
+            ("Sand", () => viewModel.SelectApproachStartLie("Sand")),
+            ("Problemlie", () => viewModel.SelectApproachStartLie("Problemlie")));
+
+        var approachStartDistance = DistanceSlider(250);
+        approachStartDistance.SetBinding(Slider.ValueProperty, nameof(HoleInputViewModel.ApproachStartDistanceYards), BindingMode.TwoWay);
+
+        var approachStartDistanceValue = DistanceValueLabel();
+        approachStartDistanceValue.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.ApproachStartDistanceDisplayText));
+
+        var approachStartDistanceMinus = DistanceStepperButton("-");
+        approachStartDistanceMinus.Clicked += (_, _) => viewModel.DecreaseApproachStartDistance();
+
+        var approachStartDistancePlus = DistanceStepperButton("+");
+        approachStartDistancePlus.Clicked += (_, _) => viewModel.IncreaseApproachStartDistance();
+
+        var approachEndLie = QuickChoicePanel(
+            "Slutposition",
+            nameof(HoleInputViewModel.ApproachEndLieText),
+            ("Green", () => viewModel.SelectApproachEndLie("Green")),
+            ("Kortklippet", () => viewModel.SelectApproachEndLie("Kortklippet")),
+            ("Rough", () => viewModel.SelectApproachEndLie("Rough")),
+            ("Sand", () => viewModel.SelectApproachEndLie("Sand")),
+            ("I hul", () => viewModel.SelectApproachEndLie("I hul")));
+
+        var approachEndDistance = ExpandingDistanceSlider(30, 250);
+        approachEndDistance.SetBinding(Slider.ValueProperty, nameof(HoleInputViewModel.ApproachEndDistance), BindingMode.TwoWay);
+
+        var approachEndDistanceValue = DistanceValueLabel();
+        approachEndDistanceValue.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.ApproachEndDistanceDisplayText));
+
+        var approachEndDistanceMinus = DistanceStepperButton("-");
+        approachEndDistanceMinus.Clicked += (_, _) => viewModel.DecreaseApproachEndDistance();
+
+        var approachEndDistancePlus = DistanceStepperButton("+");
+        approachEndDistancePlus.Clicked += (_, _) => viewModel.IncreaseApproachEndDistance();
+
+        var approachEndDistancePanel = DistancePanel("Slutafstand", approachEndDistance, approachEndDistanceValue, approachEndDistanceMinus, approachEndDistancePlus);
+        approachEndDistancePanel.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsApproachFinishDistanceVisible));
+
+        var approachHoled = new Switch
+        {
+            OnColor = PrimaryGreen,
+            ThumbColor = Colors.White
+        };
+        approachHoled.SetBinding(Switch.IsToggledProperty, nameof(HoleInputViewModel.ApproachHoled), BindingMode.TwoWay);
+
+        var approachPenaltyStrokes = CountLabel();
+        approachPenaltyStrokes.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.ApproachPenaltyStrokes));
+
+        var approachPenaltyMinus = RoundStepperButton("-");
+        approachPenaltyMinus.Clicked += (_, _) => viewModel.DecreaseApproachPenaltyStrokes();
+
+        var approachPenaltyPlus = RoundStepperButton("+");
+        approachPenaltyPlus.Clicked += (_, _) => viewModel.IncreaseApproachPenaltyStrokes();
+
+        var aroundGreenStartDistance = DistanceSlider(50);
+        aroundGreenStartDistance.SetBinding(Slider.ValueProperty, nameof(HoleInputViewModel.AroundGreenStartDistanceYards), BindingMode.TwoWay);
+
+        var aroundGreenStartDistanceValue = DistanceValueLabel();
+        aroundGreenStartDistanceValue.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.AroundGreenStartDistanceDisplayText));
+
+        var aroundGreenStartDistanceMinus = DistanceStepperButton("-");
+        aroundGreenStartDistanceMinus.Clicked += (_, _) => viewModel.DecreaseAroundGreenStartDistance();
+
+        var aroundGreenStartDistancePlus = DistanceStepperButton("+");
+        aroundGreenStartDistancePlus.Clicked += (_, _) => viewModel.IncreaseAroundGreenStartDistance();
+
+        var aroundGreenStartLie = QuickChoicePanel(
+            "Startleje",
+            nameof(HoleInputViewModel.AroundGreenStartLieText),
+            ("Rough", () => viewModel.SelectAroundGreenStartLie("Rough")),
+            ("Kortklippet", () => viewModel.SelectAroundGreenStartLie("Kortklippet")),
+            ("Sand", () => viewModel.SelectAroundGreenStartLie("Sand")),
+            ("Problemlie", () => viewModel.SelectAroundGreenStartLie("Problemlie")));
+
+        var aroundGreenEndLie = QuickChoicePanel(
+            "Slutposition",
+            nameof(HoleInputViewModel.AroundGreenEndLieText),
+            ("Green", () => viewModel.SelectAroundGreenEndLie("Green")),
+            ("Kortklippet", () => viewModel.SelectAroundGreenEndLie("Kortklippet")),
+            ("Rough", () => viewModel.SelectAroundGreenEndLie("Rough")),
+            ("Sand", () => viewModel.SelectAroundGreenEndLie("Sand")),
+            ("I hul", () => viewModel.SelectAroundGreenEndLie("I hul")));
+
+        var aroundGreenEndDistance = ExpandingDistanceSlider(30, 250);
+        aroundGreenEndDistance.SetBinding(Slider.ValueProperty, nameof(HoleInputViewModel.AroundGreenEndDistance), BindingMode.TwoWay);
+        aroundGreenEndDistance.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsAroundGreenFinishDistanceVisible));
+
+        var aroundGreenEndDistanceValue = DistanceValueLabel();
+        aroundGreenEndDistanceValue.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.AroundGreenEndDistanceDisplayText));
+
+        var aroundGreenEndDistanceMinus = DistanceStepperButton("-");
+        aroundGreenEndDistanceMinus.Clicked += (_, _) => viewModel.DecreaseAroundGreenEndDistance();
+
+        var aroundGreenEndDistancePlus = DistanceStepperButton("+");
+        aroundGreenEndDistancePlus.Clicked += (_, _) => viewModel.IncreaseAroundGreenEndDistance();
+
+        var aroundGreenEndDistancePanel = DistancePanel("Slutafstand", aroundGreenEndDistance, aroundGreenEndDistanceValue, aroundGreenEndDistanceMinus, aroundGreenEndDistancePlus);
+        aroundGreenEndDistancePanel.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsAroundGreenFinishDistanceVisible));
+
+        var aroundGreenPenaltyStrokes = CountLabel();
+        aroundGreenPenaltyStrokes.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.AroundGreenPenaltyStrokes));
+
+        var aroundGreenPenaltyMinus = RoundStepperButton("-");
+        aroundGreenPenaltyMinus.Clicked += (_, _) => viewModel.DecreaseAroundGreenPenaltyStrokes();
+
+        var aroundGreenPenaltyPlus = RoundStepperButton("+");
+        aroundGreenPenaltyPlus.Clicked += (_, _) => viewModel.IncreaseAroundGreenPenaltyStrokes();
+
+        var aroundGreenHoled = new Switch
+        {
+            OnColor = PrimaryGreen,
+            ThumbColor = Colors.White
+        };
+        aroundGreenHoled.SetBinding(Switch.IsToggledProperty, nameof(HoleInputViewModel.AroundGreenHoled), BindingMode.TwoWay);
+
+        var aroundGreenSg = SgLabel();
+        aroundGreenSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedAroundGreenText), stringFormat: "SG Omkring green {0}"));
 
         var puttingSection = PuttingSection(
             puttMinus,
             putts,
             puttPlus,
+            puttQuickActions,
             puttingDistance,
             puttingDistanceValue,
             puttingDistanceMinus,
             puttingDistancePlus,
             puttingSg);
-        puttingSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.TrackPutting));
+        puttingSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsPuttingInputVisible));
 
         var approachSection = ApproachSection(
-            approachMinus,
-            approachShots,
-            approachPlus,
-            approachDistance,
-            approachDistanceValue,
-            approachDistanceMinus,
-            approachDistancePlus,
+            approachStartLie,
+            approachStartDistance,
+            approachStartDistanceValue,
+            approachStartDistanceMinus,
+            approachStartDistancePlus,
+            approachEndLie,
+            approachEndDistancePanel,
+            approachHoled,
+            approachPenaltyMinus,
+            approachPenaltyStrokes,
+            approachPenaltyPlus,
             approachSg);
-        approachSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.TrackApproach));
+        approachSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsApproachInputVisible));
+
+        var aroundGreenSection = AroundGreenSection(
+            aroundGreenStartLie,
+            aroundGreenStartDistance,
+            aroundGreenStartDistanceValue,
+            aroundGreenStartDistanceMinus,
+            aroundGreenStartDistancePlus,
+            aroundGreenEndLie,
+            aroundGreenEndDistancePanel,
+            aroundGreenHoled,
+            aroundGreenPenaltyMinus,
+            aroundGreenPenaltyStrokes,
+            aroundGreenPenaltyPlus,
+            aroundGreenSg);
+        aroundGreenSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsAroundGreenInputVisible));
 
         var done = new Button
         {
@@ -178,7 +329,7 @@ public sealed class HoleEntryPage : ContentPage
                     Content = new VerticalStackLayout
                     {
                         Spacing = 16,
-                        Children = { puttingSection, approachSection }
+                        Children = { approachSection, aroundGreenSection, puttingSection }
                     }
                 }.Row(2).Margin(new Thickness(0, 22, 0, 18)),
                 new Grid
@@ -244,6 +395,7 @@ public sealed class HoleEntryPage : ContentPage
         Button minus,
         Label putts,
         Button plus,
+        View quickActions,
         Slider distance,
         Label distanceValue,
         Button distanceMinus,
@@ -256,6 +408,7 @@ public sealed class HoleEntryPage : ContentPage
             Children =
             {
                 CounterPanel("Antal putts", minus, putts, plus),
+                quickActions,
                 DistancePanel("Første putt-afstand", distance, distanceValue, distanceMinus, distancePlus),
                 sg
             }
@@ -263,13 +416,17 @@ public sealed class HoleEntryPage : ContentPage
     }
 
     private static View ApproachSection(
-        Button minus,
-        Label shots,
-        Button plus,
-        Slider distance,
-        Label distanceValue,
-        Button distanceMinus,
-        Button distancePlus,
+        View startLie,
+        Slider startDistance,
+        Label startDistanceValue,
+        Button startDistanceMinus,
+        Button startDistancePlus,
+        View endLie,
+        View endDistancePanel,
+        Switch holed,
+        Button penaltyMinus,
+        Label penaltyStrokes,
+        Button penaltyPlus,
         Label sg)
     {
         return Card(new VerticalStackLayout
@@ -277,8 +434,42 @@ public sealed class HoleEntryPage : ContentPage
             Spacing = 16,
             Children =
             {
-                CounterPanel("Slag brugt", minus, shots, plus),
-                DistancePanel("Approach-afstand", distance, distanceValue, distanceMinus, distancePlus),
+                startLie,
+                DistancePanel("Startafstand til flag", startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
+                endLie,
+                endDistancePanel,
+                ToggleRow("I hul", holed),
+                CounterPanel("Strafslag", penaltyMinus, penaltyStrokes, penaltyPlus),
+                sg
+            }
+        });
+    }
+
+    private static View AroundGreenSection(
+        View startLie,
+        Slider startDistance,
+        Label startDistanceValue,
+        Button startDistanceMinus,
+        Button startDistancePlus,
+        View endLie,
+        View endDistancePanel,
+        Switch holed,
+        Button penaltyMinus,
+        Label penaltyStrokes,
+        Button penaltyPlus,
+        Label sg)
+    {
+        return Card(new VerticalStackLayout
+        {
+            Spacing = 16,
+            Children =
+            {
+                startLie,
+                DistancePanel("Startafstand til flag", startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
+                endLie,
+                endDistancePanel,
+                ToggleRow("I hul", holed),
+                CounterPanel("Strafslag", penaltyMinus, penaltyStrokes, penaltyPlus),
                 sg
             }
         });
@@ -352,6 +543,200 @@ public sealed class HoleEntryPage : ContentPage
         };
     }
 
+    private static View QuickChoicePanel(
+        string title,
+        string selectedTextProperty,
+        params (string Text, Action Action)[] choices)
+    {
+        var selected = new Label
+        {
+            FontSize = 14,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = PrimaryGreen
+        };
+        selected.SetBinding(Label.TextProperty, selectedTextProperty);
+
+        return new VerticalStackLayout
+        {
+            Spacing = 8,
+            Children =
+            {
+                new Label
+                {
+                    Text = title,
+                    FontSize = 15,
+                    TextColor = MutedTextColor
+                },
+                selected,
+                QuickActions(selectedTextProperty, choices)
+            }
+        };
+    }
+
+    private static FlexLayout QuickActions(params (string Text, Action Action)[] choices) =>
+        QuickActions(null, choices);
+
+    private static FlexLayout QuickActions(string? selectedTextProperty, params (string Text, Action Action)[] choices)
+    {
+        var actions = new FlexLayout
+        {
+            Direction = FlexDirection.Row,
+            Wrap = FlexWrap.Wrap,
+            JustifyContent = FlexJustify.Start,
+            AlignItems = FlexAlignItems.Start
+        };
+
+        foreach (var choice in choices)
+        {
+            var button = new Button
+            {
+                Text = choice.Text,
+                HeightRequest = 42,
+                MinimumWidthRequest = 78,
+                CornerRadius = 8,
+                BackgroundColor = InputBackground,
+                BorderColor = CardStroke,
+                BorderWidth = 1,
+                TextColor = TextColor,
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 13,
+                Padding = new Thickness(12, 0),
+                Margin = new Thickness(0, 0, 8, 8)
+            };
+
+            if (!string.IsNullOrWhiteSpace(selectedTextProperty))
+            {
+                button.Triggers.Add(new DataTrigger(typeof(Button))
+                {
+                    Binding = new Binding(selectedTextProperty),
+                    Value = choice.Text,
+                    Setters =
+                    {
+                        new Setter { Property = Button.BackgroundColorProperty, Value = PrimaryGreen },
+                        new Setter { Property = Button.BorderColorProperty, Value = PrimaryGreen },
+                        new Setter { Property = Button.TextColorProperty, Value = Colors.White }
+                    }
+                });
+            }
+
+            button.Clicked += (_, _) => choice.Action();
+            actions.Children.Add(button);
+        }
+
+        return actions;
+    }
+
+    private static FlexLayout NumberQuickActions(
+        string selectedNumberProperty,
+        params (string Text, int Value, Action Action)[] choices)
+    {
+        var actions = new FlexLayout
+        {
+            Direction = FlexDirection.Row,
+            Wrap = FlexWrap.Wrap,
+            JustifyContent = FlexJustify.Start,
+            AlignItems = FlexAlignItems.Start
+        };
+
+        foreach (var choice in choices)
+        {
+            var button = QuickActionButton(choice.Text);
+            button.Triggers.Add(new DataTrigger(typeof(Button))
+            {
+                Binding = new Binding(selectedNumberProperty),
+                Value = choice.Value,
+                Setters =
+                {
+                    new Setter { Property = Button.BackgroundColorProperty, Value = PrimaryGreen },
+                    new Setter { Property = Button.BorderColorProperty, Value = PrimaryGreen },
+                    new Setter { Property = Button.TextColorProperty, Value = Colors.White }
+                }
+            });
+            button.Clicked += (_, _) => choice.Action();
+            actions.Children.Add(button);
+        }
+
+        return actions;
+    }
+
+    private static Button QuickActionButton(string text)
+    {
+        return new Button
+        {
+            Text = text,
+            HeightRequest = 42,
+            MinimumWidthRequest = 78,
+            CornerRadius = 8,
+            BackgroundColor = InputBackground,
+            BorderColor = CardStroke,
+            BorderWidth = 1,
+            TextColor = TextColor,
+            FontAttributes = FontAttributes.Bold,
+            FontSize = 13,
+            Padding = new Thickness(12, 0),
+            Margin = new Thickness(0, 0, 8, 8)
+        };
+    }
+
+    private static View PickerPanel(string title, string itemsSourceProperty, string selectedItemProperty)
+    {
+        var picker = new Picker
+        {
+            Title = title,
+            TextColor = TextColor
+        };
+        picker.SetBinding(Picker.ItemsSourceProperty, itemsSourceProperty);
+        picker.SetBinding(Picker.SelectedItemProperty, selectedItemProperty, BindingMode.TwoWay);
+
+        return new VerticalStackLayout
+        {
+            Spacing = 8,
+            Children =
+            {
+                new Label
+                {
+                    Text = title,
+                    FontSize = 15,
+                    TextColor = MutedTextColor
+                },
+                new Border
+                {
+                    BackgroundColor = InputBackground,
+                    Stroke = CardStroke,
+                    StrokeThickness = 2,
+                    StrokeShape = new RoundRectangle { CornerRadius = 8 },
+                    Padding = new Thickness(12, 2),
+                    Content = picker
+                }
+            }
+        };
+    }
+
+    private static View ToggleRow(string title, Switch toggle)
+    {
+        return new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            ColumnSpacing = 12,
+            Children =
+            {
+                new Label
+                {
+                    Text = title,
+                    FontSize = 15,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = TextColor,
+                    VerticalTextAlignment = TextAlignment.Center
+                }.Column(0),
+                toggle.Column(1)
+            }
+        };
+    }
+
     private static Slider DistanceSlider(double maximum)
     {
         return new Slider
@@ -362,6 +747,26 @@ public sealed class HoleEntryPage : ContentPage
             MaximumTrackColor = CardStroke,
             ThumbColor = PrimaryGreen
         };
+    }
+
+    private static Slider ExpandingDistanceSlider(double initialMaximum, double absoluteMaximum)
+    {
+        var slider = DistanceSlider(initialMaximum);
+        var nextExpansionAllowedAt = DateTime.MinValue;
+
+        slider.ValueChanged += (_, args) =>
+        {
+            if (args.NewValue < slider.Maximum || slider.Maximum >= absoluteMaximum ||
+                DateTime.UtcNow < nextExpansionAllowedAt)
+            {
+                return;
+            }
+
+            slider.Maximum = Math.Min(absoluteMaximum, slider.Maximum + initialMaximum);
+            nextExpansionAllowedAt = DateTime.UtcNow.AddMilliseconds(900);
+        };
+
+        return slider;
     }
 
     private static Label DistanceValueLabel()

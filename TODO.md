@@ -26,6 +26,15 @@
 - [ ] Decide what extra input is needed for the final state after the approach shot, such as remaining putt distance, around-the-green lie, bunker, rough, or penalty.
 - [ ] Add tests for single approach shots, multiple approach shots, penalties, and category transitions into putting or short game.
 
+## Configure SG categories
+
+- [ ] Add UI for configuring whether SG approach and SG around the green are tracked for a round.
+- [ ] Add the available SG categories to the settings screen, including putting, approach, and around the green.
+- [ ] Persist the selected SG category configuration with the active round and saved round history.
+- [ ] Show or hide approach and around-the-green inputs based on the selected configuration.
+- [ ] Keep SG summaries, result views, and periodic evaluations aligned with the enabled categories.
+- [ ] Add tests for category configuration persistence and conditional input/result behavior.
+
 ## Save rounds
 
 - [ ] Decide how rounds should be saved locally, including storage format, file location, and whether the app should support future migration.
@@ -35,6 +44,22 @@
 - [ ] Support editing or deleting a saved round without corrupting other saved rounds.
 - [ ] Handle save/load failures with a clear user-facing state and avoid losing the active round.
 - [ ] Add tests for round serialization, loading multiple saved rounds, editing, deleting, and malformed saved data.
+
+## Round length and early finish
+
+- [ ] Let the player configure the number of holes in a round before or during play, such as 9, 18, or a custom number.
+- [ ] Let the player finish/end a round before every configured hole has been completed.
+- [ ] Persist whether a saved round was completed normally or ended early.
+- [ ] Make result views and SG summaries handle partial rounds without treating missing holes as zero-value holes.
+- [ ] Add tests for custom hole counts, early round finish, and saving partial rounds.
+
+## Carry remaining distances between SG categories
+
+- [ ] When an approach shot misses the green, carry the entered remaining distance to the hole forward into SG around-the-green automatically.
+- [ ] When a shot finishes on the green, carry the entered distance to the hole forward into the putting input automatically.
+- [ ] For putting after a carried green distance, only ask the player to enter the number of putts used.
+- [ ] Preserve the carried distances when saving, loading, editing, and calculating SG for a round.
+- [ ] Add tests for approach-to-around-the-green handoff, approach-to-putting handoff, and putting input with only used putts entered.
 
 ## Round persistence hardening
 

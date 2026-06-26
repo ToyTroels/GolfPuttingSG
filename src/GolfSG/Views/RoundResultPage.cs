@@ -128,13 +128,13 @@ public sealed class RoundResultPage : ContentPage
         var averagePuttDistance = BoundLabel(nameof(RoundResultViewModel.AverageDistanceText), "Gns. første putt-afstand: {0}");
         averagePuttDistance.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
-        var totalPutts = BoundLabel(nameof(RoundResultViewModel.TotalPuttsText), "Total putts: {0}");
+        var totalPutts = BoundLabel(nameof(RoundResultViewModel.TotalPuttsText), "Putts i alt: {0}");
         totalPutts.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
-        var targetPutts = BoundLabel(nameof(RoundResultViewModel.TargetPuttsText), "Target putts: {0}");
+        var targetPutts = BoundLabel(nameof(RoundResultViewModel.TargetPuttsText), "Mål-putts: {0}");
         targetPutts.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.IsPuttingGame));
 
-        var threePuttRate = BoundLabel(nameof(RoundResultViewModel.ThreePuttRateText), "3-putt rate: {0}");
+        var threePuttRate = BoundLabel(nameof(RoundResultViewModel.ThreePuttRateText), "3-putt-andel: {0}");
         threePuttRate.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
         var bestHole = BoundLabel(nameof(RoundResultViewModel.BestHoleText), "Bedste putting-hul: {0}");
@@ -143,39 +143,59 @@ public sealed class RoundResultPage : ContentPage
         var worstHole = BoundLabel(nameof(RoundResultViewModel.WorstHoleText), "Værste putting-hul: {0}");
         worstHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
-        var approachSg = BoundLabel(nameof(RoundResultViewModel.TotalApproachSgText), "SG Approach: {0}");
+        var approachSg = BoundLabel(nameof(RoundResultViewModel.TotalApproachSgText), "SG Indspil: {0}");
         approachSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
-        var averageApproachDistance = BoundLabel(nameof(RoundResultViewModel.AverageApproachDistanceText), "Gns. approach-afstand: {0}");
+        var averageApproachDistance = BoundLabel(nameof(RoundResultViewModel.AverageApproachDistanceText), "Gns. indspilsafstand: {0}");
         averageApproachDistance.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
-        var totalApproachShots = BoundLabel(nameof(RoundResultViewModel.TotalApproachShotsText), "Approach-slag: {0}");
+        var totalApproachShots = BoundLabel(nameof(RoundResultViewModel.TotalApproachShotsText), "Indspil: {0}");
         totalApproachShots.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
-        var bestApproachHole = BoundLabel(nameof(RoundResultViewModel.BestApproachHoleText), "Bedste approach-hul: {0}");
+        var bestApproachHole = BoundLabel(nameof(RoundResultViewModel.BestApproachHoleText), "Bedste indspilshul: {0}");
         bestApproachHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
-        var worstApproachHole = BoundLabel(nameof(RoundResultViewModel.WorstApproachHoleText), "Værste approach-hul: {0}");
+        var worstApproachHole = BoundLabel(nameof(RoundResultViewModel.WorstApproachHoleText), "Værste indspilshul: {0}");
         worstApproachHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
+
+        var aroundGreenSg = BoundLabel(nameof(RoundResultViewModel.TotalAroundGreenSgText), "SG Omkring green: {0}");
+        aroundGreenSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackAroundGreen));
+
+        var averageAroundGreenDistance = BoundLabel(nameof(RoundResultViewModel.AverageAroundGreenDistanceText), "Gns. afstand omkring green: {0}");
+        averageAroundGreenDistance.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackAroundGreen));
+
+        var totalAroundGreenShots = BoundLabel(nameof(RoundResultViewModel.TotalAroundGreenShotsText), "Slag omkring green: {0}");
+        totalAroundGreenShots.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackAroundGreen));
+
+        var bestAroundGreenHole = BoundLabel(nameof(RoundResultViewModel.BestAroundGreenHoleText), "Bedste hul omkring green: {0}");
+        bestAroundGreenHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackAroundGreen));
+
+        var worstAroundGreenHole = BoundLabel(nameof(RoundResultViewModel.WorstAroundGreenHoleText), "Værste hul omkring green: {0}");
+        worstAroundGreenHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackAroundGreen));
 
         return Card(new VerticalStackLayout
         {
             Spacing = 6,
             Children =
             {
-                BoundLabel(nameof(RoundResultViewModel.TotalSgText), "Total SG: {0}", true),
+                BoundLabel(nameof(RoundResultViewModel.TotalSgText), "Samlet SG: {0}", true),
                 puttingSg,
                 approachSg,
+                aroundGreenSg,
                 averagePuttDistance,
                 averageApproachDistance,
+                averageAroundGreenDistance,
                 totalPutts,
                 targetPutts,
                 totalApproachShots,
+                totalAroundGreenShots,
                 threePuttRate,
                 bestHole,
                 worstHole,
                 bestApproachHole,
-                worstApproachHole
+                worstApproachHole,
+                bestAroundGreenHole,
+                worstAroundGreenHole
             }
         });
     }

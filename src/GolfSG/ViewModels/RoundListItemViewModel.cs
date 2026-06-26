@@ -35,7 +35,7 @@ public sealed class RoundListItemViewModel
         {
             if (IsPuttingGame)
             {
-                return $"{PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)} | {Round.Holes.Count} putts | {TotalPutts} strokes";
+                return $"{PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)} | {Round.Holes.Count} putts | {TotalPutts} slag";
             }
 
             var parts = new List<string>();
@@ -46,7 +46,12 @@ public sealed class RoundListItemViewModel
 
             if (trackingOptions.TrackApproach)
             {
-                parts.Add($"{summary.TotalApproachShots} approach-slag");
+                parts.Add($"{summary.TotalApproachShots} indspil");
+            }
+
+            if (trackingOptions.TrackAroundGreen)
+            {
+                parts.Add($"{summary.TotalAroundGreenShots} slag omkring green");
             }
 
             return string.Join(" | ", parts);
@@ -56,6 +61,7 @@ public sealed class RoundListItemViewModel
     private double CalculateTrackedTotal()
     {
         return (trackingOptions.TrackPutting ? summary.TotalStrokesGainedPutting : 0) +
-            (trackingOptions.TrackApproach ? summary.TotalStrokesGainedApproach : 0);
+            (trackingOptions.TrackApproach ? summary.TotalStrokesGainedApproach : 0) +
+            (trackingOptions.TrackAroundGreen ? summary.TotalStrokesGainedAroundGreen : 0);
     }
 }

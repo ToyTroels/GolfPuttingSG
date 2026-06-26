@@ -14,6 +14,8 @@ public sealed class RoundInputViewModel : ViewModelBase
     private int holeCount = 18;
     private bool trackPutting = true;
     private bool trackApproach;
+    private bool trackAroundGreen;
+    private bool hasStarted;
 
     public RoundInputViewModel(IRoundRepository repository)
     {
@@ -45,7 +47,7 @@ public sealed class RoundInputViewModel : ViewModelBase
         get => trackPutting;
         set
         {
-            if (!value && !TrackApproach)
+            if (!value && !TrackApproach && !TrackAroundGreen)
             {
                 value = true;
             }
@@ -64,7 +66,7 @@ public sealed class RoundInputViewModel : ViewModelBase
         get => trackApproach;
         set
         {
-            if (!value && !TrackPutting)
+            if (!value && !TrackPutting && !TrackAroundGreen)
             {
                 value = true;
             }
@@ -78,19 +80,59 @@ public sealed class RoundInputViewModel : ViewModelBase
         }
     }
 
+    public bool TrackAroundGreen
+    {
+        get => trackAroundGreen;
+        set
+        {
+            if (!value && !TrackPutting && !TrackApproach)
+            {
+                value = true;
+            }
+
+            if (SetProperty(ref trackAroundGreen, value))
+            {
+                ApplyTrackingToHoles();
+                RefreshSummary();
+                OnTrackingPropertiesChanged();
+            }
+        }
+    }
+
     public string TotalSgText => UiFormat.Sg(
         (TrackPutting ? summary.TotalStrokesGainedPutting : 0) +
-        (TrackApproach ? summary.TotalStrokesGainedApproach : 0));
+        (TrackApproach ? summary.TotalStrokesGainedApproach : 0) +
+        (TrackAroundGreen ? summary.TotalStrokesGainedAroundGreen : 0));
 
     public string TotalPuttingSgText => UiFormat.Sg(summary.TotalStrokesGainedPutting);
 
     public string TotalApproachSgText => UiFormat.Sg(summary.TotalStrokesGainedApproach);
 
+    public string TotalAroundGreenSgText => UiFormat.Sg(summary.TotalStrokesGainedAroundGreen);
+
     public string TotalPuttsText => summary.TotalPutts.ToString();
 
     public string TotalApproachShotsText => summary.TotalApproachShots.ToString();
 
+    public string TotalAroundGreenShotsText => summary.TotalAroundGreenShots.ToString();
+
     public string CountBreakdownText => $"1-putts: {summary.OnePutts} | 2-putts: {summary.TwoPutts} | 3-putts+: {summary.ThreePuttsOrWorse}";
+
+    public bool IsSetupVisible => !hasStarted;
+
+    public bool IsRoundVisible => hasStarted;
+
+    public void StartRound()
+    {
+        if (hasStarted)
+        {
+            return;
+        }
+
+        hasStarted = true;
+        OnPropertyChanged(nameof(IsSetupVisible));
+        OnPropertyChanged(nameof(IsRoundVisible));
+    }
 
     public void IncreaseHoleCount() => SetHoleCount(HoleCount + 1);
 
@@ -114,8 +156,12 @@ public sealed class RoundInputViewModel : ViewModelBase
         var options = round.TrackingOptions ?? RoundTrackingOptions.PuttingOnly;
         trackPutting = options.TrackPutting;
         trackApproach = options.TrackApproach;
+        trackAroundGreen = options.TrackAroundGreen;
+        hasStarted = true;
         ScreenTitle = "Rediger runde";
         OnPropertyChanged(nameof(ScreenTitle));
+        OnPropertyChanged(nameof(IsSetupVisible));
+        OnPropertyChanged(nameof(IsRoundVisible));
         OnTrackingPropertiesChanged();
         SetHoleCount(Math.Clamp(round.Holes.Count, 1, 18));
 
@@ -140,7 +186,7 @@ public sealed class RoundInputViewModel : ViewModelBase
             roundId,
             date,
             Holes.Select(hole => hole.ToHole()).ToList(),
-            new RoundTrackingOptions(TrackPutting, TrackApproach));
+            new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen));
     }
 
     private void SetHoleCount(int count)
@@ -160,7 +206,7 @@ public sealed class RoundInputViewModel : ViewModelBase
         foreach (var hole in Holes)
         {
             hole.SetTotalHoles(clampedCount);
-            hole.SetTracking(new RoundTrackingOptions(TrackPutting, TrackApproach));
+            hole.SetTracking(new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen));
         }
 
         RefreshSummary();
@@ -169,7 +215,7 @@ public sealed class RoundInputViewModel : ViewModelBase
     private void AddHole(int holeNumber)
     {
         var hole = new HoleInputViewModel(holeNumber);
-        hole.SetTracking(new RoundTrackingOptions(TrackPutting, TrackApproach));
+        hole.SetTracking(new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen));
         hole.PropertyChanged += (_, _) => RefreshSummary();
         Holes.Add(hole);
     }
@@ -180,14 +226,16 @@ public sealed class RoundInputViewModel : ViewModelBase
         OnPropertyChanged(nameof(TotalSgText));
         OnPropertyChanged(nameof(TotalPuttingSgText));
         OnPropertyChanged(nameof(TotalApproachSgText));
+        OnPropertyChanged(nameof(TotalAroundGreenSgText));
         OnPropertyChanged(nameof(TotalPuttsText));
         OnPropertyChanged(nameof(TotalApproachShotsText));
+        OnPropertyChanged(nameof(TotalAroundGreenShotsText));
         OnPropertyChanged(nameof(CountBreakdownText));
     }
 
     private void ApplyTrackingToHoles()
     {
-        var options = new RoundTrackingOptions(TrackPutting, TrackApproach);
+        var options = new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen);
         foreach (var hole in Holes)
         {
             hole.SetTracking(options);
@@ -198,11 +246,14 @@ public sealed class RoundInputViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(TrackPutting));
         OnPropertyChanged(nameof(TrackApproach));
+        OnPropertyChanged(nameof(TrackAroundGreen));
         OnPropertyChanged(nameof(TotalSgText));
         OnPropertyChanged(nameof(TotalPuttingSgText));
         OnPropertyChanged(nameof(TotalApproachSgText));
+        OnPropertyChanged(nameof(TotalAroundGreenSgText));
         OnPropertyChanged(nameof(TotalPuttsText));
         OnPropertyChanged(nameof(TotalApproachShotsText));
+        OnPropertyChanged(nameof(TotalAroundGreenShotsText));
         OnPropertyChanged(nameof(CountBreakdownText));
     }
 }

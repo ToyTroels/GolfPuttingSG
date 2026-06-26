@@ -26,7 +26,7 @@ public sealed class PuttingBenchmarkPage : ContentPage
     {
         var distanceOrder = new Picker
         {
-            Title = "Distance order",
+            Title = "Afstandsrækkefølge",
             TextColor = TextColor,
             BackgroundColor = Colors.White,
             HeightRequest = 48
@@ -56,14 +56,14 @@ public sealed class PuttingBenchmarkPage : ContentPage
                         {
                             new Label
                             {
-                                Text = "Distance order",
+                                Text = "Afstandsrækkefølge",
                                 TextColor = MutedTextColor,
                                 FontAttributes = FontAttributes.Bold
                             },
                             distanceOrder,
                             new Label
                             {
-                                Text = "Benchmark length",
+                                Text = "Benchmark-længde",
                                 TextColor = MutedTextColor,
                                 FontAttributes = FontAttributes.Bold,
                                 Margin = new Thickness(0, 8, 0, 0)
@@ -108,7 +108,7 @@ public sealed class PuttingBenchmarkPage : ContentPage
     {
         var button = new Button
         {
-            Text = "Back",
+            Text = "Tilbage",
             BackgroundColor = Colors.White,
             BorderColor = PrimaryGreen,
             BorderWidth = 1,

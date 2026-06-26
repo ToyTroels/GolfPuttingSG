@@ -19,7 +19,7 @@ public sealed class PuttingGamePage : ContentPage
     {
         this.viewModel = viewModel;
         BindingContext = viewModel;
-        Title = "Putting Game";
+        Title = "Putting-spil";
         BackgroundColor = PageBackground;
         BuildLayout();
     }
@@ -34,7 +34,7 @@ public sealed class PuttingGamePage : ContentPage
     {
         var submitButton = new Button
         {
-            Text = "Submit result",
+            Text = "Gem resultat",
             BackgroundColor = PrimaryGreen,
             TextColor = Colors.White,
             CornerRadius = 8,
@@ -97,7 +97,7 @@ public sealed class PuttingGamePage : ContentPage
 
         var start = new Button
         {
-            Text = "Start game",
+            Text = "Start spil",
             BackgroundColor = PrimaryGreen,
             TextColor = Colors.White,
             CornerRadius = 8,
@@ -113,14 +113,14 @@ public sealed class PuttingGamePage : ContentPage
             {
                 new Label
                 {
-                    Text = "Game setup",
+                    Text = "Spilopsætning",
                     FontSize = 22,
                     FontAttributes = FontAttributes.Bold,
                     TextColor = TextColor
                 },
                 Field("Putts", holeCount),
-                Field("Minimum distance (m)", minimumDistance),
-                Field("Maximum distance (m)", maximumDistance),
+                Field("Minimumsafstand (m)", minimumDistance),
+                Field("Maksimumsafstand (m)", maximumDistance),
                 error,
                 start,
                 new BoxView
@@ -209,7 +209,7 @@ public sealed class PuttingGamePage : ContentPage
                         distance,
                         new Label
                         {
-                            Text = "Putts used",
+                            Text = "Brugte putts",
                             TextColor = MutedTextColor,
                             HorizontalTextAlignment = TextAlignment.Center
                         },
@@ -230,7 +230,7 @@ public sealed class PuttingGamePage : ContentPage
 
     private View RunningTotalPanel()
     {
-        var totalPutts = BoundLabel(nameof(PuttingGameViewModel.TotalPuttsText), "Total putts: {0}");
+        var totalPutts = BoundLabel(nameof(PuttingGameViewModel.TotalPuttsText), "Putts i alt: {0}");
         var runningSg = BoundLabel(nameof(PuttingGameViewModel.RunningSgText), "Putting SG: {0}");
         var remaining = new Label
         {
@@ -246,7 +246,7 @@ public sealed class PuttingGamePage : ContentPage
             {
                 new Label
                 {
-                    Text = "Running total",
+                    Text = "Løbende total",
                     FontAttributes = FontAttributes.Bold,
                     TextColor = TextColor
                 },
@@ -261,7 +261,7 @@ public sealed class PuttingGamePage : ContentPage
     {
         var viewResult = new Button
         {
-            Text = "View saved result",
+            Text = "Se gemt resultat",
             BackgroundColor = PrimaryGreen,
             TextColor = Colors.White,
             CornerRadius = 8,
@@ -282,7 +282,7 @@ public sealed class PuttingGamePage : ContentPage
 
         var finish = new Button
         {
-            Text = "Done",
+            Text = "Færdig",
             BackgroundColor = Colors.White,
             BorderColor = PrimaryGreen,
             BorderWidth = 1,
@@ -299,16 +299,16 @@ public sealed class PuttingGamePage : ContentPage
             {
                 new Label
                 {
-                    Text = "Summary",
+                    Text = "Opsummering",
                     FontSize = 22,
                     FontAttributes = FontAttributes.Bold,
                     TextColor = TextColor
                 },
-                BoundLabel(nameof(PuttingGameViewModel.TotalPuttsText), "Total putts: {0}"),
-                BoundLabel(nameof(PuttingGameViewModel.TargetPuttsText), "Target putts: {0}"),
-                BoundLabel(nameof(PuttingGameViewModel.FinalSgText), "Final putting SG: {0}", true),
-                BoundLabel(nameof(PuttingGameViewModel.BestResultText), "Best result: {0}"),
-                BoundLabel(nameof(PuttingGameViewModel.WorstResultText), "Worst result: {0}"),
+                BoundLabel(nameof(PuttingGameViewModel.TotalPuttsText), "Putts i alt: {0}"),
+                BoundLabel(nameof(PuttingGameViewModel.TargetPuttsText), "Mål-putts: {0}"),
+                BoundLabel(nameof(PuttingGameViewModel.FinalSgText), "Endelig putting SG: {0}", true),
+                BoundLabel(nameof(PuttingGameViewModel.BestResultText), "Bedste resultat: {0}"),
+                BoundLabel(nameof(PuttingGameViewModel.WorstResultText), "Værste resultat: {0}"),
                 viewResult.Margin(new Thickness(0, 8, 0, 0)),
                 finish
             }

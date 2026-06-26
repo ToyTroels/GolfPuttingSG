@@ -45,6 +45,24 @@ public sealed class RoundInputPage : ContentPage
         BindableLayout.SetItemTemplate(holes, HoleTemplate());
         holes.SetBinding(BindableLayout.ItemsSourceProperty, nameof(RoundInputViewModel.Holes));
 
+        var startButton = new Button
+        {
+            Text = "Start runde",
+            BackgroundColor = PrimaryGreen,
+            TextColor = Colors.White,
+            CornerRadius = 8,
+            HeightRequest = 52,
+            FontAttributes = FontAttributes.Bold
+        };
+        startButton.Clicked += async (_, _) =>
+        {
+            viewModel.StartRound();
+            if (viewModel.Holes.FirstOrDefault() is HoleInputViewModel firstHole)
+            {
+                await Navigation.PushAsync(new HoleEntryPage(viewModel, firstHole));
+            }
+        };
+
         var saveButton = new Button
         {
             Text = "Gem runde",
@@ -60,6 +78,45 @@ public sealed class RoundInputPage : ContentPage
             await page.LoadAsync(roundId);
             await Navigation.PushAsync(page);
         };
+        saveButton.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.IsRoundVisible));
+
+        var setupView = new ScrollView
+        {
+            Content = new VerticalStackLayout
+            {
+                Spacing = 0,
+                Children =
+                {
+                    title,
+                    HoleCountPanel().Margin(new Thickness(0, 12, 0, 0)),
+                    TrackingPanel(),
+                    startButton.Margin(new Thickness(0, 8, 0, 0))
+                }
+            }
+        };
+        setupView.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.IsSetupVisible));
+
+        var roundView = new ScrollView
+        {
+            Content = new VerticalStackLayout
+            {
+                Spacing = 0,
+                Children =
+                {
+                    new Label
+                    {
+                        Text = "Huller",
+                        FontSize = 18,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = TextColor,
+                        Margin = new Thickness(0, 2, 0, 10)
+                    },
+                    holes,
+                    SummaryPanel()
+                }
+            }
+        };
+        roundView.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.IsRoundVisible));
 
         Content = new Grid
         {
@@ -71,29 +128,8 @@ public sealed class RoundInputPage : ContentPage
             },
             Children =
             {
-                new ScrollView
-                {
-                    Content = new VerticalStackLayout
-                    {
-                        Spacing = 0,
-                        Children =
-                        {
-                            title,
-                            HoleCountPanel().Margin(new Thickness(0, 12, 0, 0)),
-                            TrackingPanel(),
-                            SummaryPanel(),
-                            new Label
-                            {
-                                Text = "Huller",
-                                FontSize = 18,
-                                FontAttributes = FontAttributes.Bold,
-                                TextColor = TextColor,
-                                Margin = new Thickness(0, 2, 0, 10)
-                            },
-                            holes
-                        }
-                    }
-                }.Row(0),
+                setupView.Row(0),
+                roundView.Row(0),
                 saveButton.Row(1).Margin(new Thickness(0, 10, 0, 0))
             }
         };
@@ -271,6 +307,13 @@ public sealed class RoundInputPage : ContentPage
         };
         approach.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackApproach), BindingMode.TwoWay);
 
+        var aroundGreen = new Switch
+        {
+            OnColor = PrimaryGreen,
+            ThumbColor = Colors.White
+        };
+        aroundGreen.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackAroundGreen), BindingMode.TwoWay);
+
         return Card(new VerticalStackLayout
         {
             Spacing = 12,
@@ -283,20 +326,21 @@ public sealed class RoundInputPage : ContentPage
                     {
                         new Label
                         {
-                            Text = "Tracking",
+                            Text = "Registrering",
                             FontAttributes = FontAttributes.Bold,
                             TextColor = TextColor
                         },
                         new Label
                         {
-                            Text = "Vælg om runden skal tracke putting, approach eller begge dele",
+                            Text = "Vælg hvilke dele af runden du vil tracke",
                             FontSize = 13,
                             TextColor = MutedTextColor
                         }
                     }
                 },
                 TrackingRow("Putting", "Første putt-afstand og antal putts", putting),
-                TrackingRow("Approach", "Afstand og slag brugt til at komme i hul", approach)
+                TrackingRow("Indspil", "Start, slutposition og strafslag", approach),
+                TrackingRow("Omkring green", "Chip, pitch, bunker og problemlie ved green", aroundGreen)
             }
         });
     }
@@ -309,23 +353,31 @@ public sealed class RoundInputPage : ContentPage
             FontSize = 16,
             TextColor = TextColor
         };
-        totalSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalSgText), stringFormat: "Total SG: {0}"));
+        totalSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalSgText), stringFormat: "Samlet SG: {0}"));
 
         var puttingSg = new Label { TextColor = TextColor };
         puttingSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalPuttingSgText), stringFormat: "SG Putting: {0}"));
         puttingSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
 
         var approachSg = new Label { TextColor = TextColor };
-        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachSgText), stringFormat: "SG Approach: {0}"));
+        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachSgText), stringFormat: "SG Indspil: {0}"));
         approachSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackApproach));
 
+        var aroundGreenSg = new Label { TextColor = TextColor };
+        aroundGreenSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalAroundGreenSgText), stringFormat: "SG Omkring green: {0}"));
+        aroundGreenSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackAroundGreen));
+
         var totalPutts = new Label { TextColor = TextColor };
-        totalPutts.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalPuttsText), stringFormat: "Total putts: {0}"));
+        totalPutts.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalPuttsText), stringFormat: "Putts i alt: {0}"));
         totalPutts.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
 
         var totalApproachShots = new Label { TextColor = TextColor };
-        totalApproachShots.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachShotsText), stringFormat: "Approach-slag: {0}"));
+        totalApproachShots.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachShotsText), stringFormat: "Indspil: {0}"));
         totalApproachShots.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackApproach));
+
+        var totalAroundGreenShots = new Label { TextColor = TextColor };
+        totalAroundGreenShots.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalAroundGreenShotsText), stringFormat: "Slag omkring green: {0}"));
+        totalAroundGreenShots.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackAroundGreen));
 
         var breakdown = new Label { TextColor = TextColor };
         breakdown.SetBinding(Label.TextProperty, nameof(RoundInputViewModel.CountBreakdownText));
@@ -345,8 +397,10 @@ public sealed class RoundInputPage : ContentPage
                 totalSg,
                 puttingSg,
                 approachSg,
+                aroundGreenSg,
                 totalPutts,
                 totalApproachShots,
+                totalAroundGreenShots,
                 breakdown
             }
         });

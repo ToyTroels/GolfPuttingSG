@@ -40,7 +40,7 @@ public sealed class StartPage : ContentPage
 
         var puttingGameButton = new Button
         {
-            Text = "Putting Game",
+            Text = "Putting-spil",
             BackgroundColor = Colors.White,
             BorderColor = Color.FromArgb("#0F5132"),
             BorderWidth = 1,
@@ -56,7 +56,7 @@ public sealed class StartPage : ContentPage
 
         var tourRoundGameButton = new Button
         {
-            Text = "Tour Round Game",
+            Text = "Tour-runde",
             BackgroundColor = Colors.White,
             BorderColor = Color.FromArgb("#0F5132"),
             BorderWidth = 1,
@@ -99,7 +99,7 @@ public sealed class StartPage : ContentPage
                     },
                     new Label
                     {
-                        Text = "Track strokes gained putting mod PGA Tour-baseline",
+                        Text = "Registrer strokes gained putting mod PGA Tour-baseline",
                         FontSize = 16,
                         TextColor = Color.FromArgb("#4E5851")
                     },

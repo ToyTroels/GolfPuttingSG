@@ -7,6 +7,8 @@ namespace GolfSG.ViewModels;
 
 public sealed class RoundResultViewModel : ViewModelBase
 {
+    private const double MetersPerYard = 0.9144;
+
     private readonly IRoundRepository repository;
     private Round? round;
     private RoundSummary? summary;
@@ -24,6 +26,7 @@ public sealed class RoundResultViewModel : ViewModelBase
     public string RoundId => round?.Id ?? string.Empty;
     public bool TrackPutting => trackingOptions.TrackPutting;
     public bool TrackApproach => trackingOptions.TrackApproach;
+    public bool TrackAroundGreen => trackingOptions.TrackAroundGreen;
     public bool IsPuttingGame => trackingOptions.IsPuttingGame;
     public string ResultTitle => IsPuttingGame
         ? PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)
@@ -31,22 +34,30 @@ public sealed class RoundResultViewModel : ViewModelBase
 
     public string TotalSgText => summary is null
         ? UiFormat.Sg(0)
-        : UiFormat.Sg((TrackPutting ? summary.TotalStrokesGainedPutting : 0) + (TrackApproach ? summary.TotalStrokesGainedApproach : 0));
+        : UiFormat.Sg(
+            (TrackPutting ? summary.TotalStrokesGainedPutting : 0) +
+            (TrackApproach ? summary.TotalStrokesGainedApproach : 0) +
+            (TrackAroundGreen ? summary.TotalStrokesGainedAroundGreen : 0));
 
     public string TotalPuttingSgText => summary is null ? UiFormat.Sg(0) : UiFormat.Sg(summary.TotalStrokesGainedPutting);
     public string TotalApproachSgText => summary is null ? UiFormat.Sg(0) : UiFormat.Sg(summary.TotalStrokesGainedApproach);
+    public string TotalAroundGreenSgText => summary is null ? UiFormat.Sg(0) : UiFormat.Sg(summary.TotalStrokesGainedAroundGreen);
     public string AverageDistanceText => summary is null ? UiFormat.Meters(0) : UiFormat.Meters(summary.AverageFirstPuttDistance);
     public string AverageApproachDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(summary.AverageApproachDistance);
+    public string AverageAroundGreenDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(YardsToMeters(summary.AverageAroundGreenDistance));
     public string TotalPuttsText => summary?.TotalPutts.ToString() ?? "0";
     public string TargetPuttsText => IsPuttingGame && round is not null
         ? round.Holes.Sum(hole => hole.ExpectedPutts).ToString("0.0")
         : string.Empty;
     public string TotalApproachShotsText => summary?.TotalApproachShots.ToString() ?? "0";
+    public string TotalAroundGreenShotsText => summary?.TotalAroundGreenShots.ToString() ?? "0";
     public string ThreePuttRateText => summary is null ? "0%" : $"{CalculateThreePuttRate(summary):0}%";
     public string BestHoleText => FormatPuttingResult(summary?.BestHole);
     public string WorstHoleText => FormatPuttingResult(summary?.WorstHole);
     public string BestApproachHoleText => summary?.BestApproachHole is null ? "-" : $"Hul {summary.BestApproachHole.HoleNumber} ({UiFormat.Sg(summary.BestApproachHole.StrokesGainedApproach)})";
     public string WorstApproachHoleText => summary?.WorstApproachHole is null ? "-" : $"Hul {summary.WorstApproachHole.HoleNumber} ({UiFormat.Sg(summary.WorstApproachHole.StrokesGainedApproach)})";
+    public string BestAroundGreenHoleText => summary?.BestAroundGreenHole is null ? "-" : $"Hul {summary.BestAroundGreenHole.HoleNumber} ({UiFormat.Sg(summary.BestAroundGreenHole.StrokesGainedAroundGreen)})";
+    public string WorstAroundGreenHoleText => summary?.WorstAroundGreenHole is null ? "-" : $"Hul {summary.WorstAroundGreenHole.HoleNumber} ({UiFormat.Sg(summary.WorstAroundGreenHole.StrokesGainedAroundGreen)})";
 
     public async Task LoadAsync(string roundId)
     {
@@ -81,7 +92,9 @@ public sealed class RoundResultViewModel : ViewModelBase
 
     private bool IsTrackedHoleCompleted(HolePuttingData hole)
     {
-        return (TrackPutting && hole.IsCompleted) || (TrackApproach && hole.IsApproachCompleted);
+        return (TrackPutting && hole.IsCompleted) ||
+            (TrackApproach && hole.IsApproachCompleted) ||
+            (TrackAroundGreen && hole.IsAroundGreenCompleted);
     }
 
     private static double CalculateThreePuttRate(RoundSummary summary)
@@ -127,15 +140,31 @@ public sealed class RoundResultViewModel : ViewModelBase
         {
             if (summary.TotalStrokesGainedApproach > 0)
             {
-                yield return "Din approach var bedre end PGA Tour-baseline.";
+                yield return "Dine indspil var bedre end PGA Tour-baseline.";
             }
             else if (summary.TotalStrokesGainedApproach >= -2)
             {
-                yield return "Din approach var tæt på PGA Tour-baseline.";
+                yield return "Dine indspil var tæt på PGA Tour-baseline.";
             }
             else
             {
-                yield return "Du tabte især slag på approach-slag.";
+                yield return "Du tabte især slag på indspil.";
+            }
+        }
+
+        if (trackingOptions.TrackAroundGreen)
+        {
+            if (summary.TotalStrokesGainedAroundGreen > 0)
+            {
+                yield return "Dine slag omkring green var bedre end PGA Tour-baseline.";
+            }
+            else if (summary.TotalStrokesGainedAroundGreen >= -2)
+            {
+                yield return "Dine slag omkring green var tæt på PGA Tour-baseline.";
+            }
+            else
+            {
+                yield return "Du tabte især slag omkring green.";
             }
         }
     }
@@ -145,21 +174,27 @@ public sealed class RoundResultViewModel : ViewModelBase
         OnPropertyChanged(nameof(RoundId));
         OnPropertyChanged(nameof(TrackPutting));
         OnPropertyChanged(nameof(TrackApproach));
+        OnPropertyChanged(nameof(TrackAroundGreen));
         OnPropertyChanged(nameof(IsPuttingGame));
         OnPropertyChanged(nameof(ResultTitle));
         OnPropertyChanged(nameof(TotalSgText));
         OnPropertyChanged(nameof(TotalPuttingSgText));
         OnPropertyChanged(nameof(TotalApproachSgText));
+        OnPropertyChanged(nameof(TotalAroundGreenSgText));
         OnPropertyChanged(nameof(AverageDistanceText));
         OnPropertyChanged(nameof(AverageApproachDistanceText));
+        OnPropertyChanged(nameof(AverageAroundGreenDistanceText));
         OnPropertyChanged(nameof(TotalPuttsText));
         OnPropertyChanged(nameof(TargetPuttsText));
         OnPropertyChanged(nameof(TotalApproachShotsText));
+        OnPropertyChanged(nameof(TotalAroundGreenShotsText));
         OnPropertyChanged(nameof(ThreePuttRateText));
         OnPropertyChanged(nameof(BestHoleText));
         OnPropertyChanged(nameof(WorstHoleText));
         OnPropertyChanged(nameof(BestApproachHoleText));
         OnPropertyChanged(nameof(WorstApproachHoleText));
+        OnPropertyChanged(nameof(BestAroundGreenHoleText));
+        OnPropertyChanged(nameof(WorstAroundGreenHoleText));
     }
 
     private string FormatPuttingResult(HolePuttingData? hole)
@@ -176,10 +211,14 @@ public sealed class RoundResultViewModel : ViewModelBase
 
         return $"Putt {hole.HoleNumber}, {UiFormat.Meters(hole.FirstPuttDistanceMeters)} ({UiFormat.Sg(hole.StrokesGainedPutting)})";
     }
+
+    private static double YardsToMeters(double distanceYards) => distanceYards * MetersPerYard;
 }
 
 public sealed class HoleResultItemViewModel
 {
+    private const double MetersPerYard = 0.9144;
+
     public HoleResultItemViewModel(HolePuttingData hole, RoundTrackingOptions trackingOptions)
     {
         Title = trackingOptions.IsPuttingGame ? $"Putt {hole.HoleNumber}" : $"Hul {hole.HoleNumber}";
@@ -198,8 +237,16 @@ public sealed class HoleResultItemViewModel
 
         if (trackingOptions.TrackApproach)
         {
-            details.Add($"{UiFormat.WholeMeters(hole.ApproachDistanceMeters)} - {hole.ApproachShots} approach-slag");
+            details.Add(hole.ApproachStartDistanceYards > 0
+                ? $"Indspil {UiFormat.WholeMeters(YardsToMeters(hole.ApproachStartDistanceYards))} {FormatLie(hole.ApproachStartLie).ToLowerInvariant()}"
+                : $"{UiFormat.WholeMeters(hole.ApproachDistanceMeters)} - {hole.ApproachShots} indspil");
             sg += hole.StrokesGainedApproach;
+        }
+
+        if (trackingOptions.TrackAroundGreen)
+        {
+            details.Add($"Omkring green {UiFormat.WholeMeters(YardsToMeters(hole.AroundGreenStartDistanceYards))} {FormatLie(hole.AroundGreenStartLie).ToLowerInvariant()}");
+            sg += hole.StrokesGainedAroundGreen;
         }
 
         Detail = string.Join(" | ", details);
@@ -209,14 +256,31 @@ public sealed class HoleResultItemViewModel
     public string Title { get; }
     public string Detail { get; }
     public string StrokesGainedText { get; }
+
+    private static string FormatLie(ShotLie lie)
+    {
+        return lie switch
+        {
+            ShotLie.FairwayCut => "Kortklippet",
+            ShotLie.Fairway => "Fairway",
+            ShotLie.Sand => "Sand",
+            ShotLie.Recovery => "Problemlie",
+            ShotLie.Green => "Green",
+            ShotLie.Holed => "I hul",
+            _ => "Rough"
+        };
+    }
+
+    private static double YardsToMeters(double distanceYards) => distanceYards * MetersPerYard;
 }
 
 public sealed class PuttingDistanceBucketItemViewModel
 {
     public PuttingDistanceBucketItemViewModel(PuttingDistanceBucketSummary bucket)
     {
-        Name = bucket.Name;
         RangeText = FormatRange(bucket);
+        Name = RangeText;
+        RangeText = "F\u00F8rste putt-afstand";
         DetailText = $"{bucket.Attempts} f\u00F8rste putts | {bucket.TotalPutts} putts";
         StrokesGainedText = UiFormat.Sg(bucket.TotalStrokesGained);
     }

@@ -47,16 +47,16 @@ public sealed class SettingsPage : ContentPage
                         "Putting",
                         "Forventede putts pr. første putt-afstand",
                         () => new StrokesGainedReferencePage(
-                            "Putting reference",
+                            "Putting-reference",
                             "Afstand",
                             "Forventede putts",
                             StrokesGainedCalculator.PuttingReference,
                             useDecimalDistance: true)),
                     ReferenceItem(
-                        "Approach",
-                        "Forventede slag pr. approach-afstand",
+                        "Indspil",
+                        "Forventede slag pr. indspilsafstand",
                         () => new StrokesGainedReferencePage(
-                            "Approach reference",
+                            "Indspilsreference",
                             "Afstand",
                             "Forventede slag",
                             StrokesGainedCalculator.ApproachReference,
