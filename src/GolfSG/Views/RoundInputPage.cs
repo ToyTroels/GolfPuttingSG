@@ -414,7 +414,7 @@ public sealed class RoundInputPage : ContentPage
                     }
                 },
                 TrackingRow("Putting", "Første putt-afstand og antal putts", putting),
-                TrackingRow("Indspil", "Start, slutposition og strafslag", approach),
+                TrackingRow("Approach", "Start, slutposition og strafslag", approach),
                 TrackingRow("Omkring green", "Chip, pitch, bunker og problemlie ved green", aroundGreen)
             }
         });

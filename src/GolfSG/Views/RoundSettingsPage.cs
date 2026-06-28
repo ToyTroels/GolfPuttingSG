@@ -204,7 +204,7 @@ public sealed class RoundSettingsPage : ContentPage
             {
                 SectionHeader("Registrering", "Vælg hvilke dele af runden du vil tracke"),
                 TrackingRow("Putting", "Første putt-afstand og antal putts", putting),
-                TrackingRow("Indspil", "Start, slutposition og strafslag", approach),
+                TrackingRow("Approach", "Start, slutposition og strafslag", approach),
                 TrackingRow("Omkring green", "Chip, pitch, bunker og problemlie ved green", aroundGreen)
             }
         });

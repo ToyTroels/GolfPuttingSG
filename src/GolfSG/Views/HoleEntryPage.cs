@@ -10,6 +10,7 @@ public sealed class HoleEntryPage : ContentPage
     private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
     private static readonly Color InputBackground = Color.FromArgb("#FAFBFA");
     private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
+    private static readonly Color SoftGreen = Color.FromArgb("#EEF5EF");
     private static readonly Color TextColor = Color.FromArgb("#202421");
     private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
 
@@ -361,11 +362,13 @@ public sealed class HoleEntryPage : ContentPage
                     Content = new VerticalStackLayout
                     {
                         Spacing = 16,
+                        Padding = new Thickness(0, 0, 0, 20),
                         Children = { approachSection, aroundGreenSection, puttingSection }
                     }
-                }.Row(2).Margin(new Thickness(0, 22, 0, 18)),
+                }.Row(2).Margin(new Thickness(0, 22, 0, 12)),
                 new Grid
                 {
+                    Padding = new Thickness(0, 8, 0, 0),
                     ColumnDefinitions =
                     {
                         new ColumnDefinition(GridLength.Star),
@@ -477,13 +480,12 @@ public sealed class HoleEntryPage : ContentPage
     {
         return Card(new VerticalStackLayout
         {
-            Spacing = 16,
+            Spacing = 14,
             Children =
             {
-                startLie,
-                DistancePanel("Startafstand til flag", startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
-                endLie,
-                endDistancePanel,
+                ShotPositionPanel("Start", "Til flaget", startLie, startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
+                ShotPathDivider(),
+                ShotPositionPanel("Finish", endLie, endDistancePanel),
                 ToggleRow("I hul", holed),
                 CounterPanel("Strafslag", penaltyMinus, penaltyStrokes, penaltyPlus),
                 sg
@@ -516,14 +518,13 @@ public sealed class HoleEntryPage : ContentPage
 
         return Card(new VerticalStackLayout
         {
-            Spacing = 16,
+            Spacing = 14,
             Children =
             {
                 title,
-                startLie,
-                DistancePanel("Startafstand til flag", startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
-                endLie,
-                endDistancePanel,
+                ShotPositionPanel("Start", "Til flaget", startLie, startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
+                ShotPathDivider(),
+                ShotPositionPanel("Finish", endLie, endDistancePanel),
                 ToggleRow("I hul", holed),
                 CounterPanel("Strafslag", penaltyMinus, penaltyStrokes, penaltyPlus),
                 addAnotherShot,
@@ -560,42 +561,125 @@ public sealed class HoleEntryPage : ContentPage
     {
         return new VerticalStackLayout
         {
-            Spacing = 12,
+            Spacing = 8,
+            Children =
+            {
+                new Border
+                {
+                    BackgroundColor = InputBackground,
+                    Stroke = CardStroke,
+                    StrokeThickness = 1,
+                    StrokeShape = new RoundRectangle { CornerRadius = 8 },
+                    Padding = new Thickness(10, 8),
+                    Content = new Grid
+                    {
+                        ColumnDefinitions =
+                        {
+                            new ColumnDefinition(GridLength.Star),
+                            new ColumnDefinition(GridLength.Auto),
+                            new ColumnDefinition(GridLength.Auto),
+                            new ColumnDefinition(GridLength.Auto)
+                        },
+                        ColumnSpacing = 8,
+                        Children =
+                        {
+                            new Label
+                            {
+                                Text = title,
+                                FontSize = 13,
+                                TextColor = MutedTextColor,
+                                VerticalTextAlignment = TextAlignment.Center
+                            }.Column(0),
+                            distanceValue.Column(1),
+                            minus.Column(2),
+                            plus.Column(3)
+                        }
+                    }
+                },
+                distance
+            }
+        };
+    }
+
+    private static View ShotPositionPanel(
+        string title,
+        string distanceTitle,
+        View lie,
+        Slider distance,
+        Label distanceValue,
+        Button minus,
+        Button plus) =>
+        ShotPositionPanel(title, lie, DistancePanel(distanceTitle, distance, distanceValue, minus, plus));
+
+    private static View ShotPositionPanel(string title, View lie, View? distancePanel)
+    {
+        var content = new VerticalStackLayout
+        {
+            Spacing = 10,
             Children =
             {
                 new Label
                 {
                     Text = title,
-                    FontSize = 18,
+                    FontSize = 16,
                     FontAttributes = FontAttributes.Bold,
-                    TextColor = TextColor,
-                    HorizontalTextAlignment = TextAlignment.Center
+                    TextColor = TextColor
                 },
-                new Border
+                lie
+            }
+        };
+
+        if (distancePanel is not null)
+        {
+            content.Children.Add(distancePanel);
+        }
+
+        return new Border
+        {
+            BackgroundColor = SoftGreen,
+            Stroke = CardStroke,
+            StrokeThickness = 1,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = new Thickness(12),
+            Content = content
+        };
+    }
+
+    private static View ShotPathDivider()
+    {
+        return new Grid
+        {
+            HeightRequest = 24,
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Star)
+            },
+            Children =
+            {
+                new BoxView
                 {
-                    BackgroundColor = InputBackground,
-                    Stroke = CardStroke,
-                    StrokeThickness = 2,
-                    StrokeShape = new RoundRectangle { CornerRadius = 12 },
-                    Padding = new Thickness(18, 10),
-                    Content = new Grid
-                    {
-                        ColumnDefinitions =
-                        {
-                            new ColumnDefinition(GridLength.Auto),
-                            new ColumnDefinition(GridLength.Star),
-                            new ColumnDefinition(GridLength.Auto)
-                        },
-                        ColumnSpacing = 12,
-                        Children =
-                        {
-                            minus.Column(0),
-                            distanceValue.Column(1),
-                            plus.Column(2)
-                        }
-                    }
-                },
-                distance
+                    HeightRequest = 1,
+                    Color = CardStroke,
+                    VerticalOptions = LayoutOptions.Center
+                }.Column(0),
+                new Label
+                {
+                    Text = "->",
+                    FontSize = 14,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = PrimaryGreen,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    VerticalTextAlignment = TextAlignment.Center,
+                    WidthRequest = 34
+                }.Column(1),
+                new BoxView
+                {
+                    HeightRequest = 1,
+                    Color = CardStroke,
+                    VerticalOptions = LayoutOptions.Center
+                }.Column(2)
             }
         };
     }
@@ -605,14 +689,6 @@ public sealed class HoleEntryPage : ContentPage
         string selectedTextProperty,
         params (string Text, Action Action)[] choices)
     {
-        var selected = new Label
-        {
-            FontSize = 14,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = PrimaryGreen
-        };
-        selected.SetBinding(Label.TextProperty, selectedTextProperty);
-
         return new VerticalStackLayout
         {
             Spacing = 8,
@@ -624,7 +700,6 @@ public sealed class HoleEntryPage : ContentPage
                     FontSize = 15,
                     TextColor = MutedTextColor
                 },
-                selected,
                 QuickActions(selectedTextProperty, choices)
             }
         };
@@ -648,17 +723,17 @@ public sealed class HoleEntryPage : ContentPage
             var button = new Button
             {
                 Text = choice.Text,
-                HeightRequest = 42,
-                MinimumWidthRequest = 78,
+                HeightRequest = 36,
+                MinimumWidthRequest = 72,
                 CornerRadius = 8,
                 BackgroundColor = InputBackground,
                 BorderColor = CardStroke,
                 BorderWidth = 1,
                 TextColor = TextColor,
                 FontAttributes = FontAttributes.Bold,
-                FontSize = 13,
-                Padding = new Thickness(12, 0),
-                Margin = new Thickness(0, 0, 8, 8)
+                FontSize = 12,
+                Padding = new Thickness(10, 0),
+                Margin = new Thickness(0, 0, 6, 6)
             };
 
             if (!string.IsNullOrWhiteSpace(selectedTextProperty))
@@ -721,17 +796,17 @@ public sealed class HoleEntryPage : ContentPage
         return new Button
         {
             Text = text,
-            HeightRequest = 42,
-            MinimumWidthRequest = 78,
+            HeightRequest = 36,
+            MinimumWidthRequest = 72,
             CornerRadius = 8,
             BackgroundColor = InputBackground,
             BorderColor = CardStroke,
             BorderWidth = 1,
             TextColor = TextColor,
             FontAttributes = FontAttributes.Bold,
-            FontSize = 13,
-            Padding = new Thickness(12, 0),
-            Margin = new Thickness(0, 0, 8, 8)
+            FontSize = 12,
+            Padding = new Thickness(10, 0),
+            Margin = new Thickness(0, 0, 6, 6)
         };
     }
 
@@ -831,12 +906,13 @@ public sealed class HoleEntryPage : ContentPage
         return new Label
         {
             Text = "-",
-            FontSize = 44,
+            FontSize = 20,
             FontAttributes = FontAttributes.Bold,
             TextColor = TextColor,
-            HorizontalTextAlignment = TextAlignment.Center,
+            HorizontalTextAlignment = TextAlignment.End,
             VerticalTextAlignment = TextAlignment.Center,
-            HeightRequest = 72
+            WidthRequest = 70,
+            HeightRequest = 36
         };
     }
 
@@ -845,13 +921,13 @@ public sealed class HoleEntryPage : ContentPage
         return new Button
         {
             Text = text,
-            WidthRequest = 52,
-            HeightRequest = 52,
-            CornerRadius = 26,
+            WidthRequest = 36,
+            HeightRequest = 36,
+            CornerRadius = 18,
             BackgroundColor = PrimaryGreen,
             TextColor = Colors.White,
             FontAttributes = FontAttributes.Bold,
-            FontSize = 24,
+            FontSize = 18,
             Padding = 0
         };
     }
