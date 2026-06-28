@@ -179,6 +179,8 @@ public sealed class RoundResultPage : ContentPage
             Children =
             {
                 BoundLabel(nameof(RoundResultViewModel.TotalSgText), "Samlet SG: {0}", true),
+                BoundLabel(nameof(RoundResultViewModel.RoundProgressText), "Status: {0}"),
+                BoundLabel(nameof(RoundResultViewModel.RoundCompletionText), "{0}"),
                 puttingSg,
                 approachSg,
                 aroundGreenSg,

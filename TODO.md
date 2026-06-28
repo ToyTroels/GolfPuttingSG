@@ -47,11 +47,11 @@
 
 ## Round length and early finish
 
-- [ ] Let the player configure the number of holes in a round before or during play, such as 9, 18, or a custom number.
-- [ ] Let the player finish/end a round before every configured hole has been completed.
-- [ ] Persist whether a saved round was completed normally or ended early.
-- [ ] Make result views and SG summaries handle partial rounds without treating missing holes as zero-value holes.
-- [ ] Add tests for custom hole counts, early round finish, and saving partial rounds.
+- [x] Let the player configure the number of holes in a round before or during play, such as 9, 18, or a custom number.
+- [x] Let the player finish/end a round before every configured hole has been completed.
+- [x] Persist whether a saved round was completed normally or ended early.
+- [x] Make result views and SG summaries handle partial rounds without treating missing holes as zero-value holes.
+- [x] Add tests for custom hole counts, early round finish, and saving partial rounds.
 
 ## Carry remaining distances between SG categories
 
@@ -66,13 +66,13 @@
 - [x] Write saved rounds through a temporary file before replacing `rounds.json`.
 - [x] Keep a `rounds.json.bak` backup before overwriting the active history file.
 - [x] Fall back to the backup file if the active history file is empty, malformed, or unreadable.
-- [ ] Add repository tests for atomic writes, backup fallback, corrupt JSON recovery, empty file recovery, and preserving multiple rounds after save/delete.
-- [ ] Add a user-facing warning if saved rounds could only be recovered from backup.
-- [ ] Add a diagnostic view or export action that shows the active storage path and total saved rounds.
-- [ ] Add migration support for old app identifiers or storage folders, especially if `ApplicationId`, package name, or project metadata changes.
-- [ ] Consider storing a schema/version wrapper around saved rounds so future persistence changes can migrate safely.
-- [ ] Add an optional manual export/import flow for `rounds.json` so users can recover history across installs, devices, or app renames.
-- [ ] Investigate whether any save flow can overwrite history with a single round after app restart, failed deserialization, or app-data path changes.
+- [x] Add repository tests for atomic writes, backup fallback, corrupt JSON recovery, empty file recovery, and preserving multiple rounds after save/delete.
+- [x] Add a user-facing warning if saved rounds could only be recovered from backup.
+- [x] Add a diagnostic view or export action that shows the active storage path and total saved rounds.
+- [x] Add migration support for old app identifiers or storage folders, especially if `ApplicationId`, package name, or project metadata changes.
+- [x] Consider storing a schema/version wrapper around saved rounds so future persistence changes can migrate safely.
+- [x] Add an optional manual export/import flow for `rounds.json` so users can recover history across installs, devices, or app renames.
+- [x] Investigate whether any save flow can overwrite history with a single round after app restart, failed deserialization, or app-data path changes.
 
 ## Made percentage by first-putt distance
 

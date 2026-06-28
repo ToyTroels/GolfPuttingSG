@@ -47,6 +47,12 @@ public sealed class HoleInputViewModel : ViewModelBase
     private bool approachHoled;
     private bool trackAroundGreen;
     private bool aroundGreenHoled;
+    private double? carriedPuttingDistanceFromApproachMeters;
+    private double? carriedPuttingDistanceFromAroundGreenMeters;
+    private double? carriedAroundGreenStartDistanceFromApproachMeters;
+    private string? carriedAroundGreenStartLieFromApproach;
+    private bool isApplyingApproachCarryForward;
+    private bool hasManualPuttingDistanceOverride;
 
     public HoleInputViewModel(int holeNumber)
     {
@@ -128,6 +134,13 @@ public sealed class HoleInputViewModel : ViewModelBase
             var normalized = value.Replace(',', '.');
             if (SetProperty(ref distanceText, normalized))
             {
+                if (!isApplyingApproachCarryForward)
+                {
+                    hasManualPuttingDistanceOverride = !string.IsNullOrWhiteSpace(normalized);
+                    ClearCarriedPuttingDistanceIfManuallyChanged();
+                    ClearCarriedAroundGreenPuttingDistanceIfManuallyChanged();
+                }
+
                 OnPropertyChanged(nameof(FirstPuttDistanceMeters));
                 OnPropertyChanged(nameof(FirstPuttDistanceDisplayText));
                 Recalculate();
@@ -253,6 +266,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(ApproachEndDistance));
                 OnPropertyChanged(nameof(ApproachEndDistanceDisplayText));
+                ApplyApproachCarryForward();
                 Recalculate();
             }
         }
@@ -312,6 +326,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsApproachFinishDistanceVisible));
                 OnPropertyChanged(nameof(ApproachEndDistanceUnitText));
                 OnFlowVisibilityChanged();
+                ApplyApproachCarryForward();
                 Recalculate();
             }
         }
@@ -337,6 +352,7 @@ public sealed class HoleInputViewModel : ViewModelBase
 
                 OnPropertyChanged(nameof(IsApproachFinishDistanceVisible));
                 OnFlowVisibilityChanged();
+                ApplyApproachCarryForward();
                 Recalculate();
             }
         }
@@ -372,6 +388,11 @@ public sealed class HoleInputViewModel : ViewModelBase
             var normalized = value.Replace(',', '.');
             if (SetProperty(ref aroundGreenStartDistanceText, normalized))
             {
+                if (!isApplyingApproachCarryForward)
+                {
+                    ClearCarriedAroundGreenDistanceIfManuallyChanged();
+                }
+
                 OnPropertyChanged(nameof(AroundGreenStartDistanceYards));
                 OnPropertyChanged(nameof(AroundGreenStartDistanceDisplayText));
                 Recalculate();
@@ -397,6 +418,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(AroundGreenEndDistance));
                 OnPropertyChanged(nameof(AroundGreenEndDistanceDisplayText));
+                ApplyAroundGreenCarryForward();
                 Recalculate();
             }
         }
@@ -417,6 +439,11 @@ public sealed class HoleInputViewModel : ViewModelBase
         {
             if (SetProperty(ref aroundGreenStartLieText, value))
             {
+                if (!isApplyingApproachCarryForward)
+                {
+                    ClearCarriedAroundGreenLieIfManuallyChanged();
+                }
+
                 Recalculate();
             }
         }
@@ -433,6 +460,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsAroundGreenFinishDistanceVisible));
                 OnPropertyChanged(nameof(AroundGreenEndDistanceUnitText));
                 OnFlowVisibilityChanged();
+                ApplyAroundGreenCarryForward();
                 Recalculate();
             }
         }
@@ -459,6 +487,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsAroundGreenFinishDistanceVisible));
                 OnPropertyChanged(nameof(AroundGreenEndDistanceUnitText));
                 OnFlowVisibilityChanged();
+                ApplyAroundGreenCarryForward();
                 Recalculate();
             }
         }
@@ -649,6 +678,8 @@ public sealed class HoleInputViewModel : ViewModelBase
         TrackPutting = options.TrackPutting;
         TrackApproach = options.TrackApproach;
         TrackAroundGreen = options.TrackAroundGreen;
+        ApplyApproachCarryForward();
+        ApplyAroundGreenCarryForward();
         OnFlowVisibilityChanged();
         OnPropertyChanged(nameof(StrokesGainedText));
         OnPropertyChanged(nameof(DetailText));
@@ -695,6 +726,10 @@ public sealed class HoleInputViewModel : ViewModelBase
         strokesGainedPutting = hole.StrokesGainedPutting;
         strokesGainedApproach = hole.StrokesGainedApproach;
         strokesGainedAroundGreen = hole.StrokesGainedAroundGreen;
+        carriedPuttingDistanceFromApproachMeters = null;
+        carriedPuttingDistanceFromAroundGreenMeters = null;
+        carriedAroundGreenStartDistanceFromApproachMeters = null;
+        carriedAroundGreenStartLieFromApproach = null;
         OnPropertyChanged(nameof(DistanceText));
         OnPropertyChanged(nameof(ApproachDistanceText));
         OnPropertyChanged(nameof(ApproachStartDistanceText));
@@ -891,6 +926,174 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     private bool AroundGreenFinishedHoled => IsAroundGreenInputVisible &&
         (AroundGreenHoled || ParseLie(AroundGreenEndLieText) == ShotLie.Holed);
+
+    private void ApplyAroundGreenCarryForward()
+    {
+        if (!TrackAroundGreen || !TrackPutting || AroundGreenFinishedHoled)
+        {
+            return;
+        }
+
+        if (ParseLie(AroundGreenEndLieText) != ShotLie.Green)
+        {
+            return;
+        }
+
+        var endDistanceMeters = ParseDistance(AroundGreenEndDistanceText);
+        if (endDistanceMeters <= 0)
+        {
+            return;
+        }
+
+        var carriedDistanceMeters = Math.Min(endDistanceMeters, MaxFirstPuttDistanceMeters);
+        if (!hasManualPuttingDistanceOverride)
+        {
+            ApplyApproachCarryForwardValue(() =>
+            {
+                FirstPuttDistanceMeters = carriedDistanceMeters;
+                carriedPuttingDistanceFromAroundGreenMeters = ParseDistance(DistanceText);
+                carriedPuttingDistanceFromApproachMeters = null;
+            });
+        }
+    }
+
+    private void ApplyApproachCarryForward()
+    {
+        if (!TrackApproach || ApproachFinishedHoled)
+        {
+            return;
+        }
+
+        var endDistanceMeters = ParseDistance(ApproachEndDistanceText);
+        if (endDistanceMeters <= 0)
+        {
+            return;
+        }
+
+        var endLie = ParseLie(ApproachEndLieText);
+        if (endLie == ShotLie.Green)
+        {
+            CarryApproachDistanceToPutting(endDistanceMeters);
+            return;
+        }
+
+        CarryApproachDistanceToAroundGreen(endDistanceMeters, endLie);
+    }
+
+    private void CarryApproachDistanceToPutting(double endDistanceMeters)
+    {
+        if (!TrackPutting)
+        {
+            return;
+        }
+
+        var carriedDistanceMeters = Math.Min(endDistanceMeters, MaxFirstPuttDistanceMeters);
+        if (!hasManualPuttingDistanceOverride)
+        {
+            ApplyApproachCarryForwardValue(() =>
+            {
+                FirstPuttDistanceMeters = carriedDistanceMeters;
+                carriedPuttingDistanceFromApproachMeters = ParseDistance(DistanceText);
+            });
+        }
+    }
+
+    private void CarryApproachDistanceToAroundGreen(double endDistanceMeters, ShotLie endLie)
+    {
+        if (!TrackAroundGreen)
+        {
+            return;
+        }
+
+        var carriedDistanceMeters = Math.Min(endDistanceMeters, MaxAroundGreenDistanceMeters);
+        if (CanReplaceCarriedValue(ParseDistance(AroundGreenStartDistanceText), carriedAroundGreenStartDistanceFromApproachMeters))
+        {
+            ApplyApproachCarryForwardValue(() =>
+            {
+                AroundGreenStartDistanceYards = carriedDistanceMeters;
+                carriedAroundGreenStartDistanceFromApproachMeters = ParseDistance(AroundGreenStartDistanceText);
+            });
+        }
+
+        var carriedLieText = FormatAroundGreenStartLie(endLie);
+        if (string.IsNullOrWhiteSpace(carriedAroundGreenStartLieFromApproach) ||
+            string.Equals(AroundGreenStartLieText, carriedAroundGreenStartLieFromApproach, StringComparison.Ordinal))
+        {
+            ApplyApproachCarryForwardValue(() =>
+            {
+                AroundGreenStartLieText = carriedLieText;
+                carriedAroundGreenStartLieFromApproach = carriedLieText;
+            });
+        }
+    }
+
+    private void ApplyApproachCarryForwardValue(Action apply)
+    {
+        isApplyingApproachCarryForward = true;
+        try
+        {
+            apply();
+        }
+        finally
+        {
+            isApplyingApproachCarryForward = false;
+        }
+    }
+
+    private void ClearCarriedPuttingDistanceIfManuallyChanged()
+    {
+        if (carriedPuttingDistanceFromApproachMeters is not null &&
+            !AreDistancesEqual(ParseDistance(DistanceText), carriedPuttingDistanceFromApproachMeters.Value))
+        {
+            carriedPuttingDistanceFromApproachMeters = null;
+        }
+    }
+
+    private void ClearCarriedAroundGreenPuttingDistanceIfManuallyChanged()
+    {
+        if (carriedPuttingDistanceFromAroundGreenMeters is not null &&
+            !AreDistancesEqual(ParseDistance(DistanceText), carriedPuttingDistanceFromAroundGreenMeters.Value))
+        {
+            carriedPuttingDistanceFromAroundGreenMeters = null;
+        }
+    }
+
+    private void ClearCarriedAroundGreenDistanceIfManuallyChanged()
+    {
+        if (carriedAroundGreenStartDistanceFromApproachMeters is not null &&
+            !AreDistancesEqual(ParseDistance(AroundGreenStartDistanceText), carriedAroundGreenStartDistanceFromApproachMeters.Value))
+        {
+            carriedAroundGreenStartDistanceFromApproachMeters = null;
+        }
+    }
+
+    private void ClearCarriedAroundGreenLieIfManuallyChanged()
+    {
+        if (!string.IsNullOrWhiteSpace(carriedAroundGreenStartLieFromApproach) &&
+            !string.Equals(AroundGreenStartLieText, carriedAroundGreenStartLieFromApproach, StringComparison.Ordinal))
+        {
+            carriedAroundGreenStartLieFromApproach = null;
+        }
+    }
+
+    private static bool CanReplaceCarriedValue(double currentDistance, double? previousCarriedDistance)
+    {
+        return currentDistance <= 0 ||
+            (previousCarriedDistance is not null && AreDistancesEqual(currentDistance, previousCarriedDistance.Value));
+    }
+
+    private static bool AreDistancesEqual(double first, double second) => Math.Abs(first - second) < 0.05;
+
+    private static string FormatAroundGreenStartLie(ShotLie lie)
+    {
+        return lie switch
+        {
+            ShotLie.Fairway or ShotLie.FairwayCut => "Kortklippet",
+            ShotLie.Sand => "Sand",
+            ShotLie.Recovery => "Problemlie",
+            _ => "Rough"
+        };
+    }
 
     private static ShotLie ParseLie(string text)
     {

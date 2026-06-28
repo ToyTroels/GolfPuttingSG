@@ -130,13 +130,40 @@ public sealed class StrokesGainedCalculatorTests
             DateTime.Today,
             Enumerable.Range(1, 9)
                 .Select(hole => StrokesGainedCalculator.BuildHole(hole, 2.4, 2))
-                .ToList());
+                .ToList(),
+            RoundTrackingOptions.PuttingOnly,
+            9);
 
         var summary = StrokesGainedCalculator.CalculateRoundSummary(round);
 
         Assert.AreEqual(18, summary.TotalPutts);
         Assert.AreEqual(9, summary.TwoPutts);
         Assert.AreEqual(-4.23, summary.TotalStrokesGainedPutting, 0.001);
+        Assert.AreEqual(9, round.CompletedHoleCount);
+        Assert.IsTrue(round.IsCompletedNormally);
+    }
+
+    [TestMethod]
+    public void RoundTracksEarlyFinishWithoutCountingMissingHolesAsZero()
+    {
+        var round = new Round(
+            Guid.NewGuid().ToString("N"),
+            DateTime.Today,
+            [
+                StrokesGainedCalculator.BuildHole(1, 2.4, 2),
+                StrokesGainedCalculator.BuildHole(2, 0, 0),
+                StrokesGainedCalculator.BuildHole(3, 3.0, 3)
+            ],
+            RoundTrackingOptions.PuttingOnly,
+            9,
+            EndedEarly: true);
+
+        var summary = StrokesGainedCalculator.CalculateRoundSummary(round);
+
+        Assert.AreEqual(2, round.CompletedHoleCount);
+        Assert.IsFalse(round.IsCompletedNormally);
+        Assert.AreEqual(5, summary.TotalPutts);
+        Assert.AreEqual(-1.86, summary.TotalStrokesGainedPutting, 0.001);
     }
 
     [TestMethod]

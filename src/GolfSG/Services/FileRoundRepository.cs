@@ -1,115 +1,47 @@
-using System.Text.Json;
 using GolfSG.Core.Models;
+using GolfSG.Core.Persistence;
 
 namespace GolfSG.Services;
 
 public sealed class FileRoundRepository : IRoundRepository
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true
-    };
+    private readonly RoundFileStore store;
 
-    private readonly string filePath;
-    private readonly string backupFilePath;
-
-    public FileRoundRepository()
+    public FileRoundRepository() : this(FileSystem.AppDataDirectory)
     {
-        filePath = Path.Combine(FileSystem.AppDataDirectory, "rounds.json");
-        backupFilePath = filePath + ".bak";
     }
 
-    public async Task<IReadOnlyList<Round>> GetRoundsAsync()
+    public FileRoundRepository(string appDataDirectory) : this(appDataDirectory, [])
     {
-        var rounds = await ReadRoundsOrDefaultAsync(filePath) ??
-            await ReadRoundsOrDefaultAsync(backupFilePath);
-        return SortNewestFirst(rounds ?? [], reverseTies: true);
     }
 
-    public async Task<Round?> GetRoundAsync(string roundId)
+    public FileRoundRepository(string appDataDirectory, IEnumerable<string> legacyAppDataDirectories)
     {
-        var rounds = await GetRoundsAsync();
-        return rounds.FirstOrDefault(round => round.Id == roundId);
+        store = new RoundFileStore(appDataDirectory, legacyAppDataDirectories);
     }
 
-    public async Task SaveRoundAsync(Round round)
-    {
-        var rounds = (await GetRoundsAsync()).ToList();
-        var existingIndex = rounds.FindIndex(existing => existing.Id == round.Id);
-        if (existingIndex >= 0)
-        {
-            rounds[existingIndex] = round;
-        }
-        else
-        {
-            rounds.Insert(0, round);
-        }
+    public string ActiveStoragePath => store.ActiveStoragePath;
 
-        await WriteRoundsAsync(SortNewestFirst(rounds, reverseTies: false));
-    }
+    public bool WasLastReadRecoveredFromBackup => store.WasLastReadRecoveredFromBackup;
 
-    public async Task DeleteRoundAsync(string roundId)
-    {
-        var rounds = SortNewestFirst(
-            (await GetRoundsAsync())
-                .Where(round => round.Id != roundId)
-                .ToList(),
-            reverseTies: false);
+    public bool WasLastReadMigratedFromLegacyStorage => store.WasLastReadMigratedFromLegacyStorage;
 
-        await WriteRoundsAsync(rounds);
-    }
+    public string? LastMigrationSourcePath => store.LastMigrationSourcePath;
 
-    private static async Task<List<Round>?> ReadRoundsOrDefaultAsync(string path)
-    {
-        if (!File.Exists(path) || new FileInfo(path).Length == 0)
-        {
-            return null;
-        }
+    public bool WasLastUnreadableActiveFilePreserved => store.WasLastUnreadableActiveFilePreserved;
 
-        try
-        {
-            await using var stream = File.OpenRead(path);
-            return await JsonSerializer.DeserializeAsync<List<Round>>(stream, JsonOptions);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-        catch (IOException)
-        {
-            return null;
-        }
-    }
+    public string? LastPreservedUnreadableFilePath => store.LastPreservedUnreadableFilePath;
 
-    private async Task WriteRoundsAsync(IReadOnlyList<Round> rounds)
-    {
-        var directory = Path.GetDirectoryName(filePath)!;
-        Directory.CreateDirectory(directory);
+    public Task<IReadOnlyList<Round>> GetRoundsAsync() => store.GetRoundsAsync();
 
-        if (File.Exists(filePath) && new FileInfo(filePath).Length > 0)
-        {
-            File.Copy(filePath, backupFilePath, overwrite: true);
-        }
+    public Task<Round?> GetRoundAsync(string roundId) => store.GetRoundAsync(roundId);
 
-        var tempFilePath = Path.Combine(directory, $"{Path.GetFileName(filePath)}.tmp");
-        await using (var stream = File.Create(tempFilePath))
-        {
-            await JsonSerializer.SerializeAsync(stream, rounds, JsonOptions);
-        }
+    public Task SaveRoundAsync(Round round) => store.SaveRoundAsync(round);
 
-        File.Move(tempFilePath, filePath, overwrite: true);
-    }
+    public Task DeleteRoundAsync(string roundId) => store.DeleteRoundAsync(roundId);
 
-    private static List<Round> SortNewestFirst(IReadOnlyList<Round> rounds, bool reverseTies)
-    {
-        var indexedRounds = rounds
-            .Select((round, index) => new { Round = round, Index = index })
-            .OrderByDescending(item => item.Round.Date);
+    public Task ExportRoundsAsync(string destinationPath) => store.ExportRoundsAsync(destinationPath);
 
-        return (reverseTies
-                ? indexedRounds.ThenByDescending(item => item.Index)
-                : indexedRounds.ThenBy(item => item.Index))
-            .Select(item => item.Round)
-            .ToList();
-    }
+    public Task ImportRoundsAsync(string sourcePath) => store.ImportRoundsAsync(sourcePath);
+
 }

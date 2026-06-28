@@ -1,4 +1,5 @@
 using GolfSG.Core;
+using GolfSG.Services;
 using Microsoft.Maui.Controls.Shapes;
 
 namespace GolfSG.Views;
@@ -10,9 +11,11 @@ public sealed class SettingsPage : ContentPage
     private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
     private static readonly Color TextColor = Color.FromArgb("#202421");
     private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
+    private readonly IRoundRepository repository;
 
-    public SettingsPage()
+    public SettingsPage(IRoundRepository repository)
     {
+        this.repository = repository;
         Title = "Indstillinger";
         BackgroundColor = PageBackground;
         BuildLayout();
@@ -60,7 +63,19 @@ public sealed class SettingsPage : ContentPage
                             "Afstand",
                             "Forventede slag",
                             StrokesGainedCalculator.ApproachReference,
-                            useDecimalDistance: false))
+                            useDecimalDistance: false)),
+                    new Label
+                    {
+                        Text = "Data",
+                        FontSize = 18,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = TextColor,
+                        Margin = new Thickness(0, 8, 0, 0)
+                    },
+                    ReferenceItem(
+                        "Lagring",
+                        "Vis aktiv filsti og antal gemte runder",
+                        () => new StorageDiagnosticsPage(repository))
                 }
             }
         };

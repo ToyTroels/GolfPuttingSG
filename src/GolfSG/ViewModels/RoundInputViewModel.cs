@@ -7,6 +7,9 @@ namespace GolfSG.ViewModels;
 
 public sealed class RoundInputViewModel : ViewModelBase
 {
+    private const int MinimumHoleCount = 1;
+    private const int MaximumHoleCount = 36;
+
     private readonly IRoundRepository repository;
     private string roundId = Guid.NewGuid().ToString("N");
     private DateTime date = DateTime.Now;
@@ -36,11 +39,22 @@ public sealed class RoundInputViewModel : ViewModelBase
             if (SetProperty(ref holeCount, value))
             {
                 OnPropertyChanged(nameof(HoleCountText));
+                OnPropertyChanged(nameof(RoundProgressText));
+                OnPropertyChanged(nameof(IsRoundComplete));
+                OnPropertyChanged(nameof(SaveButtonText));
             }
         }
     }
 
     public string HoleCountText => $"{HoleCount} huller";
+
+    public string RoundProgressText => $"{CompletedHoleCount} / {HoleCount} huller registreret";
+
+    public string SaveButtonText => IsRoundComplete ? "Gem runde" : "Afslut tidligt og gem";
+
+    public int CompletedHoleCount => Holes.Count(IsTrackedHoleCompleted);
+
+    public bool IsRoundComplete => CompletedHoleCount >= HoleCount;
 
     public bool TrackPutting
     {
@@ -163,11 +177,12 @@ public sealed class RoundInputViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsSetupVisible));
         OnPropertyChanged(nameof(IsRoundVisible));
         OnTrackingPropertiesChanged();
-        SetHoleCount(Math.Clamp(round.Holes.Count, 1, 18));
+        SetHoleCount(Math.Clamp(round.ConfiguredHoleCount > 0 ? round.ConfiguredHoleCount : round.Holes.Count, MinimumHoleCount, MaximumHoleCount));
 
         foreach (var hole in round.Holes)
         {
-            Holes.First(input => input.HoleNumber == hole.HoleNumber).Load(hole);
+            var input = Holes.FirstOrDefault(input => input.HoleNumber == hole.HoleNumber);
+            input?.Load(hole);
         }
 
         RefreshSummary();
@@ -186,12 +201,15 @@ public sealed class RoundInputViewModel : ViewModelBase
             roundId,
             date,
             Holes.Select(hole => hole.ToHole()).ToList(),
-            new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen));
+            new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen),
+            HoleCount,
+            !IsRoundComplete);
     }
 
     private void SetHoleCount(int count)
     {
-        var clampedCount = Math.Clamp(count, 1, 18);
+        var minimumCount = Math.Max(MinimumHoleCount, HighestEnteredHoleNumber());
+        var clampedCount = Math.Clamp(count, minimumCount, MaximumHoleCount);
         while (Holes.Count < clampedCount)
         {
             AddHole(Holes.Count + 1);
@@ -231,6 +249,10 @@ public sealed class RoundInputViewModel : ViewModelBase
         OnPropertyChanged(nameof(TotalApproachShotsText));
         OnPropertyChanged(nameof(TotalAroundGreenShotsText));
         OnPropertyChanged(nameof(CountBreakdownText));
+        OnPropertyChanged(nameof(CompletedHoleCount));
+        OnPropertyChanged(nameof(IsRoundComplete));
+        OnPropertyChanged(nameof(RoundProgressText));
+        OnPropertyChanged(nameof(SaveButtonText));
     }
 
     private void ApplyTrackingToHoles()
@@ -255,5 +277,34 @@ public sealed class RoundInputViewModel : ViewModelBase
         OnPropertyChanged(nameof(TotalApproachShotsText));
         OnPropertyChanged(nameof(TotalAroundGreenShotsText));
         OnPropertyChanged(nameof(CountBreakdownText));
+        OnPropertyChanged(nameof(CompletedHoleCount));
+        OnPropertyChanged(nameof(IsRoundComplete));
+        OnPropertyChanged(nameof(RoundProgressText));
+        OnPropertyChanged(nameof(SaveButtonText));
+    }
+
+    private int HighestEnteredHoleNumber()
+    {
+        return Holes
+            .Where(HasAnyTrackedInput)
+            .Select(hole => hole.HoleNumber)
+            .DefaultIfEmpty(MinimumHoleCount)
+            .Max();
+    }
+
+    private bool IsTrackedHoleCompleted(HoleInputViewModel hole)
+    {
+        var data = hole.ToHole();
+        return (TrackPutting && data.IsCompleted) ||
+            (TrackApproach && data.IsApproachCompleted) ||
+            (TrackAroundGreen && data.IsAroundGreenCompleted);
+    }
+
+    private bool HasAnyTrackedInput(HoleInputViewModel hole)
+    {
+        var data = hole.ToHole();
+        return (TrackPutting && data.FirstPuttDistanceMeters > 0) ||
+            (TrackApproach && (data.ApproachStartDistanceYards > 0 || data.ApproachPenaltyStrokes > 0 || data.ApproachHoled)) ||
+            (TrackAroundGreen && (data.AroundGreenStartDistanceYards > 0 || data.AroundGreenPenaltyStrokes > 0 || data.AroundGreenHoled));
     }
 }

@@ -22,12 +22,22 @@ public sealed class PuttingGamePage : ContentPage
         Title = "Putting-spil";
         BackgroundColor = PageBackground;
         BuildLayout();
+        Shell.SetBackButtonBehavior(this, new BackButtonBehavior
+        {
+            Command = new Command(async () => await NavigateBackAsync())
+        });
     }
 
     public void Start(string mode)
     {
         viewModel.Start(mode);
         Title = viewModel.GameTitle;
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        _ = NavigateBackAsync();
+        return true;
     }
 
     private void BuildLayout()
@@ -255,6 +265,31 @@ public sealed class PuttingGamePage : ContentPage
                 remaining
             }
         });
+    }
+
+    private async Task ConfirmCloseActiveGameAsync()
+    {
+        var closeGame = await DisplayAlertAsync(
+            "Luk spil?",
+            "Du er midt i et putting-spil. Vil du lukke spillet og miste den igangværende score?",
+            "Luk spil",
+            "Bliv her");
+
+        if (closeGame)
+        {
+            await Navigation.PopAsync();
+        }
+    }
+
+    private async Task NavigateBackAsync()
+    {
+        if (viewModel.IsActive)
+        {
+            await ConfirmCloseActiveGameAsync();
+            return;
+        }
+
+        await Navigation.PopAsync();
     }
 
     private View CompletePanel()

@@ -21,11 +21,28 @@ public sealed class RoundInputPage : ContentPage
         Title = "Runde";
         BackgroundColor = PageBackground;
         BuildLayout();
+        ToolbarItems.Add(new ToolbarItem
+        {
+            Text = "⚙",
+            Order = ToolbarItemOrder.Primary,
+            Priority = 0,
+            Command = new Command(async () => await Navigation.PushAsync(new RoundSettingsPage(viewModel)))
+        });
+        Shell.SetBackButtonBehavior(this, new BackButtonBehavior
+        {
+            Command = new Command(async () => await NavigateBackAsync())
+        });
     }
 
     public async Task LoadAsync(string? roundId)
     {
         await viewModel.LoadAsync(roundId);
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        _ = NavigateBackAsync();
+        return true;
     }
 
     private void BuildLayout()
@@ -65,12 +82,12 @@ public sealed class RoundInputPage : ContentPage
 
         var saveButton = new Button
         {
-            Text = "Gem runde",
             BackgroundColor = PrimaryGreen,
             TextColor = Colors.White,
             CornerRadius = 8,
             HeightRequest = 48
         };
+        saveButton.SetBinding(Button.TextProperty, nameof(RoundInputViewModel.SaveButtonText));
         saveButton.Clicked += async (_, _) =>
         {
             var roundId = await viewModel.SaveAsync();
@@ -111,6 +128,8 @@ public sealed class RoundInputPage : ContentPage
                         TextColor = TextColor,
                         Margin = new Thickness(0, 2, 0, 10)
                     },
+                    HoleCountPanel(),
+                    RoundProgressPanel(),
                     holes,
                     SummaryPanel()
                 }
@@ -133,6 +152,31 @@ public sealed class RoundInputPage : ContentPage
                 saveButton.Row(1).Margin(new Thickness(0, 10, 0, 0))
             }
         };
+    }
+
+    private async Task NavigateBackAsync()
+    {
+        if (viewModel.IsRoundVisible)
+        {
+            await ConfirmCloseRoundAsync();
+            return;
+        }
+
+        await Navigation.PopAsync();
+    }
+
+    private async Task ConfirmCloseRoundAsync()
+    {
+        var closeRound = await DisplayAlertAsync(
+            "Luk runde?",
+            "Du er midt i en runde. Vil du lukke runden og miste den igangværende score?",
+            "Luk runde",
+            "Bliv her");
+
+        if (closeRound)
+        {
+            await Navigation.PopToRootAsync();
+        }
     }
 
     private DataTemplate HoleTemplate()
@@ -286,6 +330,37 @@ public sealed class RoundInputPage : ContentPage
                     Spacing = 10,
                     HorizontalOptions = LayoutOptions.Center,
                     Children = { minus, holeCount, plus }
+                }
+            }
+        });
+    }
+
+    private View RoundProgressPanel()
+    {
+        var progress = new Label
+        {
+            FontAttributes = FontAttributes.Bold,
+            TextColor = TextColor
+        };
+        progress.SetBinding(Label.TextProperty, nameof(RoundInputViewModel.RoundProgressText));
+
+        return Card(new VerticalStackLayout
+        {
+            Spacing = 4,
+            Children =
+            {
+                new Label
+                {
+                    Text = "Status",
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = TextColor
+                },
+                progress,
+                new Label
+                {
+                    Text = "Ikke-registrerede huller tæller ikke som nul-resultater.",
+                    FontSize = 13,
+                    TextColor = MutedTextColor
                 }
             }
         });

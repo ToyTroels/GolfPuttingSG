@@ -79,7 +79,24 @@ public sealed class StartPage : ContentPage
             TextColor = Color.FromArgb("#0F5132"),
             CornerRadius = 8
         };
-        settingsButton.Clicked += async (_, _) => await Navigation.PushAsync(new SettingsPage());
+        settingsButton.Clicked += async (_, _) =>
+            await Navigation.PushAsync(services.GetRequiredService<SettingsPage>());
+
+        var warning = new Border
+        {
+            BackgroundColor = Color.FromArgb("#FFF7E0"),
+            Stroke = Color.FromArgb("#D59A20"),
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 12,
+            Margin = new Thickness(0, 0, 0, 12),
+            Content = new Label
+            {
+                FontSize = 14,
+                TextColor = Color.FromArgb("#5A3B00")
+            }
+        };
+        warning.SetBinding(IsVisibleProperty, nameof(StartViewModel.ShowRecoveredFromBackupWarning));
+        ((Label)warning.Content).SetBinding(Label.TextProperty, nameof(StartViewModel.RecoveredFromBackupWarningText));
 
         var rounds = new CollectionView
         {
@@ -90,6 +107,7 @@ public sealed class StartPage : ContentPage
                 Spacing = 0,
                 Children =
                 {
+                    warning,
                     new Label
                     {
                         Text = "Putting SG",

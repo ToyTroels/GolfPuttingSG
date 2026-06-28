@@ -51,6 +51,12 @@ public sealed class RoundResultViewModel : ViewModelBase
         : string.Empty;
     public string TotalApproachShotsText => summary?.TotalApproachShots.ToString() ?? "0";
     public string TotalAroundGreenShotsText => summary?.TotalAroundGreenShots.ToString() ?? "0";
+    public string RoundProgressText => round is null
+        ? "0 / 0 huller"
+        : $"{round.CompletedHoleCount} / {round.ConfiguredHoleCount} huller registreret";
+    public string RoundCompletionText => round is null
+        ? string.Empty
+        : round.EndedEarly ? "Runden blev afsluttet tidligt." : "Runden blev fuldført.";
     public string ThreePuttRateText => summary is null ? "0%" : $"{CalculateThreePuttRate(summary):0}%";
     public string BestHoleText => FormatPuttingResult(summary?.BestHole);
     public string WorstHoleText => FormatPuttingResult(summary?.WorstHole);
@@ -70,7 +76,7 @@ public sealed class RoundResultViewModel : ViewModelBase
         trackingOptions = round.TrackingOptions ?? RoundTrackingOptions.PuttingOnly;
         summary = StrokesGainedCalculator.CalculateRoundSummary(round);
         HoleResults.Clear();
-        foreach (var hole in round.Holes.Where(IsTrackedHoleCompleted))
+        foreach (var hole in round.Holes.Where(round.IsTrackedHoleCompleted))
         {
             HoleResults.Add(new HoleResultItemViewModel(hole, trackingOptions));
         }
@@ -88,13 +94,6 @@ public sealed class RoundResultViewModel : ViewModelBase
         }
 
         OnAllPropertiesChanged();
-    }
-
-    private bool IsTrackedHoleCompleted(HolePuttingData hole)
-    {
-        return (TrackPutting && hole.IsCompleted) ||
-            (TrackApproach && hole.IsApproachCompleted) ||
-            (TrackAroundGreen && hole.IsAroundGreenCompleted);
     }
 
     private static double CalculateThreePuttRate(RoundSummary summary)
@@ -188,6 +187,8 @@ public sealed class RoundResultViewModel : ViewModelBase
         OnPropertyChanged(nameof(TargetPuttsText));
         OnPropertyChanged(nameof(TotalApproachShotsText));
         OnPropertyChanged(nameof(TotalAroundGreenShotsText));
+        OnPropertyChanged(nameof(RoundProgressText));
+        OnPropertyChanged(nameof(RoundCompletionText));
         OnPropertyChanged(nameof(ThreePuttRateText));
         OnPropertyChanged(nameof(BestHoleText));
         OnPropertyChanged(nameof(WorstHoleText));

@@ -33,6 +33,7 @@ public static class MauiProgram
         builder.Services.AddTransient<PuttingGameViewModel>();
         builder.Services.AddTransient<RoundResultViewModel>();
         builder.Services.AddTransient<StartPage>();
+        builder.Services.AddTransient<SettingsPage>();
         builder.Services.AddTransient<RoundInputPage>();
         builder.Services.AddTransient<PuttingGamePage>();
         builder.Services.AddTransient<RoundResultPage>();

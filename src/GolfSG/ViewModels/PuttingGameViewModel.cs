@@ -269,7 +269,9 @@ public sealed class PuttingGameViewModel : ViewModelBase
             roundId,
             DateTime.Now,
             completedPutts.ToList(),
-            new RoundTrackingOptions(true, false, false, true, mode));
+            new RoundTrackingOptions(true, false, false, true, mode),
+            completedPutts.Count,
+            false);
 
         await repository.SaveRoundAsync(round);
     }

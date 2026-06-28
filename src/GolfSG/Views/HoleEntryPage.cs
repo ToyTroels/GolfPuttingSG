@@ -24,6 +24,23 @@ public sealed class HoleEntryPage : ContentPage
         Title = viewModel.Title;
         BackgroundColor = PageBackground;
         BuildLayout();
+        ToolbarItems.Add(new ToolbarItem
+        {
+            Text = "⚙",
+            Order = ToolbarItemOrder.Primary,
+            Priority = 0,
+            Command = new Command(async () => await Navigation.PushAsync(new RoundSettingsPage(roundViewModel, viewModel.HoleNumber)))
+        });
+        Shell.SetBackButtonBehavior(this, new BackButtonBehavior
+        {
+            Command = new Command(async () => await ConfirmCloseRoundAsync())
+        });
+    }
+
+    protected override bool OnBackButtonPressed()
+    {
+        _ = ConfirmCloseRoundAsync();
+        return true;
     }
 
     private void BuildLayout()
@@ -361,6 +378,20 @@ public sealed class HoleEntryPage : ContentPage
         }
 
         await GoToHoleAsync(nextHole);
+    }
+
+    private async Task ConfirmCloseRoundAsync()
+    {
+        var closeRound = await DisplayAlertAsync(
+            "Luk runde?",
+            "Du er midt i en runde. Vil du lukke runden og miste den igangværende score?",
+            "Luk runde",
+            "Bliv her");
+
+        if (closeRound)
+        {
+            await Navigation.PopToRootAsync();
+        }
     }
 
     private async Task GoToHoleAsync(HoleInputViewModel? hole)

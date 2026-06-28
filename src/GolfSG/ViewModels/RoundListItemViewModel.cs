@@ -38,7 +38,11 @@ public sealed class RoundListItemViewModel
                 return $"{PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)} | {Round.Holes.Count} putts | {TotalPutts} slag";
             }
 
-            var parts = new List<string>();
+            var parts = new List<string>
+            {
+                $"{Round.CompletedHoleCount}/{Round.ConfiguredHoleCount} huller",
+                Round.EndedEarly ? "afsluttet tidligt" : "fuldført"
+            };
             if (trackingOptions.TrackPutting)
             {
                 parts.Add($"{TotalPutts} putts");
