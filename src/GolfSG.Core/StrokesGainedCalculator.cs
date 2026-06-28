@@ -40,12 +40,18 @@ public static class StrokesGainedCalculator
         double approachDistanceMeters = 0,
         int approachShots = 0,
         GolfShot? approachShot = null,
-        GolfShot? aroundGreenShot = null)
+        GolfShot? aroundGreenShot = null,
+        IReadOnlyList<GolfShot>? aroundGreenShots = null)
     {
         var hole = PuttingStrokesGainedCalculator.BuildHole(holeNumber, distanceMeters, putts);
         hole = approachShot is null
             ? ApproachStrokesGainedCalculator.AddApproach(hole, approachDistanceMeters, approachShots)
             : AddApproach(hole, approachShot);
+        if (aroundGreenShots is { Count: > 0 })
+        {
+            return AddAroundGreenShots(hole, aroundGreenShots);
+        }
+
         return aroundGreenShot is null ? hole : AddAroundGreen(hole, aroundGreenShot);
     }
 
@@ -112,6 +118,7 @@ public static class StrokesGainedCalculator
 
         return hole with
         {
+            AroundGreenShots = [shot],
             AroundGreenStartDistanceYards = ToYards(shot.StartDistanceToPin, shot.StartDistanceUnit),
             AroundGreenStartLie = shot.StartLie,
             AroundGreenDistanceToGreenEdgeYards = shot.StartDistanceToGreenEdgeYards,
@@ -126,13 +133,37 @@ public static class StrokesGainedCalculator
         };
     }
 
+    public static HolePuttingData AddAroundGreenShots(HolePuttingData hole, IReadOnlyList<GolfShot> shots)
+    {
+        var validShots = shots.Where(shot => shot.StartDistanceToPin > 0 && AroundGreenService.IsAroundGreenShot(shot)).ToList();
+        if (validShots.Count == 0)
+        {
+            return hole;
+        }
+
+        var firstShot = validShots[0];
+        var lastShot = validShots[^1];
+
+        return AddAroundGreen(hole, firstShot) with
+        {
+            AroundGreenShots = validShots,
+            AroundGreenEndDistance = lastShot.EndDistanceToPin,
+            AroundGreenEndDistanceUnit = lastShot.EndDistanceUnit,
+            AroundGreenEndLie = lastShot.EndLie,
+            AroundGreenPenaltyStrokes = validShots.Sum(shot => shot.PenaltyStrokes),
+            AroundGreenHoled = validShots.Any(shot => shot.Holed || shot.EndLie == ShotLie.Holed),
+            ExpectedAroundGreenFinishStrokes = GetAroundGreenFinishExpectedStrokes(lastShot),
+            StrokesGainedAroundGreen = validShots.Sum(AroundGreenService.CalculateShotSgAroundGreen)
+        };
+    }
+
     private static AroundGreenRoundSummary CalculateAroundGreenSummary(IReadOnlyList<HolePuttingData> holes)
     {
         var completedHoles = holes.Where(hole => hole.IsAroundGreenCompleted).ToList();
 
         return new AroundGreenRoundSummary(
             completedHoles.Sum(hole => hole.StrokesGainedAroundGreen),
-            completedHoles.Count,
+            completedHoles.Sum(hole => hole.AroundGreenShotCount),
             completedHoles.Count == 0 ? 0 : completedHoles.Average(hole => hole.AroundGreenStartDistanceYards),
             completedHoles.MaxBy(hole => hole.StrokesGainedAroundGreen),
             completedHoles.MinBy(hole => hole.StrokesGainedAroundGreen));
@@ -173,5 +204,17 @@ public static class StrokesGainedCalculator
             shot.EndDistanceToPin,
             shot.EndDistanceUnit,
             shot.EndLie);
+    }
+
+    private static double GetAroundGreenFinishExpectedStrokes(GolfShot shot)
+    {
+        if (shot.Holed || shot.EndLie == ShotLie.Holed)
+        {
+            return 0;
+        }
+
+        return shot.EndLie == ShotLie.Green
+            ? new StrokesGainedPuttingService().GetExpectedPutts(shot.EndDistanceToPin, shot.EndDistanceUnit)
+            : AroundGreenService.GetAroundGreenExpectedStrokes(shot.EndDistanceToPin, shot.EndDistanceUnit, shot.EndLie);
     }
 }

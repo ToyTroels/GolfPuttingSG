@@ -32,9 +32,11 @@ public sealed record HolePuttingData(
     bool AroundGreenHoled = false,
     double ExpectedAroundGreenStartStrokes = 0,
     double ExpectedAroundGreenFinishStrokes = 0,
-    double StrokesGainedAroundGreen = 0)
+    double StrokesGainedAroundGreen = 0,
+    IReadOnlyList<GolfShot>? AroundGreenShots = null)
 {
     public bool IsCompleted => FirstPuttDistanceMeters > 0 && Putts > 0;
     public bool IsApproachCompleted => ApproachDistanceMeters > 0 && ApproachShots > 0;
-    public bool IsAroundGreenCompleted => AroundGreenStartDistanceYards > 0;
+    public bool IsAroundGreenCompleted => AroundGreenShotCount > 0;
+    public int AroundGreenShotCount => AroundGreenShots?.Count > 0 ? AroundGreenShots.Count : AroundGreenStartDistanceYards > 0 ? 1 : 0;
 }

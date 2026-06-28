@@ -257,6 +257,20 @@ public sealed class HoleEntryPage : ContentPage
         var aroundGreenSg = SgLabel();
         aroundGreenSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedAroundGreenText), stringFormat: "SG Omkring green {0}"));
 
+        var addAroundGreenShot = new Button
+        {
+            Text = "Tilføj nyt slag omkring green",
+            HeightRequest = 50,
+            CornerRadius = 8,
+            BackgroundColor = Colors.White,
+            BorderColor = PrimaryGreen,
+            BorderWidth = 1,
+            TextColor = PrimaryGreen,
+            FontAttributes = FontAttributes.Bold
+        };
+        addAroundGreenShot.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.CanAddAnotherAroundGreenShot));
+        addAroundGreenShot.Clicked += (_, _) => viewModel.AddAnotherAroundGreenShot();
+
         var puttingSection = PuttingSection(
             puttMinus,
             putts,
@@ -296,6 +310,7 @@ public sealed class HoleEntryPage : ContentPage
             aroundGreenPenaltyMinus,
             aroundGreenPenaltyStrokes,
             aroundGreenPenaltyPlus,
+            addAroundGreenShot,
             aroundGreenSg);
         aroundGreenSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsAroundGreenInputVisible));
 
@@ -488,19 +503,30 @@ public sealed class HoleEntryPage : ContentPage
         Button penaltyMinus,
         Label penaltyStrokes,
         Button penaltyPlus,
+        Button addAnotherShot,
         Label sg)
     {
+        var title = new Label
+        {
+            FontSize = 18,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = TextColor
+        };
+        title.SetBinding(Label.TextProperty, nameof(HoleInputViewModel.AroundGreenShotTitle));
+
         return Card(new VerticalStackLayout
         {
             Spacing = 16,
             Children =
             {
+                title,
                 startLie,
                 DistancePanel("Startafstand til flag", startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
                 endLie,
                 endDistancePanel,
                 ToggleRow("I hul", holed),
                 CounterPanel("Strafslag", penaltyMinus, penaltyStrokes, penaltyPlus),
+                addAnotherShot,
                 sg
             }
         });

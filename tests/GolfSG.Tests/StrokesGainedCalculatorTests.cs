@@ -103,6 +103,57 @@ public sealed class StrokesGainedCalculatorTests
     }
 
     [TestMethod]
+    public void RoundSummaryIncludesMultipleAroundGreenShotsOnSameHole()
+    {
+        var shots = new[]
+        {
+            new GolfShot
+            {
+                HoleNumber = 1,
+                ShotNumber = 1,
+                StartDistanceToPin = 20,
+                StartDistanceUnit = DistanceUnit.Yards,
+                StartLie = ShotLie.Rough,
+                StartDistanceToGreenEdgeYards = 10,
+                EndDistanceToPin = 10,
+                EndDistanceUnit = DistanceUnit.Yards,
+                EndLie = ShotLie.Rough
+            },
+            new GolfShot
+            {
+                HoleNumber = 1,
+                ShotNumber = 2,
+                StartDistanceToPin = 10,
+                StartDistanceUnit = DistanceUnit.Yards,
+                StartLie = ShotLie.Rough,
+                StartDistanceToGreenEdgeYards = 5,
+                EndDistanceToPin = 8,
+                EndDistanceUnit = DistanceUnit.Feet,
+                EndLie = ShotLie.Green
+            }
+        };
+
+        var hole = StrokesGainedCalculator.BuildHole(
+            1,
+            2.4,
+            2,
+            aroundGreenShots: shots);
+
+        var round = new Round(
+            Guid.NewGuid().ToString("N"),
+            DateTime.Today,
+            [hole],
+            new RoundTrackingOptions(true, false, true));
+
+        var summary = StrokesGainedCalculator.CalculateRoundSummary(round);
+        var expectedSg = shots.Sum(StrokesGainedCalculator.AroundGreenService.CalculateShotSgAroundGreen);
+
+        Assert.AreEqual(2, summary.TotalAroundGreenShots);
+        Assert.AreEqual(expectedSg, summary.TotalStrokesGainedAroundGreen, 0.001);
+        Assert.AreEqual(2, hole.AroundGreenShotCount);
+    }
+
+    [TestMethod]
     public void RoundSummaryIgnoresUnfinishedHoles()
     {
         var round = new Round(
