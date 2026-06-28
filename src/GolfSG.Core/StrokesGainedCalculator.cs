@@ -12,6 +12,9 @@ public static class StrokesGainedCalculator
     public static IReadOnlyList<StrokesGainedReferencePoint> ApproachReference =>
         ApproachStrokesGainedCalculator.Reference;
 
+    public static IReadOnlyList<AroundGreenReferencePoint> AroundGreenReference =>
+        StrokesGainedAroundGreenService.Reference;
+
     public static IStrokesGainedAroundGreenService AroundGreenService { get; } =
         new StrokesGainedAroundGreenService(new StrokesGainedPuttingService());
 

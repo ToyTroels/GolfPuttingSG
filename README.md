@@ -30,7 +30,7 @@ Baseline-tabellen ligger i `src/GolfSG.Core/StrokesGainedCalculator.cs`.
 
 ## Kør i Visual Studio
 
-1. Åbn `C:\Users\Troel\Documents\Golf\GolfSG.sln` i Visual Studio.
+1. Åbn `GolfSG.sln` i Visual Studio.
 2. Vælg startup-projektet `GolfSG`.
 3. Vælg target, fx `Windows Machine` eller en Android-emulator.
 4. Tryk Run.

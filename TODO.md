@@ -93,3 +93,20 @@
 - [ ] Decide whether saved rounds store the normalized meter value only or also preserve the unit used at entry time.
 - [ ] Update putting distance bands and made percentage by distance to respect the selected unit.
 - [ ] Add tests for feet-to-meters conversion, display formatting, and SG calculations using feet input.
+
+## Reference tables by lie
+
+- [ ] Add lie-based expected-shots listings to reference tables where the baseline depends on lie, including approach and around-the-green tables.
+- [ ] Show distance, lie, and expected shots in a scan-friendly table layout.
+- [ ] Keep the displayed units consistent with the app distance setting once configurable units are implemented.
+- [ ] Add tests that verify exposed reference rows match the calculation baselines for each lie.
+
+## Improve putting-game screen usability
+
+- [x] Redesign the active putting-game screen so the current putt, putts-used controls, running score, and primary action are easier to scan during practice.
+- [x] Replace the long inline "remaining distances" text with a compact preview, such as next 3-5 distances, a progress indicator, and an expandable full list.
+- [x] Keep the primary submit/save action visible and reachable without being pushed below the viewport.
+- [x] Make the running total section more compact, with clearer separation between current result, total putts, and total putting SG.
+- [x] Improve mobile spacing and typography so the distance card does not dominate the screen at the expense of actions and progress.
+- [x] Add empty/complete states that clearly show when the benchmark is finished and what to do next.
+- [x] Add UI tests or view-model tests for progress text, remaining-distance preview, and completion behavior.

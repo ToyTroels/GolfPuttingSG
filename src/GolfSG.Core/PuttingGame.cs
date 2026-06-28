@@ -21,6 +21,10 @@ public static class PuttingGame
     public const string ShortBenchmark = "Short";
     public const string NormalBenchmark = "Normal";
     public const string ThoroughBenchmark = "Thorough";
+    public const int BenchmarkPresetVersion = 1;
+    public const string ShortBenchmarkPresetId = "benchmark-short-v1";
+    public const string NormalBenchmarkPresetId = "benchmark-normal-v1";
+    public const string ThoroughBenchmarkPresetId = "benchmark-thorough-v1";
     private const double FeetToMeters = 0.3048;
 
     public static IReadOnlyList<int> PresetDistancesFeet => GetPresetDistances(LadderMode);
@@ -36,17 +40,106 @@ public static class PuttingGame
     ];
 
     public static IReadOnlyList<double> ShortBenchmarkDistancesMeters { get; } =
-        BuildBellCurveDistancesMeters(40, DefaultMinimumDistanceMeters, DefaultMaximumDistanceMeters);
+    [
+        6.5, 6.5, 6.5, 6.5, 6.0, 6.0, 6.0, 6.0, 7.1, 7.1,
+        7.1, 7.1, 5.4, 5.4, 5.4, 7.6, 7.6, 7.6, 4.9, 4.9,
+        4.9, 8.2, 8.2, 8.2, 8.7, 8.7, 4.3, 4.3, 3.8, 3.8,
+        9.3, 9.3, 3.2, 9.8, 2.7, 10.4, 2.1, 10.9, 1.6, 11.5
+    ];
 
     public static IReadOnlyList<double> NormalBenchmarkDistancesMeters { get; } =
-        BuildBellCurveDistancesMeters(75, DefaultMinimumDistanceMeters, DefaultMaximumDistanceMeters);
+    [
+        6.5, 6.5, 6.5, 6.5, 6.5, 6.5, 6.5, 6.0, 6.0, 6.0,
+        6.0, 6.0, 6.0, 6.0, 7.1, 7.1, 7.1, 7.1, 7.1, 7.1,
+        7.1, 5.4, 5.4, 5.4, 5.4, 5.4, 5.4, 7.6, 7.6, 7.6,
+        7.6, 7.6, 7.6, 4.9, 4.9, 4.9, 4.9, 4.9, 8.2, 8.2,
+        8.2, 8.2, 8.2, 8.7, 8.7, 8.7, 8.7, 4.3, 4.3, 4.3,
+        4.3, 3.8, 3.8, 3.8, 3.8, 9.3, 9.3, 9.3, 9.3, 3.2,
+        3.2, 3.2, 9.8, 9.8, 9.8, 2.7, 2.7, 10.4, 10.4, 2.1,
+        10.9, 1.6, 11.5, 1.0, 12.0
+    ];
 
     public static IReadOnlyList<double> ThoroughBenchmarkDistancesMeters { get; } =
-        BuildBellCurveDistancesMeters(100, DefaultMinimumDistanceMeters, DefaultMaximumDistanceMeters);
+    [
+        6.5, 6.5, 6.5, 6.5, 6.5, 6.5, 6.5, 6.5, 6.5, 6.0,
+        6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 7.1, 7.1,
+        7.1, 7.1, 7.1, 7.1, 7.1, 7.1, 7.1, 5.4, 5.4, 5.4,
+        5.4, 5.4, 5.4, 5.4, 5.4, 7.6, 7.6, 7.6, 7.6, 7.6,
+        7.6, 7.6, 7.6, 4.9, 4.9, 4.9, 4.9, 4.9, 4.9, 4.9,
+        8.2, 8.2, 8.2, 8.2, 8.2, 8.2, 8.2, 8.7, 8.7, 8.7,
+        8.7, 8.7, 8.7, 4.3, 4.3, 4.3, 4.3, 4.3, 4.3, 3.8,
+        3.8, 3.8, 3.8, 3.8, 9.3, 9.3, 9.3, 9.3, 9.3, 3.2,
+        3.2, 3.2, 3.2, 9.8, 9.8, 9.8, 9.8, 2.7, 2.7, 2.7,
+        10.4, 10.4, 2.1, 2.1, 10.9, 10.9, 1.6, 11.5, 1.0, 12.0
+    ];
 
-    public static string GetTitle(string mode) => NormalizeMode(mode) == TourRoundMode
-        ? "Tour-runde"
-        : "Putting-spil";
+    public static string GetTitle(string mode) => GetDefinition(mode).DisplayName;
+
+    public static string GetTitle(RoundGameInfo? gameInfo, string? legacyMode = null) =>
+        gameInfo?.DisplayName ?? GetTitle(legacyMode ?? LadderMode);
+
+    public static PuttingGameDefinition GetDefinition(string mode)
+    {
+        return NormalizeMode(mode) == TourRoundMode
+            ? new PuttingGameDefinition(
+                PuttingGameKind.TourRound,
+                "Tour-runde",
+                TourRoundDistancesFeet.Select(ToMeters).ToList(),
+                PuttingGameScoringMode.NormalizedTargetTotal)
+            : new PuttingGameDefinition(
+                PuttingGameKind.Ladder,
+                "Putting-spil",
+                LadderDistancesFeet.Select(ToMeters).ToList(),
+                PuttingGameScoringMode.NormalizedTargetTotal);
+    }
+
+    public static PuttingGameDefinition CreateCustomDefinition(IReadOnlyList<double> distancesMeters) =>
+        new(PuttingGameKind.Custom, "Tilpasset putting-spil", distancesMeters, PuttingGameScoringMode.RawExpectedPutts);
+
+    public static PuttingGameDefinition GetBenchmarkDefinition(string benchmark) => benchmark switch
+    {
+        ShortBenchmark => new PuttingGameDefinition(
+            PuttingGameKind.Benchmark,
+            "Kort benchmark",
+            ShortBenchmarkDistancesMeters,
+            PuttingGameScoringMode.RawExpectedPutts,
+            BenchmarkLength.Short,
+            ShortBenchmarkPresetId,
+            BenchmarkPresetVersion),
+        NormalBenchmark => new PuttingGameDefinition(
+            PuttingGameKind.Benchmark,
+            "Normal benchmark",
+            NormalBenchmarkDistancesMeters,
+            PuttingGameScoringMode.RawExpectedPutts,
+            BenchmarkLength.Normal,
+            NormalBenchmarkPresetId,
+            BenchmarkPresetVersion),
+        ThoroughBenchmark => new PuttingGameDefinition(
+            PuttingGameKind.Benchmark,
+            "Grundig benchmark",
+            ThoroughBenchmarkDistancesMeters,
+            PuttingGameScoringMode.RawExpectedPutts,
+            BenchmarkLength.Thorough,
+            ThoroughBenchmarkPresetId,
+            BenchmarkPresetVersion),
+        _ => throw new ArgumentOutOfRangeException(nameof(benchmark), "Unknown benchmark.")
+    };
+
+    public static RoundGameInfo CreateRoundGameInfo(PuttingGameDefinition definition) =>
+        new(
+            definition.Kind switch
+            {
+                PuttingGameKind.Benchmark => "PuttingBenchmark",
+                PuttingGameKind.Custom => "PuttingGame",
+                _ => "PuttingGame"
+            },
+            definition.DisplayName,
+            definition.PresetId,
+            definition.PresetVersion,
+            definition.AttemptCount,
+            definition.MinimumDistanceMeters,
+            definition.MaximumDistanceMeters,
+            definition.ExpectedTotal);
 
     public static IReadOnlyList<int> GetPresetDistances(string mode) => NormalizeMode(mode) == TourRoundMode
         ? TourRoundDistancesFeet
@@ -88,9 +181,7 @@ public static class PuttingGame
 
     public static IReadOnlyList<double> GetBenchmarkDistancesMeters(string benchmark) => benchmark switch
     {
-        ShortBenchmark => ShortBenchmarkDistancesMeters,
-        NormalBenchmark => NormalBenchmarkDistancesMeters,
-        ThoroughBenchmark => ThoroughBenchmarkDistancesMeters,
+        ShortBenchmark or NormalBenchmark or ThoroughBenchmark => GetBenchmarkDefinition(benchmark).DistancesMeters,
         _ => throw new ArgumentOutOfRangeException(nameof(benchmark), "Unknown benchmark.")
     };
 

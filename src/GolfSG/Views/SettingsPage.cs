@@ -64,6 +64,10 @@ public sealed class SettingsPage : ContentPage
                             "Forventede slag",
                             StrokesGainedCalculator.ApproachReference,
                             useDecimalDistance: false)),
+                    ReferenceItem(
+                        "Omkring green",
+                        "Forventede slag pr. afstand og leje",
+                        () => new AroundGreenReferencePage(StrokesGainedCalculator.AroundGreenReference)),
                     new Label
                     {
                         Text = "Data",

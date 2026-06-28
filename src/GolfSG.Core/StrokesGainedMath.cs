@@ -40,3 +40,5 @@ internal static class StrokesGainedMath
 }
 
 public sealed record StrokesGainedReferencePoint(double DistanceMeters, double ExpectedShots);
+
+public sealed record AroundGreenReferencePoint(Models.ShotLie Lie, double DistanceYards, double ExpectedShots);

@@ -249,6 +249,34 @@ public sealed class RoundFileStoreTests
         Assert.IsFalse(rounds[0].IsCompletedNormally);
     }
 
+    [TestMethod]
+    public async Task SaveRoundPersistsPuttingGameMetadata()
+    {
+        using var directory = TestDirectory.Create();
+        var store = new RoundFileStore(directory.Path);
+        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalBenchmark);
+        var round = new Round(
+            "benchmark",
+            new DateTime(2026, 6, 1),
+            [PuttingGame.BuildPutt(1, definition.DistancesMeters[0], 2)],
+            new RoundTrackingOptions(true, false, false, true, PuttingGame.NormalBenchmark),
+            1,
+            false,
+            PuttingGame.CreateRoundGameInfo(definition));
+
+        await store.SaveRoundAsync(round);
+
+        var rounds = await store.GetRoundsAsync();
+        Assert.HasCount(1, rounds);
+        var gameInfo = rounds[0].GameInfo;
+        Assert.IsNotNull(gameInfo);
+        Assert.AreEqual("PuttingBenchmark", gameInfo.Type);
+        Assert.AreEqual("Normal benchmark", gameInfo.DisplayName);
+        Assert.AreEqual(PuttingGame.NormalBenchmarkPresetId, gameInfo.PresetId);
+        Assert.AreEqual(PuttingGame.BenchmarkPresetVersion, gameInfo.PresetVersion);
+        Assert.AreEqual(75, gameInfo.AttemptCount);
+    }
+
     private static Round CreateRound(string id, DateTime date, int putts) => new(
         id,
         date,

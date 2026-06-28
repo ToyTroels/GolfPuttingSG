@@ -41,9 +41,19 @@ public sealed class RoundResultPage : ContentPage
         };
         editButton.Clicked += async (_, _) =>
         {
-            var page = Handler!.MauiContext!.Services.GetRequiredService<RoundInputPage>();
-            await page.LoadAsync(viewModel.RoundId);
-            await Navigation.PushAsync(page);
+            try
+            {
+                var page = Handler!.MauiContext!.Services.GetRequiredService<RoundInputPage>();
+                await page.LoadAsync(viewModel.RoundId);
+                await Navigation.PushAsync(page);
+            }
+            catch (Exception)
+            {
+                await DisplayAlertAsync(
+                    "Runden kunne ikke åbnes",
+                    "Prøv igen, eller tjek lagring under Indstillinger.",
+                    "OK");
+            }
         };
         editButton.SetBinding(VisualElement.IsVisibleProperty, new Binding(nameof(RoundResultViewModel.IsPuttingGame), converter: new InvertedBoolConverter()));
 

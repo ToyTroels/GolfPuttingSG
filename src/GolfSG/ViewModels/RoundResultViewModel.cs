@@ -29,7 +29,7 @@ public sealed class RoundResultViewModel : ViewModelBase
     public bool TrackAroundGreen => trackingOptions.TrackAroundGreen;
     public bool IsPuttingGame => trackingOptions.IsPuttingGame;
     public string ResultTitle => IsPuttingGame
-        ? PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)
+        ? PuttingGame.GetTitle(round?.GameInfo, trackingOptions.PuttingGameMode)
         : "Resultat";
 
     public string TotalSgText => summary is null
@@ -279,8 +279,7 @@ public sealed class PuttingDistanceBucketItemViewModel
 {
     public PuttingDistanceBucketItemViewModel(PuttingDistanceBucketSummary bucket)
     {
-        RangeText = FormatRange(bucket);
-        Name = RangeText;
+        Name = FormatRange(bucket);
         RangeText = "F\u00F8rste putt-afstand";
         DetailText = $"{bucket.Attempts} f\u00F8rste putts | {bucket.TotalPutts} putts";
         StrokesGainedText = UiFormat.Sg(bucket.TotalStrokesGained);

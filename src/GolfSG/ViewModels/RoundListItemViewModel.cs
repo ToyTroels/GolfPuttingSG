@@ -22,7 +22,7 @@ public sealed class RoundListItemViewModel
     public string Id => Round.Id;
     public bool IsPuttingGame => trackingOptions.IsPuttingGame;
     public string Date => IsPuttingGame
-        ? $"{UiFormat.Date(Round.Date)} - {PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)}"
+        ? $"{UiFormat.Date(Round.Date)} - {PuttingGameTitle}"
         : UiFormat.Date(Round.Date);
     public double TotalSg { get; }
     public string TotalSgText => UiFormat.Sg(TotalSg);
@@ -35,7 +35,7 @@ public sealed class RoundListItemViewModel
         {
             if (IsPuttingGame)
             {
-                return $"{PuttingGame.GetTitle(trackingOptions.PuttingGameMode ?? PuttingGame.LadderMode)} | {Round.Holes.Count} putts | {TotalPutts} slag";
+                return $"{PuttingGameTitle} | {Round.Holes.Count} putts | {TotalPutts} slag";
             }
 
             var parts = new List<string>
@@ -61,6 +61,8 @@ public sealed class RoundListItemViewModel
             return string.Join(" | ", parts);
         }
     }
+
+    private string PuttingGameTitle => PuttingGame.GetTitle(Round.GameInfo, trackingOptions.PuttingGameMode);
 
     private double CalculateTrackedTotal()
     {

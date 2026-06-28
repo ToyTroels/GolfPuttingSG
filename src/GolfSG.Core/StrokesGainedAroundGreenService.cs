@@ -6,8 +6,8 @@ public sealed class StrokesGainedAroundGreenService : IStrokesGainedAroundGreenS
 {
     private const double FeetPerYard = 3;
 
-    private static readonly IReadOnlyDictionary<ShotLie, AroundGreenReferencePoint[]> AroundGreenBaseline =
-        new Dictionary<ShotLie, AroundGreenReferencePoint[]>
+    private static readonly IReadOnlyDictionary<ShotLie, AroundGreenBaselinePoint[]> AroundGreenBaseline =
+        new Dictionary<ShotLie, AroundGreenBaselinePoint[]>
         {
             [ShotLie.FairwayCut] =
             [
@@ -63,6 +63,15 @@ public sealed class StrokesGainedAroundGreenService : IStrokesGainedAroundGreenS
                 new(50, 3.45)
             ]
         };
+
+    public static IReadOnlyList<AroundGreenReferencePoint> Reference { get; } =
+        AroundGreenBaseline
+            .SelectMany(lieBaseline => lieBaseline.Value
+                .Select(point => new AroundGreenReferencePoint(
+                    lieBaseline.Key,
+                    point.DistanceYards,
+                    point.ExpectedStrokes)))
+            .ToList();
 
     private readonly IStrokesGainedPuttingService puttingService;
 
@@ -166,7 +175,7 @@ public sealed class StrokesGainedAroundGreenService : IStrokesGainedAroundGreenS
 
     private static double InterpolateExpectedStrokes(
         double distanceYards,
-        IReadOnlyList<AroundGreenReferencePoint> baseline)
+        IReadOnlyList<AroundGreenBaselinePoint> baseline)
     {
         if (distanceYards <= baseline[0].DistanceYards)
         {
@@ -195,5 +204,5 @@ public sealed class StrokesGainedAroundGreenService : IStrokesGainedAroundGreenS
         return baseline[^1].ExpectedStrokes;
     }
 
-    private sealed record AroundGreenReferencePoint(double DistanceYards, double ExpectedStrokes);
+    private sealed record AroundGreenBaselinePoint(double DistanceYards, double ExpectedStrokes);
 }

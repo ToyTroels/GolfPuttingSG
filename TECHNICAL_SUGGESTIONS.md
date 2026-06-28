@@ -4,22 +4,31 @@ This document collects internal and technical improvements for GolfSG. The app a
 
 ## Recommended Order
 
-1. Strengthen the domain model for game modes and saved round metadata.
-2. Make persistence versioned, atomic, and resilient to corrupt files.
+1. Finish extracting putting-game responsibilities from `PuttingGame` into smaller services.
+2. Add view-model tests around putting game setup, benchmark starts, and save flows.
 3. Split large UI pages into reusable controls or component builders.
-4. Add tests around persistence, view-model flows, and benchmark presets.
-5. Centralize app settings, units, colors, strings, and formatting.
-6. Add diagnostics, error states, and CI/build automation.
+4. Centralize app settings, units, colors, strings, and formatting.
+5. Add diagnostics, user-visible error states, and CI/build automation.
+6. Build benchmark history/comparison now that benchmark metadata is saved.
 
 ## High Priority
 
 ### 1. Replace string-based putting game modes with typed models
 
-Current state:
+Status: Partially implemented.
 
-- Putting game modes are represented with strings such as `Ladder`, `TourRound`, `Short`, `Normal`, and `Thorough`.
-- `RoundTrackingOptions` stores `PuttingGameMode` as `string?`.
-- Saved result screens infer behavior from mode strings and saved hole data.
+Implemented:
+
+- Added `PuttingGameKind`, `PuttingGameScoringMode`, `BenchmarkLength`, and `PuttingGameDefinition`.
+- `PuttingGame` now exposes typed definitions for ladder, tour round, custom games, and benchmarks.
+- Benchmark definitions include display name, preset ID, preset version, attempt count, distances, and scoring mode.
+- Result/history titles now prefer saved game metadata instead of guessing only from legacy mode strings.
+
+Remaining state:
+
+- `RoundTrackingOptions` still stores `PuttingGameMode` as `string?` for backward compatibility.
+- Some navigation/start APIs still pass mode strings such as `Ladder`, `TourRound`, `Short`, `Normal`, and `Thorough`.
+- `PuttingGame` still owns more responsibilities than ideal.
 
 Why improve it:
 
@@ -27,11 +36,11 @@ Why improve it:
 - Benchmark, custom, ladder, and tour games now have different scoring semantics.
 - Future features like leaderboards, personal benchmarks, or benchmark versioning will need richer metadata.
 
-Suggestion:
+Next suggestion:
 
-Create typed records/enums for putting game definitions.
+Move the remaining string-based entry points toward typed definitions while preserving legacy JSON compatibility.
 
-Example direction:
+Current model:
 
 ```csharp
 public enum PuttingGameKind
@@ -54,39 +63,36 @@ public sealed record PuttingGameDefinition(
     string DisplayName,
     IReadOnlyList<double> DistancesMeters,
     PuttingGameScoringMode ScoringMode,
-    BenchmarkLength? BenchmarkLength = null);
+    BenchmarkLength? BenchmarkLength = null,
+    string? PresetId = null,
+    int? PresetVersion = null);
 ```
 
 Benefits:
 
-- Removes string comparisons from app logic.
+- Reduces string comparisons in app logic.
 - Makes custom vs benchmark vs legacy games explicit.
 - Lets saved rounds preserve exactly what was played.
 - Makes result screens less dependent on guessing from the number of holes or mode string.
 
 ### 2. Save the actual putting game definition metadata
 
-Current state:
+Status: Implemented.
 
-- Saved rounds contain holes and `RoundTrackingOptions`.
-- For custom or benchmark putting games, the actual hole distances are saved through each `HolePuttingData`, which is good.
-- But the round does not clearly store whether it was a custom game, a short benchmark, normal benchmark, thorough benchmark, or which benchmark preset version was used.
+Implemented:
 
-Why improve it:
+- Added `RoundGameInfo` to `Round`.
+- Putting games now save type, display name, preset ID, preset version, attempt count, minimum distance, maximum distance, and expected total.
+- Benchmark rounds save stable preset IDs such as `benchmark-normal-v1`.
+- Custom putting games save their actual distance interval and expected total metadata.
+- Result and history UI use `Round.GameInfo` when available, with legacy fallback to `RoundTrackingOptions.PuttingGameMode`.
 
-- If benchmark distances are ever adjusted, old rounds should still be interpreted correctly.
-- History should be able to say `Normal Benchmark`, not just `Putting Game`.
-- Benchmark comparison only works if the app knows which benchmark was played.
-
-Suggestion:
-
-Extend round metadata with a dedicated game info record.
-
-Example direction:
+Current model:
 
 ```csharp
 public sealed record RoundGameInfo(
     string Type,
+    string DisplayName,
     string? PresetId,
     int? PresetVersion,
     int AttemptCount,
@@ -102,56 +108,36 @@ Possible values:
 - `Type = "PuttingBenchmark"`
 - `PresetId = "benchmark-normal-v1"`
 
-Benefits:
+Remaining follow-up:
 
-- Result/history UI becomes truthful and simple.
-- Benchmark results can be grouped reliably.
-- Future migrations can handle old rounds without fragile inference.
+- Add migration or cleanup later if the app ever removes `PuttingGameMode` from `RoundTrackingOptions`.
+- Add benchmark history screens that group attempts by `PresetId`.
 
 ### 3. Add versioned persistence and atomic file writes
 
-Current state:
+Status: Implemented.
 
-- `FileRoundRepository` stores all rounds in one `rounds.json`.
-- Saves use `File.Create(filePath)` directly.
-- Deserialization assumes the file is readable and compatible.
+Implemented:
 
-Risks:
+- `RoundFileStore` writes a versioned storage document with `schemaVersion` and `rounds`.
+- Saves write to `rounds.json.tmp` and then replace `rounds.json`.
+- Existing valid active files are copied to `rounds.json.bak` before overwrite.
+- Loading handles legacy array files, versioned documents, corrupt/empty active files, and backup fallback.
+- Unreadable active files are preserved before overwrite.
+- Storage migration from legacy app data directories is supported.
 
-- A crash during write can leave `rounds.json` partially written.
-- A malformed file can break loading all history.
-- Future model changes may break older saved data.
-
-Suggestion:
-
-Introduce a storage envelope with schema version and atomic writes.
-
-Example direction:
+Current envelope:
 
 ```csharp
-public sealed record RoundsFile(
+public sealed record RoundHistoryDocument(
     int SchemaVersion,
     IReadOnlyList<Round> Rounds);
 ```
 
-When saving:
+Remaining follow-up:
 
-1. Serialize to `rounds.json.tmp`.
-2. Flush and close the file.
-3. Replace `rounds.json` with the temp file.
-4. Optionally keep `rounds.json.bak`.
-
-When loading:
-
-- Catch `JsonException`, `IOException`, and incompatible schema cases.
-- Try backup recovery.
-- Return a user-visible error state instead of silently returning empty history.
-
-Benefits:
-
-- Protects user data.
-- Gives room for migrations.
-- Makes storage bugs easier to diagnose.
+- Surface more repository failure states in view models so the user can see import/save/load problems directly.
+- Add intentional handling if a future `schemaVersion` is unsupported.
 
 ### 4. Separate scoring rules from distance generation
 
@@ -182,24 +168,24 @@ Benefits:
 
 ### 5. Add persistence tests
 
-Current state:
+Status: Implemented for repository/store behavior.
 
-- Tests cover strokes-gained calculations well.
-- There are no repository tests for save/load/edit/delete behavior.
+Implemented:
 
-Suggestion:
-
-Add tests using a repository constructor that accepts a file path or storage abstraction.
-
-Test cases:
-
-- Saving a first round creates the file.
-- Saving the same round ID updates it rather than duplicating it.
-- Multiple rounds load sorted by date.
-- Delete removes only the requested round.
-- Invalid JSON returns a controlled failure or recovery path.
-- Newer/older schema versions are handled intentionally.
+- Save creates the active file.
+- Same-ID save updates instead of duplicating through the mutation path.
+- Rounds load sorted by date.
+- Delete preserves remaining rounds.
+- Invalid/empty active JSON falls back to backup.
+- Legacy array files load and migrate.
+- Versioned export/import works.
+- Configured hole count and early finish survive serialization.
 - Putting benchmark metadata survives round-trip serialization.
+
+Remaining useful tests:
+
+- Newer/older schema versions are handled intentionally.
+- Import conflict/merge behavior if imports stop replacing the full history.
 
 Benefit:
 
@@ -325,15 +311,17 @@ Benefit:
 
 ### 10. Use culture-aware parsing consistently
 
+Status: Partially implemented.
+
 Current state:
 
 - Some code normalizes commas to dots and parses invariant culture.
 - Display uses Danish culture.
-- Putting-game setup currently parses numeric text in the view model.
+- Putting-game setup now accepts both comma and dot decimals through a small local parser in `PuttingGameViewModel`.
 
 Suggestion:
 
-Create a central `NumberParser` or `DistanceInputParser`.
+Create a central `NumberParser` or `DistanceInputParser` and use it everywhere.
 
 It should:
 
@@ -372,26 +360,19 @@ Benefit:
 
 ### 12. Make benchmark preset generation explicit and stable
 
-Current state:
+Status: Implemented.
 
-- Benchmark lists are deterministic because they are generated from fixed constants and algorithm.
-- But the preset values are not written out as explicit arrays.
+Implemented:
 
-Concern:
+- Short, normal, and thorough benchmark distances are explicit arrays in code.
+- The bell-curve generator remains available for custom games.
+- Benchmark definitions include preset IDs and version numbers.
+- Tests lock benchmark counts and the exact short benchmark distribution.
 
-- If the bell-curve algorithm changes, benchmark distances change too.
-- The user requirement says the distances should be the same for every user.
+Remaining follow-up:
 
-Suggestion:
-
-Either:
-
-- Store generated benchmark arrays explicitly in code as fixed lists, or
-- Add snapshot tests that lock the exact benchmark distribution and key distances.
-
-Best option:
-
-- Generate once, paste the arrays as `IReadOnlyList<double>` constants, and keep the generator for custom games only.
+- Add exact snapshot tests for normal and thorough arrays too, not only counts.
+- If a future benchmark changes, add `benchmark-*-v2` instead of editing v1.
 
 Benefit:
 
@@ -572,17 +553,18 @@ Benefit:
 
 ### Sprint 1: Make benchmark data robust
 
-- Replace benchmark generation with explicit preset arrays.
-- Add snapshot tests for short, normal, and thorough benchmark distributions.
-- Save benchmark preset ID and version in round metadata.
-- Update history/result title to show benchmark name.
+- Done: Replace benchmark generation with explicit preset arrays.
+- Done: Save benchmark preset ID and version in round metadata.
+- Done: Update history/result title to show benchmark name.
+- Done: Add short benchmark snapshot coverage.
+- Remaining: Add full snapshot coverage for normal and thorough benchmark arrays.
 
 ### Sprint 2: Protect saved data
 
-- Add `RoundsFile` schema version.
-- Add atomic writes and backup recovery.
-- Add repository tests with temp files.
-- Add UI error messages for failed load/save.
+- Done: Add storage schema version.
+- Done: Add atomic writes and backup recovery.
+- Done: Add repository tests with temp files.
+- Remaining: Add UI error messages for failed load/save/import.
 
 ### Sprint 3: Clean up UI foundations
 
@@ -600,6 +582,6 @@ Benefit:
 
 ## Final Recommendation
 
-The strongest next technical move is to make putting games and benchmark rounds first-class domain concepts instead of string modes plus inferred behavior. That will make the new benchmark feature much easier to trust, compare, migrate, and extend.
+Putting games and benchmark rounds are now first-class enough to support trustworthy saved history and future comparisons. The next strongest technical move is to finish separating `PuttingGame` into presets, scoring, generation, and factory responsibilities, then add view-model tests around the flows that create and save those games.
 
-After that, invest in persistence safety. For a golf tracking app, losing or corrupting saved rounds is the highest-trust failure. Atomic writes, schema versioning, backup recovery, and repository tests will give the app a much sturdier foundation.
+Persistence safety is in a much sturdier place now: atomic writes, schema versioning, backup recovery, legacy migration, and repository tests are present. The remaining trust work is mostly user-facing: clear load/save/import error states and diagnostics.

@@ -19,4 +19,11 @@
     <ProjectReference Include="..\..\src\GolfSG.Core\GolfSG.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\..\src\GolfSG\Services\IRoundRepository.cs" Link="App\Services\IRoundRepository.cs" />
+    <Compile Include="..\..\src\GolfSG\ViewModels\UiFormat.cs" Link="App\ViewModels\UiFormat.cs" />
+    <Compile Include="..\..\src\GolfSG\ViewModels\ViewModelBase.cs" Link="App\ViewModels\ViewModelBase.cs" />
+    <Compile Include="..\..\src\GolfSG\ViewModels\PuttingGameViewModel.cs" Link="App\ViewModels\PuttingGameViewModel.cs" />
+  </ItemGroup>
+
 </Project>

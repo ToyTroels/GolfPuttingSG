@@ -44,29 +44,49 @@ public sealed class PuttingGamePage : ContentPage
     {
         var submitButton = new Button
         {
-            Text = "Gem resultat",
             BackgroundColor = PrimaryGreen,
             TextColor = Colors.White,
             CornerRadius = 8,
             HeightRequest = 52,
-            FontAttributes = FontAttributes.Bold
+            FontAttributes = FontAttributes.Bold,
+            Margin = new Thickness(16, 8, 16, 16)
         };
-        submitButton.Clicked += async (_, _) => completedRoundId = await viewModel.SubmitAsync();
+        submitButton.SetBinding(Button.TextProperty, nameof(PuttingGameViewModel.PrimaryActionText));
+        submitButton.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsActive));
+        submitButton.Clicked += async (_, _) =>
+        {
+            submitButton.IsEnabled = false;
+            try
+            {
+                completedRoundId = await viewModel.SubmitAsync();
+            }
+            catch (Exception)
+            {
+                await DisplayAlertAsync(
+                    "Resultatet kunne ikke gemmes",
+                    "Prøv igen, eller tjek lagring under Indstillinger.",
+                    "OK");
+            }
+            finally
+            {
+                submitButton.IsEnabled = true;
+            }
+        };
 
         var setupPanel = SetupPanel();
         setupPanel.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsSetup));
 
-        var activePanel = ActivePanel(submitButton);
+        var activePanel = ActivePanel();
         activePanel.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsActive));
 
         var completePanel = CompletePanel();
         completePanel.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsComplete));
 
-        Content = new ScrollView
+        var scrollView = new ScrollView
         {
             Content = new VerticalStackLayout
             {
-                Padding = 16,
+                Padding = new Thickness(16, 16, 16, 8),
                 Spacing = 10,
                 Children =
                 {
@@ -75,6 +95,20 @@ public sealed class PuttingGamePage : ContentPage
                     activePanel,
                     completePanel
                 }
+            }
+        };
+
+        Content = new Grid
+        {
+            RowDefinitions =
+            {
+                new RowDefinition(GridLength.Star),
+                new RowDefinition(GridLength.Auto)
+            },
+            Children =
+            {
+                scrollView,
+                submitButton.Row(1)
             }
         };
     }
@@ -161,18 +195,35 @@ public sealed class PuttingGamePage : ContentPage
         return button;
     }
 
-    private View ActivePanel(Button submitButton)
+    private View ActivePanel()
     {
         var progress = new Label
         {
-            FontSize = 15,
+            FontSize = 14,
             TextColor = MutedTextColor
         };
         progress.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.ProgressText));
 
+        var progressCount = new Label
+        {
+            FontSize = 14,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = TextColor,
+            HorizontalTextAlignment = TextAlignment.End
+        };
+        progressCount.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.ProgressCountText));
+
+        var progressBar = new ProgressBar
+        {
+            HeightRequest = 6,
+            ProgressColor = PrimaryGreen,
+            BackgroundColor = CardStroke
+        };
+        progressBar.SetBinding(ProgressBar.ProgressProperty, nameof(PuttingGameViewModel.ProgressFraction));
+
         var distance = new Label
         {
-            FontSize = 56,
+            FontSize = 42,
             FontAttributes = FontAttributes.Bold,
             TextColor = PrimaryGreen,
             HorizontalTextAlignment = TextAlignment.Center
@@ -205,6 +256,24 @@ public sealed class PuttingGamePage : ContentPage
         };
         currentResult.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.CurrentResultText));
 
+        var remainingPreview = new Label
+        {
+            FontSize = 13,
+            TextColor = MutedTextColor,
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+        remainingPreview.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.RemainingDistancesPreviewText));
+
+        var progressHeader = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            Children = { progress, progressCount.Column(1) }
+        };
+
         return new VerticalStackLayout
         {
             Spacing = 10,
@@ -212,10 +281,12 @@ public sealed class PuttingGamePage : ContentPage
             {
                 Card(new VerticalStackLayout
                 {
-                    Spacing = 12,
+                    Spacing = 10,
                     Children =
                     {
-                        progress,
+                        progressHeader,
+                        progressBar,
+                        remainingPreview,
                         distance,
                         new Label
                         {
@@ -225,33 +296,70 @@ public sealed class PuttingGamePage : ContentPage
                         },
                         new HorizontalStackLayout
                         {
-                            Spacing = 12,
+                            Spacing = 10,
                             HorizontalOptions = LayoutOptions.Center,
                             Children = { minus, putts, plus }
                         },
                         currentResult
                     }
                 }),
-                RunningTotalPanel(),
-                submitButton
+                RunningTotalPanel()
             }
         };
     }
 
     private View RunningTotalPanel()
     {
-        var totalPutts = BoundLabel(nameof(PuttingGameViewModel.TotalPuttsText), "Putts i alt: {0}");
-        var runningSg = BoundLabel(nameof(PuttingGameViewModel.RunningSgText), "Putting SG: {0}");
+        var remainingPreview = new Label
+        {
+            FontSize = 13,
+            TextColor = MutedTextColor
+        };
+        remainingPreview.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.RemainingCountText));
+
         var remaining = new Label
         {
-            FontSize = 14,
+            FontSize = 13,
             TextColor = TextColor
         };
         remaining.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.RemainingDistancesText));
+        remaining.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.ShowRemainingDistanceDetails));
+
+        var detailsButton = new Button
+        {
+            BackgroundColor = Colors.White,
+            BorderColor = PrimaryGreen,
+            BorderWidth = 1,
+            TextColor = PrimaryGreen,
+            CornerRadius = 8,
+            HeightRequest = 44,
+            FontSize = 13,
+            Padding = new Thickness(10, 6)
+        };
+        detailsButton.SetBinding(Button.TextProperty, nameof(PuttingGameViewModel.RemainingDistanceDetailsButtonText));
+        detailsButton.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.HasRemainingDistanceDetails));
+        detailsButton.Clicked += (_, _) => viewModel.ShowRemainingDistanceDetails = !viewModel.ShowRemainingDistanceDetails;
+
+        var stats = new Grid
+        {
+            ColumnSpacing = 8,
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star)
+            },
+            Children =
+            {
+                StatBlock("Resultat", nameof(PuttingGameViewModel.CurrentResultValueText)),
+                StatBlock("Putts", nameof(PuttingGameViewModel.TotalPuttsText)).Column(1),
+                StatBlock("SG total", nameof(PuttingGameViewModel.RunningSgText)).Column(2)
+            }
+        };
 
         return Card(new VerticalStackLayout
         {
-            Spacing = 6,
+            Spacing = 10,
             Children =
             {
                 new Label
@@ -260,8 +368,9 @@ public sealed class PuttingGamePage : ContentPage
                     FontAttributes = FontAttributes.Bold,
                     TextColor = TextColor
                 },
-                totalPutts,
-                runningSg,
+                stats,
+                remainingPreview,
+                detailsButton,
                 remaining
             }
         });
@@ -310,9 +419,19 @@ public sealed class PuttingGamePage : ContentPage
                 return;
             }
 
-            var page = Handler!.MauiContext!.Services.GetRequiredService<RoundResultPage>();
-            await page.LoadAsync(completedRoundId);
-            await Navigation.PushAsync(page);
+            try
+            {
+                var page = Handler!.MauiContext!.Services.GetRequiredService<RoundResultPage>();
+                await page.LoadAsync(completedRoundId);
+                await Navigation.PushAsync(page);
+            }
+            catch (Exception)
+            {
+                await DisplayAlertAsync(
+                    "Resultatet kunne ikke åbnes",
+                    "Prøv igen, eller tjek lagring under Indstillinger.",
+                    "OK");
+            }
         };
 
         var finish = new Button
@@ -359,6 +478,35 @@ public sealed class PuttingGamePage : ContentPage
         };
         label.SetBinding(Label.TextProperty, new Binding(path, stringFormat: format));
         return label;
+    }
+
+    private static View StatBlock(string title, string bindingPath)
+    {
+        var value = new Label
+        {
+            FontSize = 18,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = TextColor,
+            HorizontalTextAlignment = TextAlignment.Center,
+            LineBreakMode = LineBreakMode.TailTruncation
+        };
+        value.SetBinding(Label.TextProperty, bindingPath);
+
+        return new VerticalStackLayout
+        {
+            Spacing = 2,
+            Children =
+            {
+                new Label
+                {
+                    Text = title,
+                    FontSize = 12,
+                    TextColor = MutedTextColor,
+                    HorizontalTextAlignment = TextAlignment.Center
+                },
+                value
+            }
+        };
     }
 
     private static Button StepperButton(string text)

@@ -23,7 +23,17 @@ public sealed class StartPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await viewModel.LoadAsync();
+        try
+        {
+            await viewModel.LoadAsync();
+        }
+        catch (Exception)
+        {
+            await DisplayAlertAsync(
+                "Historik kunne ikke indlæses",
+                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "OK");
+        }
     }
 
     private void BuildLayout()
@@ -150,9 +160,19 @@ public sealed class StartPage : ContentPage
 
     private async Task OpenRoundAsync(RoundListItemViewModel item)
     {
-        var page = services.GetRequiredService<RoundResultPage>();
-        await page.LoadAsync(item.Id);
-        await Navigation.PushAsync(page);
+        try
+        {
+            var page = services.GetRequiredService<RoundResultPage>();
+            await page.LoadAsync(item.Id);
+            await Navigation.PushAsync(page);
+        }
+        catch (Exception)
+        {
+            await DisplayAlertAsync(
+                "Runde kunne ikke åbnes",
+                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "OK");
+        }
     }
 
     private async Task DeleteRoundAsync(RoundListItemViewModel item)
@@ -168,7 +188,17 @@ public sealed class StartPage : ContentPage
             return;
         }
 
-        await viewModel.DeleteRoundAsync(item);
+        try
+        {
+            await viewModel.DeleteRoundAsync(item);
+        }
+        catch (Exception)
+        {
+            await DisplayAlertAsync(
+                "Runde kunne ikke slettes",
+                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "OK");
+        }
     }
 
     private static DataTemplate RoundTemplate(
@@ -192,6 +222,27 @@ public sealed class StartPage : ContentPage
             var detail = new Label { FontSize = 14, TextColor = Color.FromArgb("#4E5851") };
             detail.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DetailText));
 
+            var delete = new Button
+            {
+                Text = "Slet",
+                BackgroundColor = Colors.White,
+                BorderColor = Color.FromArgb("#9D2F2F"),
+                BorderWidth = 1,
+                TextColor = Color.FromArgb("#9D2F2F"),
+                CornerRadius = 8,
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 12,
+                HeightRequest = 36,
+                Padding = new Thickness(10, 0)
+            };
+            delete.Clicked += async (sender, _) =>
+            {
+                if (sender is BindableObject { BindingContext: RoundListItemViewModel item })
+                {
+                    await deleteRoundAsync(item);
+                }
+            };
+
             var card = new Border
             {
                 BackgroundColor = Colors.White,
@@ -209,66 +260,29 @@ public sealed class StartPage : ContentPage
                             ColumnDefinitions =
                             {
                                 new ColumnDefinition(GridLength.Star),
+                                new ColumnDefinition(GridLength.Auto),
                                 new ColumnDefinition(GridLength.Auto)
                             },
+                            ColumnSpacing = 8,
                             Children = { date.Column(0), sg.Column(1) }
                         },
-                        detail
+                        detail,
+                        delete
                     }
                 }
             };
 
-            var press = new PointerGestureRecognizer();
             var tap = new TapGestureRecognizer();
-            CancellationTokenSource? holdTokenSource = null;
-            var suppressNextTap = false;
 
             tap.Tapped += async (_, _) =>
             {
-                if (suppressNextTap)
-                {
-                    suppressNextTap = false;
-                    return;
-                }
-
                 if (card.BindingContext is RoundListItemViewModel item)
                 {
                     await openRoundAsync(item);
                 }
             };
 
-            press.PointerPressed += (_, _) =>
-            {
-                holdTokenSource?.Cancel();
-                holdTokenSource = new CancellationTokenSource();
-                suppressNextTap = false;
-                var token = holdTokenSource.Token;
-
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await Task.Delay(700, token);
-                        await MainThread.InvokeOnMainThreadAsync(async () =>
-                        {
-                            if (!token.IsCancellationRequested &&
-                                card.BindingContext is RoundListItemViewModel item)
-                            {
-                                suppressNextTap = true;
-                                await deleteRoundAsync(item);
-                            }
-                        });
-                    }
-                    catch (OperationCanceledException)
-                    {
-                    }
-                });
-            };
-
-            press.PointerReleased += (_, _) => holdTokenSource?.Cancel();
-            press.PointerExited += (_, _) => holdTokenSource?.Cancel();
             card.GestureRecognizers.Add(tap);
-            card.GestureRecognizers.Add(press);
 
             return card;
         });

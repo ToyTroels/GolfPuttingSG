@@ -331,6 +331,43 @@ public sealed class StrokesGainedCalculatorTests
     }
 
     [TestMethod]
+    public void PuttingGameShortBenchmarkDistancesAreStable()
+    {
+        double[] expected =
+        [
+            6.5, 6.5, 6.5, 6.5, 6.0, 6.0, 6.0, 6.0, 7.1, 7.1,
+            7.1, 7.1, 5.4, 5.4, 5.4, 7.6, 7.6, 7.6, 4.9, 4.9,
+            4.9, 8.2, 8.2, 8.2, 8.7, 8.7, 4.3, 4.3, 3.8, 3.8,
+            9.3, 9.3, 3.2, 9.8, 2.7, 10.4, 2.1, 10.9, 1.6, 11.5
+        ];
+
+        CollectionAssert.AreEqual(expected, PuttingGame.ShortBenchmarkDistancesMeters.ToArray());
+    }
+
+    [TestMethod]
+    public void PuttingGameBenchmarkDefinitionIncludesPresetMetadata()
+    {
+        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalBenchmark);
+
+        Assert.AreEqual(PuttingGameKind.Benchmark, definition.Kind);
+        Assert.AreEqual(BenchmarkLength.Normal, definition.BenchmarkLength);
+        Assert.AreEqual(PuttingGame.NormalBenchmarkPresetId, definition.PresetId);
+        Assert.AreEqual(PuttingGame.BenchmarkPresetVersion, definition.PresetVersion);
+        Assert.AreEqual(75, definition.AttemptCount);
+        Assert.AreEqual("Normal benchmark", definition.DisplayName);
+    }
+
+    [TestMethod]
+    public void PuttingGameRoundInfoUsesTargetTotalForNormalizedGames()
+    {
+        var info = PuttingGame.CreateRoundGameInfo(PuttingGame.GetDefinition(PuttingGame.LadderMode));
+
+        Assert.AreEqual("PuttingGame", info.Type);
+        Assert.AreEqual(PuttingGame.TargetPutts, info.ExpectedTotal, 0.001);
+        Assert.AreEqual(18, info.AttemptCount);
+    }
+
+    [TestMethod]
     public void PuttingGameCanOrderBenchmarkDistancesAscending()
     {
         var distances = PuttingGame.OrderDistances(

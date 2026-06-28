@@ -90,10 +90,25 @@ public sealed class RoundInputPage : ContentPage
         saveButton.SetBinding(Button.TextProperty, nameof(RoundInputViewModel.SaveButtonText));
         saveButton.Clicked += async (_, _) =>
         {
-            var roundId = await viewModel.SaveAsync();
-            var page = Handler!.MauiContext!.Services.GetRequiredService<RoundResultPage>();
-            await page.LoadAsync(roundId);
-            await Navigation.PushAsync(page);
+            saveButton.IsEnabled = false;
+            try
+            {
+                var roundId = await viewModel.SaveAsync();
+                var page = Handler!.MauiContext!.Services.GetRequiredService<RoundResultPage>();
+                await page.LoadAsync(roundId);
+                await Navigation.PushAsync(page);
+            }
+            catch (Exception)
+            {
+                await DisplayAlertAsync(
+                    "Runden kunne ikke gemmes",
+                    "Prøv igen, eller tjek lagring under Indstillinger.",
+                    "OK");
+            }
+            finally
+            {
+                saveButton.IsEnabled = true;
+            }
         };
         saveButton.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.IsRoundVisible));
 

@@ -16,6 +16,7 @@ public sealed class RoundFileStore
     private readonly string filePath;
     private readonly string backupFilePath;
     private readonly IReadOnlyList<string> legacyFilePaths;
+    private readonly SemaphoreSlim mutationLock = new(1, 1);
 
     public RoundFileStore(string appDataDirectory, IEnumerable<string>? legacyAppDataDirectories = null)
     {
@@ -81,39 +82,55 @@ public sealed class RoundFileStore
 
     public async Task SaveRoundAsync(Round round)
     {
-        await Task.Run(async () =>
+        await mutationLock.WaitAsync();
+        try
         {
-            var loadResult = await LoadRoundsForMutationAsync();
-            var rounds = loadResult.Rounds.ToList();
-            var existingIndex = rounds.FindIndex(existing => existing.Id == round.Id);
-            if (existingIndex >= 0)
+            await Task.Run(async () =>
             {
-                rounds[existingIndex] = round;
-            }
-            else
-            {
-                rounds.Insert(0, round);
-            }
+                var loadResult = await LoadRoundsForMutationAsync();
+                var rounds = loadResult.Rounds.ToList();
+                var existingIndex = rounds.FindIndex(existing => existing.Id == round.Id);
+                if (existingIndex >= 0)
+                {
+                    rounds[existingIndex] = round;
+                }
+                else
+                {
+                    rounds.Insert(0, round);
+                }
 
-            await PreserveUnreadableActiveFileBeforeOverwriteAsync(loadResult);
-            await WriteRoundsAsync(SortNewestFirst(rounds, reverseTies: false));
-        });
+                await PreserveUnreadableActiveFileBeforeOverwriteAsync(loadResult);
+                await WriteRoundsAsync(SortNewestFirst(rounds, reverseTies: false));
+            });
+        }
+        finally
+        {
+            mutationLock.Release();
+        }
     }
 
     public async Task DeleteRoundAsync(string roundId)
     {
-        await Task.Run(async () =>
+        await mutationLock.WaitAsync();
+        try
         {
-            var loadResult = await LoadRoundsForMutationAsync();
-            var rounds = SortNewestFirst(
-                loadResult.Rounds
-                    .Where(round => round.Id != roundId)
-                    .ToList(),
-                reverseTies: false);
+            await Task.Run(async () =>
+            {
+                var loadResult = await LoadRoundsForMutationAsync();
+                var rounds = SortNewestFirst(
+                    loadResult.Rounds
+                        .Where(round => round.Id != roundId)
+                        .ToList(),
+                    reverseTies: false);
 
-            await PreserveUnreadableActiveFileBeforeOverwriteAsync(loadResult);
-            await WriteRoundsAsync(rounds);
-        });
+                await PreserveUnreadableActiveFileBeforeOverwriteAsync(loadResult);
+                await WriteRoundsAsync(rounds);
+            });
+        }
+        finally
+        {
+            mutationLock.Release();
+        }
     }
 
     public Task ExportRoundsAsync(string destinationPath)
@@ -137,16 +154,24 @@ public sealed class RoundFileStore
     public async Task ImportRoundsAsync(string sourcePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
-        await Task.Run(async () =>
+        await mutationLock.WaitAsync();
+        try
         {
-            var importRead = await ReadRoundsAsync(sourcePath);
-            if (importRead.Rounds is null)
+            await Task.Run(async () =>
             {
-                throw new InvalidDataException("The selected rounds file could not be read.");
-            }
+                var importRead = await ReadRoundsAsync(sourcePath);
+                if (importRead.Rounds is null)
+                {
+                    throw new InvalidDataException("The selected rounds file could not be read.");
+                }
 
-            await WriteRoundsAsync(SortNewestFirst(importRead.Rounds, reverseTies: false));
-        });
+                await WriteRoundsAsync(SortNewestFirst(importRead.Rounds, reverseTies: false));
+            });
+        }
+        finally
+        {
+            mutationLock.Release();
+        }
     }
 
     private async Task<RoundLoadResult> LoadRoundsForMutationAsync()
