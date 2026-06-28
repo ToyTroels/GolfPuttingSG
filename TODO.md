@@ -30,6 +30,7 @@
 
 - [ ] Add UI for configuring whether SG approach and SG around the green are tracked for a round.
 - [ ] Add the available SG categories to the settings screen, including putting, approach, and around the green.
+- [ ] Define what happens when a player toggles an SG category off during an active round, including whether entered shot data is preserved, hidden, excluded from summaries, restored if toggled back on, and warned about before saving.
 - [ ] Persist the selected SG category configuration with the active round and saved round history.
 - [ ] Show or hide approach and around-the-green inputs based on the selected configuration.
 - [ ] Keep SG summaries, result views, and periodic evaluations aligned with the enabled categories.
