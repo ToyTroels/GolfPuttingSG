@@ -276,7 +276,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     public double ApproachEndDistance
     {
         get => ParseDistance(ApproachEndDistanceText);
-        set => ApproachEndDistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxFinishDistanceMeters), 1);
+        set => ApproachEndDistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxFinishDistanceMeters), 0);
     }
 
     public string ApproachEndDistanceDisplayText => FormatApproachEndDistance();
@@ -518,6 +518,13 @@ public sealed class HoleInputViewModel : ViewModelBase
         ? "Omkring green"
         : $"Omkring green slag {completedAroundGreenShots.Count + 1}";
 
+    public IReadOnlyList<AroundGreenShotSummaryViewModel> CompletedAroundGreenShotSummaries =>
+        completedAroundGreenShots
+            .Select((shot, index) => AroundGreenShotSummaryViewModel.FromShot(shot, index + 1))
+            .ToList();
+
+    public bool HasCompletedAroundGreenShots => completedAroundGreenShots.Count > 0;
+
     public bool CanAddAnotherAroundGreenShot => IsAroundGreenInputVisible &&
         ParseDistance(AroundGreenStartDistanceText) > 0 &&
         ParseDistance(AroundGreenEndDistanceText) > 0 &&
@@ -704,6 +711,8 @@ public sealed class HoleInputViewModel : ViewModelBase
         carriedPuttingDistanceFromAroundGreenMeters = null;
 
         OnPropertyChanged(nameof(AroundGreenShotTitle));
+        OnPropertyChanged(nameof(CompletedAroundGreenShotSummaries));
+        OnPropertyChanged(nameof(HasCompletedAroundGreenShots));
         OnPropertyChanged(nameof(AroundGreenStartDistanceText));
         OnPropertyChanged(nameof(AroundGreenStartDistanceYards));
         OnPropertyChanged(nameof(AroundGreenStartDistanceDisplayText));
@@ -751,7 +760,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         distanceText = hole.FirstPuttDistanceMeters > 0 ? hole.FirstPuttDistanceMeters.ToString("0.###") : string.Empty;
         approachDistanceText = hole.ApproachDistanceMeters > 0 ? hole.ApproachDistanceMeters.ToString("0.###") : string.Empty;
         approachStartDistanceText = hole.ApproachStartDistanceYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachStartDistanceYards), 0) : string.Empty;
-        approachEndDistanceText = hole.ApproachEndDistance > 0 ? FormatStoredDistance(ToMeters(hole.ApproachEndDistance, hole.ApproachEndDistanceUnit), 1) : string.Empty;
+        approachEndDistanceText = hole.ApproachEndDistance > 0 ? FormatStoredDistance(ToMeters(hole.ApproachEndDistance, hole.ApproachEndDistanceUnit), 0) : string.Empty;
         approachEndDistanceToGreenEdgeText = hole.ApproachEndDistanceToGreenEdgeYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachEndDistanceToGreenEdgeYards), 0) : string.Empty;
         approachStartLieText = FormatLie(hole.ApproachStartLie);
         approachEndLieText = FormatLie(hole.ApproachEndLie);
@@ -826,6 +835,8 @@ public sealed class HoleInputViewModel : ViewModelBase
         OnPropertyChanged(nameof(AroundGreenHoled));
         OnPropertyChanged(nameof(AroundGreenPenaltyStrokes));
         OnPropertyChanged(nameof(AroundGreenShotTitle));
+        OnPropertyChanged(nameof(CompletedAroundGreenShotSummaries));
+        OnPropertyChanged(nameof(HasCompletedAroundGreenShots));
         OnPropertyChanged(nameof(CanAddAnotherAroundGreenShot));
         OnPropertyChanged(nameof(IsAroundGreenFinishDistanceVisible));
         OnPropertyChanged(nameof(AroundGreenEndDistanceUnitText));
@@ -904,7 +915,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         }
 
         var distance = ParseDistance(ApproachEndDistanceText);
-        return distance > 0 ? UiFormat.Meters(distance) : "-";
+        return distance > 0 ? UiFormat.WholeMeters(distance) : "-";
     }
 
     private string FormatApproachEndDistanceToGreenEdge()
@@ -935,10 +946,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         };
     }
 
-    private double GetApproachFinishStep()
-    {
-        return ParseLie(ApproachEndLieText) == ShotLie.Green ? GreenFinishDistanceStepMeters : ApproachDistanceStepMeters;
-    }
+    private double GetApproachFinishStep() => ApproachDistanceStepMeters;
 
     private string FormatAroundGreenStartDistance()
     {
@@ -1255,5 +1263,57 @@ public sealed class HoleInputViewModel : ViewModelBase
         return rounded <= 0
             ? string.Empty
             : rounded.ToString(decimals == 0 ? "0" : "0.#", System.Globalization.CultureInfo.InvariantCulture);
+    }
+}
+
+public sealed record AroundGreenShotSummaryViewModel(
+    string Title,
+    string StartText,
+    string EndText,
+    string PenaltyText)
+{
+    private const double MetersPerYard = 0.9144;
+    private const double MetersPerFoot = 0.3048;
+
+    public static AroundGreenShotSummaryViewModel FromShot(GolfShot shot, int shotNumber)
+    {
+        var start = $"{UiFormat.WholeMeters(ToMeters(shot.StartDistanceToPin, shot.StartDistanceUnit))} {FormatLie(shot.StartLie).ToLowerInvariant()}";
+        var end = shot.Holed || shot.EndLie == ShotLie.Holed
+            ? "I hul"
+            : $"{UiFormat.Meters(ToMeters(shot.EndDistanceToPin, shot.EndDistanceUnit))} {FormatLie(shot.EndLie).ToLowerInvariant()}";
+        var penalties = shot.PenaltyStrokes == 1
+            ? "1 strafslag"
+            : $"{shot.PenaltyStrokes} strafslag";
+
+        return new AroundGreenShotSummaryViewModel(
+            $"Slag omkring green {shotNumber}",
+            $"Start: {start}",
+            $"Slut: {end}",
+            penalties);
+    }
+
+    private static double ToMeters(double distance, DistanceUnit unit)
+    {
+        return unit switch
+        {
+            DistanceUnit.Feet => distance * MetersPerFoot,
+            DistanceUnit.Yards => distance * MetersPerYard,
+            _ => distance
+        };
+    }
+
+    private static string FormatLie(ShotLie lie)
+    {
+        return lie switch
+        {
+            ShotLie.FairwayCut => "Kortklippet",
+            ShotLie.Fairway => "Fairway",
+            ShotLie.Tee => "Tee",
+            ShotLie.Sand => "Sand",
+            ShotLie.Recovery => "Problemlie",
+            ShotLie.Green => "Green",
+            ShotLie.Holed => "I hul",
+            _ => "Rough"
+        };
     }
 }

@@ -42,3 +42,30 @@ dotnet restore GolfSG.sln
 dotnet test tests\GolfSG.Tests\GolfSG.Tests.csproj
 dotnet build src\GolfSG\GolfSG.csproj -f net10.0-windows10.0.19041.0
 ```
+
+## Udgiv Android APK til OneDrive
+
+Når appen skal udgives som en lokal Android APK, brug denne kommando fra repoets rod:
+
+```powershell
+dotnet publish src\GolfSG\GolfSG.csproj -f net10.0-android -c Release -p:AndroidPackageFormat=apk -p:PublishTrimmed=false -p:RunAOTCompilation=false -p:AndroidLinkMode=None --no-restore
+```
+
+Den signerede APK bliver oprettet her:
+
+```text
+src\GolfSG\bin\Release\net10.0-android\publish\com.troel.golfsg-Signed.apk
+```
+
+Kopier den derefter til OneDrive:
+
+```powershell
+New-Item -ItemType Directory -Path 'C:\Users\Troel\OneDrive\GolfSG' -Force
+Copy-Item -LiteralPath 'C:\Users\Troel\source\repos\GolfPuttingSG\src\GolfSG\bin\Release\net10.0-android\publish\com.troel.golfsg-Signed.apk' -Destination 'C:\Users\Troel\OneDrive\GolfSG\GolfSG.apk' -Force
+```
+
+Noter:
+
+- `--no-restore` bruges, fordi restore tidligere ramte en NuGet-lock i `AppData`.
+- `PublishTrimmed=false`, `RunAOTCompilation=false` og `AndroidLinkMode=None` bruges til en lokal installérbar APK, fordi trimmed/AOT publish tidligere fejlede i Android assembly processing.
+- Kopiering til OneDrive kræver skriveadgang uden for repoet.

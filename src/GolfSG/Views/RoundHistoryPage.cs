@@ -1,30 +1,29 @@
-using GolfSG.Core;
 using GolfSG.ViewModels;
-using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Controls.Shapes;
 
 namespace GolfSG.Views;
 
-public sealed class StartPage : ContentPage
+public sealed class RoundHistoryPage : ContentPage
 {
+    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
+    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
+    private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
+    private static readonly Color DangerRed = Color.FromArgb("#9D2F2F");
+    private static readonly Color TextColor = Color.FromArgb("#202421");
+    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
+
     private readonly StartViewModel viewModel;
     private readonly IServiceProvider services;
 
-    public StartPage(StartViewModel viewModel, IServiceProvider services)
+    public RoundHistoryPage(StartViewModel viewModel, IServiceProvider services)
     {
         this.viewModel = viewModel;
         this.services = services;
         BindingContext = viewModel;
-        Title = "Putting SG";
-        BackgroundColor = Color.FromArgb("#F4F1E8");
+        Title = "Historik";
+        BackgroundColor = PageBackground;
         BuildLayout();
-        ToolbarItems.Add(new ToolbarItem
-        {
-            Text = "\u2699",
-            Order = ToolbarItemOrder.Primary,
-            Priority = 0,
-            Command = new Command(async () => await Navigation.PushAsync(services.GetRequiredService<SettingsPage>()))
-        });
     }
 
     protected override async void OnAppearing()
@@ -45,60 +44,6 @@ public sealed class StartPage : ContentPage
 
     private void BuildLayout()
     {
-        var newRoundButton = new Button
-        {
-            Text = "Ny runde",
-            BackgroundColor = Color.FromArgb("#0F5132"),
-            TextColor = Colors.White,
-            CornerRadius = 8
-        };
-        newRoundButton.Clicked += async (_, _) =>
-            await Navigation.PushAsync(services.GetRequiredService<RoundInputPage>());
-
-        var puttingGameButton = new Button
-        {
-            Text = "Putting-spil",
-            BackgroundColor = Colors.White,
-            BorderColor = Color.FromArgb("#0F5132"),
-            BorderWidth = 1,
-            TextColor = Color.FromArgb("#0F5132"),
-            CornerRadius = 8
-        };
-        puttingGameButton.Clicked += async (_, _) =>
-        {
-            var page = services.GetRequiredService<PuttingGamePage>();
-            page.Start(PuttingGame.LadderMode);
-            await Navigation.PushAsync(page);
-        };
-
-        var tourRoundGameButton = new Button
-        {
-            Text = "Tour-runde",
-            BackgroundColor = Colors.White,
-            BorderColor = Color.FromArgb("#0F5132"),
-            BorderWidth = 1,
-            TextColor = Color.FromArgb("#0F5132"),
-            CornerRadius = 8
-        };
-        tourRoundGameButton.Clicked += async (_, _) =>
-        {
-            var page = services.GetRequiredService<PuttingGamePage>();
-            page.Start(PuttingGame.TourRoundMode);
-            await Navigation.PushAsync(page);
-        };
-
-        var historyButton = new Button
-        {
-            Text = "Historik",
-            BackgroundColor = Colors.White,
-            BorderColor = Color.FromArgb("#0F5132"),
-            BorderWidth = 1,
-            TextColor = Color.FromArgb("#0F5132"),
-            CornerRadius = 8
-        };
-        historyButton.Clicked += async (_, _) =>
-            await Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>());
-
         var warning = new Border
         {
             BackgroundColor = Color.FromArgb("#FFF7E0"),
@@ -121,46 +66,35 @@ public sealed class StartPage : ContentPage
             ItemTemplate = RoundTemplate(OpenRoundAsync, DeleteRoundAsync),
             Header = new VerticalStackLayout
             {
-                Spacing = 0,
+                Spacing = 4,
                 Children =
                 {
                     warning,
                     new Label
                     {
-                        Text = "Putting SG",
-                        FontSize = 34,
+                        Text = "Historik",
+                        FontSize = 30,
                         FontAttributes = FontAttributes.Bold,
-                        TextColor = Color.FromArgb("#202421")
+                        TextColor = TextColor
                     },
                     new Label
                     {
-                        Text = "Registrer strokes gained putting mod PGA Tour-baseline",
-                        FontSize = 16,
-                        TextColor = Color.FromArgb("#4E5851")
-                    },
-                    new VerticalStackLayout
-                    {
-                        Spacing = 10,
-                        Children = { newRoundButton, puttingGameButton, tourRoundGameButton, historyButton }
-                    }.Margin(new Thickness(0, 16, 0, 18)),
-                    new Label
-                    {
-                        Text = "Seneste runder og spil",
-                        FontSize = 18,
-                        FontAttributes = FontAttributes.Bold,
-                        TextColor = Color.FromArgb("#202421")
-                    }.Margin(new Thickness(0, 0, 0, 8))
+                        Text = "Gemte runder og putting-spil",
+                        FontSize = 15,
+                        TextColor = MutedTextColor,
+                        Margin = new Thickness(0, 0, 0, 14)
+                    }
                 }
             },
             EmptyView = new Label
             {
                 Text = "Ingen gemte runder endnu.",
                 FontSize = 14,
-                TextColor = Color.FromArgb("#4E5851"),
+                TextColor = MutedTextColor,
                 Margin = new Thickness(0, 8, 0, 0)
             }
         };
-        rounds.SetBinding(ItemsView.ItemsSourceProperty, nameof(StartViewModel.RecentRounds));
+        rounds.SetBinding(ItemsView.ItemsSourceProperty, nameof(StartViewModel.Rounds));
 
         Content = rounds.Margin(new Thickness(16));
     }
@@ -221,21 +155,21 @@ public sealed class StartPage : ContentPage
             {
                 FontSize = 18,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = Color.FromArgb("#0F5132"),
+                TextColor = PrimaryGreen,
                 HorizontalTextAlignment = TextAlignment.End
             };
             sg.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.TotalSgText));
 
-            var detail = new Label { FontSize = 14, TextColor = Color.FromArgb("#4E5851") };
+            var detail = new Label { FontSize = 14, TextColor = MutedTextColor };
             detail.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DetailText));
 
             var delete = new Button
             {
                 Text = "Slet",
                 BackgroundColor = Colors.White,
-                BorderColor = Color.FromArgb("#9D2F2F"),
+                BorderColor = DangerRed,
                 BorderWidth = 1,
-                TextColor = Color.FromArgb("#9D2F2F"),
+                TextColor = DangerRed,
                 CornerRadius = 8,
                 FontAttributes = FontAttributes.Bold,
                 FontSize = 12,
@@ -253,7 +187,7 @@ public sealed class StartPage : ContentPage
             var card = new Border
             {
                 BackgroundColor = Colors.White,
-                Stroke = Color.FromArgb("#DCE4DD"),
+                Stroke = CardStroke,
                 StrokeShape = new RoundRectangle { CornerRadius = 8 },
                 Padding = 14,
                 Margin = new Thickness(0, 0, 0, 10),
@@ -267,7 +201,6 @@ public sealed class StartPage : ContentPage
                             ColumnDefinitions =
                             {
                                 new ColumnDefinition(GridLength.Star),
-                                new ColumnDefinition(GridLength.Auto),
                                 new ColumnDefinition(GridLength.Auto)
                             },
                             ColumnSpacing = 8,
@@ -280,7 +213,6 @@ public sealed class StartPage : ContentPage
             };
 
             var tap = new TapGestureRecognizer();
-
             tap.Tapped += async (_, _) =>
             {
                 if (card.BindingContext is RoundListItemViewModel item)
@@ -288,7 +220,6 @@ public sealed class StartPage : ContentPage
                     await openRoundAsync(item);
                 }
             };
-
             card.GestureRecognizers.Add(tap);
 
             return card;

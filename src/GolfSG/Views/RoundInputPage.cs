@@ -446,7 +446,7 @@ public sealed class RoundInputPage : ContentPage
         totalSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalSgText), stringFormat: "Samlet SG: {0}"));
 
         var puttingSg = new Label { TextColor = TextColor };
-        puttingSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalPuttingSgText), stringFormat: "SG Putting: {0}"));
+        puttingSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalPuttingSgText), stringFormat: "SG Putning: {0}"));
         puttingSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
 
         var approachSg = new Label { TextColor = TextColor };

@@ -37,6 +37,7 @@ public static class MauiProgram
         builder.Services.AddTransient<RoundInputPage>();
         builder.Services.AddTransient<PuttingGamePage>();
         builder.Services.AddTransient<RoundResultPage>();
+        builder.Services.AddTransient<RoundHistoryPage>();
 
         return builder.Build();
     }

@@ -132,7 +132,7 @@ public sealed class RoundResultPage : ContentPage
 
     private View SummaryPanel()
     {
-        var puttingSg = BoundLabel(nameof(RoundResultViewModel.TotalPuttingSgText), "SG Putting: {0}");
+        var puttingSg = BoundLabel(nameof(RoundResultViewModel.TotalPuttingSgText), "SG Putning: {0}");
         puttingSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
         var averagePuttDistance = BoundLabel(nameof(RoundResultViewModel.AverageDistanceText), "Gns. første putt-afstand: {0}");

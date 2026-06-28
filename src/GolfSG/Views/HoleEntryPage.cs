@@ -108,7 +108,7 @@ public sealed class HoleEntryPage : ContentPage
             ("3 putts", 3, () => viewModel.SetPutts(3)));
 
         var puttingSg = SgLabel();
-        puttingSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedPuttingText), stringFormat: "SG Putting {0}"));
+        puttingSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedPuttingText), stringFormat: "SG Putning {0}"));
 
         var approachDistance = DistanceSlider(250);
         approachDistance.SetBinding(Slider.ValueProperty, nameof(HoleInputViewModel.ApproachDistanceMeters), BindingMode.TwoWay);
@@ -258,6 +258,8 @@ public sealed class HoleEntryPage : ContentPage
         var aroundGreenSg = SgLabel();
         aroundGreenSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedAroundGreenText), stringFormat: "SG Omkring green {0}"));
 
+        var completedAroundGreenShots = CompletedAroundGreenShotsPanel();
+
         var addAroundGreenShot = new Button
         {
             Text = "Tilføj nyt slag omkring green",
@@ -300,6 +302,7 @@ public sealed class HoleEntryPage : ContentPage
         approachSection.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsApproachInputVisible));
 
         var aroundGreenSection = AroundGreenSection(
+            completedAroundGreenShots,
             aroundGreenStartLie,
             aroundGreenStartDistance,
             aroundGreenStartDistanceValue,
@@ -485,7 +488,7 @@ public sealed class HoleEntryPage : ContentPage
             {
                 ShotPositionPanel("Start", "Til flaget", startLie, startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
                 ShotPathDivider(),
-                ShotPositionPanel("Finish", endLie, endDistancePanel),
+                ShotPositionPanel("Slut", endLie, endDistancePanel),
                 ToggleRow("I hul", holed),
                 CounterPanel("Strafslag", penaltyMinus, penaltyStrokes, penaltyPlus),
                 sg
@@ -493,7 +496,66 @@ public sealed class HoleEntryPage : ContentPage
         });
     }
 
+    private static View CompletedAroundGreenShotsPanel()
+    {
+        var shots = new VerticalStackLayout
+        {
+            Spacing = 0
+        };
+        BindableLayout.SetItemTemplate(shots, new DataTemplate(() =>
+            {
+                var title = new Label
+                {
+                    FontSize = 14,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = TextColor
+                };
+                title.SetBinding(Label.TextProperty, nameof(AroundGreenShotSummaryViewModel.Title));
+
+                var start = new Label
+                {
+                    FontSize = 13,
+                    TextColor = TextColor
+                };
+                start.SetBinding(Label.TextProperty, nameof(AroundGreenShotSummaryViewModel.StartText));
+
+                var end = new Label
+                {
+                    FontSize = 13,
+                    TextColor = TextColor
+                };
+                end.SetBinding(Label.TextProperty, nameof(AroundGreenShotSummaryViewModel.EndText));
+
+                var penalties = new Label
+                {
+                    FontSize = 13,
+                    TextColor = MutedTextColor
+                };
+                penalties.SetBinding(Label.TextProperty, nameof(AroundGreenShotSummaryViewModel.PenaltyText));
+
+                return new Border
+                {
+                    BackgroundColor = InputBackground,
+                    Stroke = CardStroke,
+                    StrokeThickness = 1,
+                    StrokeShape = new RoundRectangle { CornerRadius = 8 },
+                    Padding = new Thickness(10, 8),
+                    Margin = new Thickness(0, 0, 0, 8),
+                    Content = new VerticalStackLayout
+                    {
+                        Spacing = 3,
+                        Children = { title, start, end, penalties }
+                    }
+                };
+            }));
+        shots.SetBinding(BindableLayout.ItemsSourceProperty, nameof(HoleInputViewModel.CompletedAroundGreenShotSummaries));
+        shots.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.HasCompletedAroundGreenShots));
+
+        return shots;
+    }
+
     private static View AroundGreenSection(
+        View completedShots,
         View startLie,
         Slider startDistance,
         Label startDistanceValue,
@@ -522,9 +584,10 @@ public sealed class HoleEntryPage : ContentPage
             Children =
             {
                 title,
+                completedShots,
                 ShotPositionPanel("Start", "Til flaget", startLie, startDistance, startDistanceValue, startDistanceMinus, startDistancePlus),
                 ShotPathDivider(),
-                ShotPositionPanel("Finish", endLie, endDistancePanel),
+                ShotPositionPanel("Slut", endLie, endDistancePanel),
                 ToggleRow("I hul", holed),
                 CounterPanel("Strafslag", penaltyMinus, penaltyStrokes, penaltyPlus),
                 addAnotherShot,

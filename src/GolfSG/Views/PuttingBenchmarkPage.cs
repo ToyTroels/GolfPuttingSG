@@ -17,7 +17,7 @@ public sealed class PuttingBenchmarkPage : ContentPage
     {
         this.viewModel = viewModel;
         BindingContext = viewModel;
-        Title = "Benchmark";
+        Title = "Test";
         BackgroundColor = PageBackground;
         BuildLayout();
     }
@@ -44,7 +44,7 @@ public sealed class PuttingBenchmarkPage : ContentPage
                 {
                     new Label
                     {
-                        Text = "Benchmark",
+                        Text = "Test",
                         FontSize = 26,
                         FontAttributes = FontAttributes.Bold,
                         TextColor = TextColor

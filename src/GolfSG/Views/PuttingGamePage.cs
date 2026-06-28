@@ -182,7 +182,7 @@ public sealed class PuttingGamePage : ContentPage
     {
         var button = new Button
         {
-            Text = "Benchmark",
+            Text = "Test",
             BackgroundColor = Colors.White,
             BorderColor = PrimaryGreen,
             BorderWidth = 1,

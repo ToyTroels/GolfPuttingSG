@@ -15,6 +15,8 @@ public sealed class StartViewModel : ViewModelBase
 
     public ObservableCollection<RoundListItemViewModel> Rounds { get; } = [];
 
+    public ObservableCollection<RoundListItemViewModel> RecentRounds { get; } = [];
+
     public bool ShowRecoveredFromBackupWarning
     {
         get => showRecoveredFromBackupWarning;
@@ -28,10 +30,22 @@ public sealed class StartViewModel : ViewModelBase
     {
         var rounds = await repository.GetRoundsAsync();
         ShowRecoveredFromBackupWarning = repository.WasLastReadRecoveredFromBackup;
+        var sortedRounds = rounds
+            .OrderByDescending(round => round.Date)
+            .ThenByDescending(round => round.Id, StringComparer.Ordinal)
+            .Select(round => new RoundListItemViewModel(round))
+            .ToList();
+
         Rounds.Clear();
-        foreach (var round in rounds)
+        foreach (var round in sortedRounds)
         {
-            Rounds.Add(new RoundListItemViewModel(round));
+            Rounds.Add(round);
+        }
+
+        RecentRounds.Clear();
+        foreach (var round in sortedRounds.Take(5))
+        {
+            RecentRounds.Add(round);
         }
     }
 
@@ -39,5 +53,6 @@ public sealed class StartViewModel : ViewModelBase
     {
         await repository.DeleteRoundAsync(round.Id);
         Rounds.Remove(round);
+        RecentRounds.Remove(round);
     }
 }
