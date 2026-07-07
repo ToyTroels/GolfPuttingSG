@@ -4,9 +4,6 @@ namespace GolfSG.Core;
 
 public sealed class StrokesGainedPuttingService : IStrokesGainedPuttingService
 {
-    private const double MetersPerFoot = 0.3048;
-    private const double FeetPerYard = 3;
-
     /// <summary>
     /// Delegates putting expected strokes to the app's existing putting benchmark calculator.
     /// </summary>
@@ -16,8 +13,8 @@ public sealed class StrokesGainedPuttingService : IStrokesGainedPuttingService
 
         var distanceMeters = unit switch
         {
-            DistanceUnit.Feet => distance * MetersPerFoot,
-            DistanceUnit.Yards => distance * FeetPerYard * MetersPerFoot,
+            DistanceUnit.Feet => DistanceConversions.FeetToMeters(distance),
+            DistanceUnit.Yards => DistanceConversions.YardsToMeters(distance),
             _ => throw new ArgumentOutOfRangeException(nameof(unit), unit, "Unsupported distance unit.")
         };
 

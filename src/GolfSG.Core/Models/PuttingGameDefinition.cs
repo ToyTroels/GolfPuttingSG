@@ -21,6 +21,12 @@ public enum BenchmarkLength
     Thorough
 }
 
+public enum PuttingBenchmarkType
+{
+    BellCurve,
+    Ladder
+}
+
 public sealed record PuttingGameDefinition(
     PuttingGameKind Kind,
     string DisplayName,
@@ -28,7 +34,13 @@ public sealed record PuttingGameDefinition(
     PuttingGameScoringMode ScoringMode,
     BenchmarkLength? BenchmarkLength = null,
     string? PresetId = null,
-    int? PresetVersion = null)
+    int? PresetVersion = null,
+    PuttingBenchmarkType? BenchmarkType = null,
+    double? StartDistanceMeters = null,
+    double? EndDistanceMeters = null,
+    double? DistanceStepMeters = null,
+    int? PuttsPerDistance = null,
+    string? DistanceStepDescription = null)
 {
     public int AttemptCount => DistancesMeters.Count;
 
@@ -49,4 +61,10 @@ public sealed record RoundGameInfo(
     int AttemptCount,
     double? MinimumDistanceMeters,
     double? MaximumDistanceMeters,
-    double ExpectedTotal);
+    double ExpectedTotal,
+    PuttingBenchmarkType? BenchmarkType = null,
+    double? StartDistanceMeters = null,
+    double? EndDistanceMeters = null,
+    double? DistanceStepMeters = null,
+    int? PuttsPerDistance = null,
+    string? DistanceStepDescription = null);

@@ -25,8 +25,9 @@ public sealed record Round(
     public bool IsTrackedHoleCompleted(HolePuttingData hole)
     {
         var options = TrackingOptions ?? RoundTrackingOptions.PuttingOnly;
-        return (options.TrackPutting && hole.IsCompleted) ||
-            (options.TrackApproach && hole.IsApproachCompleted) ||
-            (options.TrackAroundGreen && hole.IsAroundGreenCompleted);
+        var result = HoleResultMapper.ToResult(hole);
+        return (options.TrackPutting && result.IsPuttingCompleted) ||
+            (options.TrackApproach && result.IsApproachCompleted) ||
+            (options.TrackAroundGreen && result.IsAroundGreenCompleted);
     }
 }

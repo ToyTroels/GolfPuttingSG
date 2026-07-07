@@ -35,7 +35,16 @@ public sealed class RoundListItemViewModel
         {
             if (IsPuttingGame)
             {
-                return $"{PuttingGameTitle} | {Round.Holes.Count} putts | {TotalPutts} slag";
+                var puttingGameParts = new List<string> { PuttingGameTitle };
+                var benchmarkDetail = FormatBenchmarkDetail(Round.GameInfo);
+                if (!string.IsNullOrWhiteSpace(benchmarkDetail))
+                {
+                    puttingGameParts.Add(benchmarkDetail);
+                }
+
+                puttingGameParts.Add($"{Round.Holes.Count} putts");
+                puttingGameParts.Add($"{TotalPutts} slag");
+                return string.Join(" | ", puttingGameParts);
             }
 
             var parts = new List<string>
@@ -63,6 +72,33 @@ public sealed class RoundListItemViewModel
     }
 
     private string PuttingGameTitle => PuttingGame.GetTitle(Round.GameInfo, trackingOptions.PuttingGameMode);
+
+    private static string FormatBenchmarkDetail(RoundGameInfo? gameInfo)
+    {
+        if (gameInfo?.BenchmarkType != PuttingBenchmarkType.Ladder ||
+            gameInfo.StartDistanceMeters is null ||
+            gameInfo.EndDistanceMeters is null ||
+            gameInfo.PuttsPerDistance is null)
+        {
+            return string.Empty;
+        }
+
+        var stepText = gameInfo.DistanceStepMeters is null
+            ? gameInfo.DistanceStepDescription
+            : $"{UiFormat.Meters(gameInfo.DistanceStepMeters.Value)} trin";
+
+        var parts = new List<string>
+        {
+            $"{UiFormat.Meters(gameInfo.StartDistanceMeters.Value)}-{UiFormat.Meters(gameInfo.EndDistanceMeters.Value)}"
+        };
+        if (!string.IsNullOrWhiteSpace(stepText))
+        {
+            parts.Add(stepText);
+        }
+
+        parts.Add($"{gameInfo.PuttsPerDistance} pr. afstand");
+        return string.Join(", ", parts);
+    }
 
     private double CalculateTrackedTotal()
     {

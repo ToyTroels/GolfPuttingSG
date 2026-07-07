@@ -94,12 +94,37 @@
 - [ ] Update putting distance bands and made percentage by distance to respect the selected unit.
 - [ ] Add tests for feet-to-meters conversion, display formatting, and SG calculations using feet input.
 
+## Improve round putting distance input
+
+- [ ] Redesign the first-putt distance input in round entry so decimal distances are easy to enter, review, and adjust on mobile.
+- [ ] Consider quick-pick chips or a stepper/slider for common putting distances, while still allowing precise manual input.
+- [ ] Make decimal comma and decimal point input behave consistently across device cultures.
+- [ ] Keep the entered value, display text, saved value, and edit-loaded value aligned.
+- [ ] Add view-model tests for decimal input, culture-specific separators, manual edits, and saved-round edit reloads.
+
+## Improve approach distance input
+
+- [ ] Allow approach start, end, and green-edge distances to accept decimal values instead of whole numbers only.
+- [ ] Make decimal comma and decimal point input behave consistently across device cultures.
+- [ ] Use mobile-friendly input controls for approach distances, such as numeric keyboard, quick-adjust buttons, or common-distance presets while still allowing precise manual input.
+- [ ] Keep entered decimal values, display formatting, saved values, edit reloads, and SG calculations aligned.
+- [ ] Add validation that catches invalid or negative distances without clearing the player's in-progress input.
+- [ ] Add tests for decimal approach input parsing, culture-specific separators, save/load round-tripping, and SG calculation with decimal distances.
+
 ## Reference tables by lie
 
 - [ ] Add lie-based expected-shots listings to reference tables where the baseline depends on lie, including approach and around-the-green tables.
 - [ ] Show distance, lie, and expected shots in a scan-friendly table layout.
 - [ ] Keep the displayed units consistent with the app distance setting once configurable units are implemented.
 - [ ] Add tests that verify exposed reference rows match the calculation baselines for each lie.
+
+## Add semi-rough lie type
+
+- [ ] Add `SemiRough` as a distinct `ShotLie` value instead of grouping every non-fairway lie into `Rough`.
+- [ ] Add semi-rough labels/parsing to shot input, summaries, carry-forward logic, and reference views.
+- [ ] Decide whether semi-rough should use its own SG baseline data or initially map to the existing rough baseline until better data is available.
+- [ ] Keep saved round compatibility in mind so older rounds without semi-rough still load correctly.
+- [ ] Add tests for label round-tripping, shot input mapping, SG baseline lookup, saved round loading, and reference table display.
 
 ## Improve putting-game screen usability
 
@@ -110,3 +135,23 @@
 - [x] Improve mobile spacing and typography so the distance card does not dominate the screen at the expense of actions and progress.
 - [x] Add empty/complete states that clearly show when the benchmark is finished and what to do next.
 - [x] Add UI tests or view-model tests for progress text, remaining-distance preview, and completion behavior.
+- [ ] Let the player change the number of putts in a regular training game after the game has started, including deciding how to add/remove remaining distances without corrupting already entered putts.
+
+## Add ladder benchmark type
+
+- [x] Keep the current benchmark type as the bell-curve/distribution benchmark and make that type explicit in benchmark naming, metadata, and UI copy.
+- [x] Add a ladder benchmark type where the player hits a configurable number of putts from each distance before moving to the next longer distance.
+- [x] Define ladder benchmark presets, including start distance, end distance, distance step, putts per distance, total attempts, preset ID, and preset version.
+- [x] Generate ladder benchmark distances in ascending order from the preset definition instead of using the bell-curve benchmark distance arrays.
+- [x] Let the benchmark setup UI choose between bell-curve benchmark and ladder benchmark, then choose the relevant preset/options for that benchmark type.
+- [x] Save the benchmark type and ladder preset metadata with round history so ladder attempts can be filtered and compared separately from bell-curve benchmark attempts.
+- [x] Update result and history titles/summaries so ladder benchmark attempts show the distance range, step, and putts per distance.
+- [x] Add tests for ladder benchmark distance generation, metadata persistence, setup flow, scoring, and saved-history display.
+
+## Putting games menu
+
+- [x] Replace separate landing-page putting game and tour-round buttons with one putting-games entry.
+- [x] Add a putting-games list with training game, tour round, and benchmark entries.
+- [x] Move tour round under the putting-games list.
+- [x] Remove the benchmark/test button from the training-game setup screen.
+- [x] Decouple benchmark selection from the training-game setup screen so benchmark opens directly from the games list.

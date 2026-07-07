@@ -19,6 +19,8 @@ public sealed class RoundInputViewModel : ViewModelBase
     private bool trackApproach;
     private bool trackAroundGreen;
     private bool hasStarted;
+    private bool isBusy;
+    private string errorMessage = string.Empty;
 
     public RoundInputViewModel(IRoundRepository repository)
     {
@@ -30,6 +32,35 @@ public sealed class RoundInputViewModel : ViewModelBase
     public ObservableCollection<HoleInputViewModel> Holes { get; }
 
     public string ScreenTitle { get; private set; } = "Ny runde";
+
+    public bool IsBusy
+    {
+        get => isBusy;
+        private set
+        {
+            if (SetProperty(ref isBusy, value))
+            {
+                OnPropertyChanged(nameof(CanSave));
+                OnPropertyChanged(nameof(SaveButtonText));
+            }
+        }
+    }
+
+    public bool CanSave => !IsBusy;
+
+    public string ErrorMessage
+    {
+        get => errorMessage;
+        private set
+        {
+            if (SetProperty(ref errorMessage, value))
+            {
+                OnPropertyChanged(nameof(HasError));
+            }
+        }
+    }
+
+    public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
     public int HoleCount
     {
@@ -50,7 +81,7 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     public string RoundProgressText => $"{CompletedHoleCount} / {HoleCount} huller registreret";
 
-    public string SaveButtonText => IsRoundComplete ? "Gem runde" : "Afslut tidligt og gem";
+    public string SaveButtonText => IsBusy ? "Gemmer..." : IsRoundComplete ? "Gem runde" : "Afslut tidligt og gem";
 
     public int CompletedHoleCount => Holes.Count(IsTrackedHoleCompleted);
 
@@ -159,40 +190,78 @@ public sealed class RoundInputViewModel : ViewModelBase
             return;
         }
 
-        var round = await repository.GetRoundAsync(existingRoundId);
-        if (round is null)
+        if (IsBusy)
         {
             return;
         }
 
-        roundId = round.Id;
-        date = round.Date;
-        var options = round.TrackingOptions ?? RoundTrackingOptions.PuttingOnly;
-        trackPutting = options.TrackPutting;
-        trackApproach = options.TrackApproach;
-        trackAroundGreen = options.TrackAroundGreen;
-        hasStarted = true;
-        ScreenTitle = "Rediger runde";
-        OnPropertyChanged(nameof(ScreenTitle));
-        OnPropertyChanged(nameof(IsSetupVisible));
-        OnPropertyChanged(nameof(IsRoundVisible));
-        OnTrackingPropertiesChanged();
-        SetHoleCount(Math.Clamp(round.ConfiguredHoleCount > 0 ? round.ConfiguredHoleCount : round.Holes.Count, MinimumHoleCount, MaximumHoleCount));
-
-        foreach (var hole in round.Holes)
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
         {
-            var input = Holes.FirstOrDefault(input => input.HoleNumber == hole.HoleNumber);
-            input?.Load(hole);
-        }
+            var round = await repository.GetRoundAsync(existingRoundId);
+            if (round is null)
+            {
+                ErrorMessage = "Runden kunne ikke findes.";
+                return;
+            }
 
-        RefreshSummary();
+            roundId = round.Id;
+            date = round.Date;
+            var options = round.TrackingOptions ?? RoundTrackingOptions.PuttingOnly;
+            trackPutting = options.TrackPutting;
+            trackApproach = options.TrackApproach;
+            trackAroundGreen = options.TrackAroundGreen;
+            hasStarted = true;
+            ScreenTitle = "Rediger runde";
+            OnPropertyChanged(nameof(ScreenTitle));
+            OnPropertyChanged(nameof(IsSetupVisible));
+            OnPropertyChanged(nameof(IsRoundVisible));
+            OnTrackingPropertiesChanged();
+            SetHoleCount(Math.Clamp(round.ConfiguredHoleCount > 0 ? round.ConfiguredHoleCount : round.Holes.Count, MinimumHoleCount, MaximumHoleCount));
+
+            foreach (var hole in round.Holes)
+            {
+                var input = Holes.FirstOrDefault(input => input.HoleNumber == hole.HoleNumber);
+                input?.Load(hole);
+            }
+
+            RefreshSummary();
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Runden kunne ikke indl\u00e6ses. Pr\u00f8v igen, eller tjek lagring under Indstillinger.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     public async Task<string> SaveAsync()
     {
-        var round = BuildRound();
-        await repository.SaveRoundAsync(round);
-        return round.Id;
+        if (IsBusy)
+        {
+            return string.Empty;
+        }
+
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
+        {
+            var round = BuildRound();
+            await repository.SaveRoundAsync(round);
+            return round.Id;
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Runden kunne ikke gemmes. Pr\u00f8v igen, eller tjek lagring under Indstillinger.";
+            return string.Empty;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private Round BuildRound()

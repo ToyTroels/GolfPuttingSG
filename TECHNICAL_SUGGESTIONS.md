@@ -1,587 +1,489 @@
 # Technical Suggestions
 
-This document collects internal and technical improvements for GolfSG. The app already has a good MVP shape: a small core domain project, MAUI UI, MVVM-style view models, local JSON persistence, and focused calculation tests. The suggestions below are aimed at making the app easier to extend, safer to change, and more reliable as benchmark games, statistics, settings, and saved history become more important.
+Last reviewed: 2026-07-07.
+
+This document summarizes internal improvements for GolfSG after reviewing the current codebase, the existing technical suggestions, `TODO.md`, and the app/core/test project structure. The app has moved beyond the earlier putting-only MVP: it now tracks putting, approach, around-the-green, putting games, bell-curve benchmarks, ladder benchmarks, saved history, import/export, diagnostics, and hardened local JSON persistence.
+
+The main conclusion is that persistence and putting-game internals are much healthier than before. The next internal bottleneck is the round and hole entry flow, especially the view-model and page code that now has to coordinate multiple strokes-gained categories.
+
+## Current Architecture Snapshot
+
+- `src/GolfSG.Core` contains domain models, strokes-gained calculators, putting-game presets/generation/scoring/factory helpers, and JSON file persistence.
+- `src/GolfSG` contains the MAUI app, code-built pages, view models, repository adapter, theme helpers, and navigation flow.
+- `tests/GolfSG.Tests` covers core calculations, persistence, putting-game view-model flows, start/history ordering, and a few hole-entry behaviors.
+- `RoundFileStore` already has a versioned envelope, legacy-array support, atomic temporary writes, backup recovery, corrupt-file preservation, import/export, migration from legacy storage folders, and mutation serialization.
+- `PuttingGame` is now mostly a facade over `PuttingGamePresets`, `PuttingDistanceGenerator`, `PuttingGameScoring`, and `PuttingGameFactory`.
+- `GolfTheme` and `AppViews` exist, so UI tokenization has started, but large page classes still duplicate controls and layout patterns.
+
+Largest current source files, excluding generated `bin`/`obj` output:
+
+| File | Lines | Why it matters |
+|---|---:|---|
+| `src/GolfSG/ViewModels/HoleInputViewModel.cs` | 1143 | Mixes parsing, formatting, shot mapping, carry-forward rules, SG recalculation, and UI state. |
+| `src/GolfSG/Views/HoleEntryPage.cs` | 940 | Large code-built page with many local control builders and complex visibility/layout behavior. |
+| `src/GolfSG/Views/RoundInputPage.cs` | 516 | Repeats page composition, cards, buttons, and summary blocks. |
+| `src/GolfSG/Views/PuttingGamePage.cs` | 509 | Similar repeated UI primitives, but less domain complexity than hole entry. |
+| `src/GolfSG/ViewModels/PuttingGameViewModel.cs` | 417 | Manageable, but still stores legacy mode strings and local parsing. |
 
 ## Recommended Order
 
-1. Finish extracting putting-game responsibilities from `PuttingGame` into smaller services.
-2. Add view-model tests around putting game setup, benchmark starts, and save flows.
-3. Split large UI pages into reusable controls or component builders.
-4. Centralize app settings, units, colors, strings, and formatting.
-5. Add diagnostics, user-visible error states, and CI/build automation.
-6. Build benchmark history/comparison now that benchmark metadata is saved.
+1. Decompose `HoleInputViewModel` into smaller state, parsing, mapping, and carry-forward services.
+2. Continue moving consumers from persisted `HolePuttingData` toward the new internal `HoleResult` mapper before adding more SG categories.
+3. Centralize distance conversion, distance parsing, and shot-lie text mapping.
+4. Add typed repository operation results and view-model-level busy/error state instead of relying on mutable repository flags plus page-level `try/catch`.
+5. Continue extracting reusable C# MAUI builders/controls from the large pages, starting with hole-entry primitives.
+6. Add an app statistics/query layer before implementing periodic evaluations, benchmark trends, or made-percentage reporting.
+7. Make storage schema-version handling explicit for unsupported future versions.
+8. Add CI, analyzers, and formatting after the highest-churn refactors settle.
 
 ## High Priority
 
-### 1. Replace string-based putting game modes with typed models
-
-Status: Partially implemented.
-
-Implemented:
-
-- Added `PuttingGameKind`, `PuttingGameScoringMode`, `BenchmarkLength`, and `PuttingGameDefinition`.
-- `PuttingGame` now exposes typed definitions for ladder, tour round, custom games, and benchmarks.
-- Benchmark definitions include display name, preset ID, preset version, attempt count, distances, and scoring mode.
-- Result/history titles now prefer saved game metadata instead of guessing only from legacy mode strings.
-
-Remaining state:
-
-- `RoundTrackingOptions` still stores `PuttingGameMode` as `string?` for backward compatibility.
-- Some navigation/start APIs still pass mode strings such as `Ladder`, `TourRound`, `Short`, `Normal`, and `Thorough`.
-- `PuttingGame` still owns more responsibilities than ideal.
-
-Why improve it:
-
-- String modes are easy to mistype and hard to evolve.
-- Benchmark, custom, ladder, and tour games now have different scoring semantics.
-- Future features like leaderboards, personal benchmarks, or benchmark versioning will need richer metadata.
-
-Next suggestion:
-
-Move the remaining string-based entry points toward typed definitions while preserving legacy JSON compatibility.
-
-Current model:
-
-```csharp
-public enum PuttingGameKind
-{
-    Ladder,
-    TourRound,
-    Custom,
-    Benchmark
-}
-
-public enum BenchmarkLength
-{
-    Short,
-    Normal,
-    Thorough
-}
-
-public sealed record PuttingGameDefinition(
-    PuttingGameKind Kind,
-    string DisplayName,
-    IReadOnlyList<double> DistancesMeters,
-    PuttingGameScoringMode ScoringMode,
-    BenchmarkLength? BenchmarkLength = null,
-    string? PresetId = null,
-    int? PresetVersion = null);
-```
-
-Benefits:
-
-- Reduces string comparisons in app logic.
-- Makes custom vs benchmark vs legacy games explicit.
-- Lets saved rounds preserve exactly what was played.
-- Makes result screens less dependent on guessing from the number of holes or mode string.
-
-### 2. Save the actual putting game definition metadata
-
-Status: Implemented.
-
-Implemented:
-
-- Added `RoundGameInfo` to `Round`.
-- Putting games now save type, display name, preset ID, preset version, attempt count, minimum distance, maximum distance, and expected total.
-- Benchmark rounds save stable preset IDs such as `benchmark-normal-v1`.
-- Custom putting games save their actual distance interval and expected total metadata.
-- Result and history UI use `Round.GameInfo` when available, with legacy fallback to `RoundTrackingOptions.PuttingGameMode`.
-
-Current model:
-
-```csharp
-public sealed record RoundGameInfo(
-    string Type,
-    string DisplayName,
-    string? PresetId,
-    int? PresetVersion,
-    int AttemptCount,
-    double? MinimumDistanceMeters,
-    double? MaximumDistanceMeters,
-    double ExpectedTotal);
-```
-
-Possible values:
-
-- `Type = "StandardRound"`
-- `Type = "PuttingGame"`
-- `Type = "PuttingBenchmark"`
-- `PresetId = "benchmark-normal-v1"`
-
-Remaining follow-up:
-
-- Add migration or cleanup later if the app ever removes `PuttingGameMode` from `RoundTrackingOptions`.
-- Add benchmark history screens that group attempts by `PresetId`.
-
-### 3. Add versioned persistence and atomic file writes
-
-Status: Implemented.
-
-Implemented:
-
-- `RoundFileStore` writes a versioned storage document with `schemaVersion` and `rounds`.
-- Saves write to `rounds.json.tmp` and then replace `rounds.json`.
-- Existing valid active files are copied to `rounds.json.bak` before overwrite.
-- Loading handles legacy array files, versioned documents, corrupt/empty active files, and backup fallback.
-- Unreadable active files are preserved before overwrite.
-- Storage migration from legacy app data directories is supported.
-
-Current envelope:
-
-```csharp
-public sealed record RoundHistoryDocument(
-    int SchemaVersion,
-    IReadOnlyList<Round> Rounds);
-```
-
-Remaining follow-up:
-
-- Surface more repository failure states in view models so the user can see import/save/load problems directly.
-- Add intentional handling if a future `schemaVersion` is unsupported.
-
-### 4. Separate scoring rules from distance generation
+### 1. Split `HoleInputViewModel` into focused pieces
 
 Current state:
 
-- `PuttingGame` owns target putts, distance presets, bell-curve generation, expected-putt normalization, benchmark constants, and putt building.
+- `HoleInputViewModel` is the largest hand-written class in the repo.
+- It owns all hole-entry mutable text state.
+- It parses comma/dot decimal input.
+- It maps Danish/English lie labels to `ShotLie`.
+- It converts meters, feet, and yards.
+- It builds `GolfShot` objects for approach and around-the-green.
+- It carries approach results forward into around-green or putting.
+- It recalculates strokes gained and raises many UI property changes.
 
 Why improve it:
 
-- It is becoming a mixed responsibility class.
-- Benchmark scoring and ladder scoring are different concepts.
-- Testing is easier if generation, scoring, and game definitions are independent.
+- Small changes to one category can accidentally affect another category.
+- It is hard to test carry-forward, parsing, and shot construction independently.
+- Adding off-the-tee or richer approach/ARG input would make the class significantly harder to reason about.
+
+Suggested extraction:
+
+- `DistanceInputParser`: accepts both comma and dot decimals and returns a typed validation result.
+- `DistanceConversions`: owns meters/feet/yards constants and conversions.
+- `ShotLieLabels`: maps UI labels to/from `ShotLie`.
+- `ShotInputMapper`: builds approach and around-green `GolfShot` instances from input state.
+- `HoleCarryForwardService`: decides how approach and ARG finish states populate later categories.
+- `HoleEntryState`: a plain mutable or immutable state object that can be tested without MAUI notifications.
+
+Good first slice:
+
+Move only static parsing/conversion/lie mapping and `BuildApproachShot`/`BuildAroundGreenShot` behavior out of the view model. Keep public view-model properties unchanged. Add tests that assert the produced `GolfShot` values match today's behavior.
+
+Benefits:
+
+- Lower-risk tests around the most complex hole-entry rules.
+- Easier future category work.
+- Less property-notification noise in the core behavior.
+
+### 2. Replace or isolate `HolePuttingData` before it grows further
+
+Status:
+
+- First slice implemented: `HoleResult`, `PuttingResult`, `ApproachResult`, `AroundGreenResult`, and `HoleResultMapper` now isolate the persisted `HolePuttingData` DTO from read-side category logic.
+- `HolePuttingData` remains the v1 saved-round shape, so existing saved rounds continue to load without a storage migration.
+- Tracked-hole completion, made-percentage read logic, and result item display now use the category-aware mapper.
+- Mapper tests cover round-tripping complete holes, old-style approach data, multiple around-green shots, and empty holes.
+
+Current state:
+
+`HolePuttingData` now stores putting fields, legacy approach fields, shot-level approach fields, around-green fields, and a list of around-green shots. The name no longer matches the responsibility.
+
+Why improve it:
+
+- The model is becoming a catch-all DTO.
+- Optional category fields are represented as many zero/default values.
+- Future off-the-tee, penalties, or multiple approach shots will make the record wider and less trustworthy.
+- The persistence schema depends on this shape, so casual renaming would be risky.
+
+Suggested model direction:
+
+```csharp
+public sealed record HoleResult(
+    int HoleNumber,
+    PuttingResult? Putting,
+    ApproachResult? Approach,
+    AroundGreenResult? AroundGreen);
+
+public sealed record PuttingResult(
+    double FirstPuttDistanceMeters,
+    int Putts,
+    double ExpectedPutts,
+    double StrokesGained);
+
+public sealed record ShotCategoryResult(
+    IReadOnlyList<GolfShot> Shots,
+    double ExpectedStartStrokes,
+    double ExpectedFinishStrokes,
+    double StrokesGained);
+```
+
+Migration approach:
+
+- Keep `HolePuttingData` as the persisted v1 DTO for now. Done for the first mapper slice.
+- Use `HoleResultMapper` when read paths need category-specific data instead of reaching directly into the wide DTO.
+- Move summaries/calculators to the new model when practical.
+- Only write a v2 storage schema once the new model is stable.
+
+Benefits:
+
+- Clear category boundaries.
+- Fewer misleading zero/default states.
+- A safer path to off-the-tee or multi-shot approach tracking.
+
+### 3. Centralize distance units, input parsing, and lie labels
+
+Current state:
+
+- `MetersPerFoot`, `MetersPerYard`, `FeetPerYard`, and conversion helpers are repeated across core services, view models, result formatting, and reference pages.
+- Numeric parsing is repeated in `HoleInputViewModel` and `PuttingGameViewModel`.
+- Lie text mapping is repeated in `HoleInputViewModel`, `AroundGreenShotSummaryViewModel`, and `HoleResultItemViewModel`.
+- Some property names such as `ApproachStartDistanceYards` are used by UI setters that accept meters and later convert to yards, which is a naming trap.
 
 Suggestion:
 
-Split responsibilities:
+- Add a small core `DistanceConversions` helper.
+- Add app-level `DistanceInputParser` and `DistanceFormatter` if UI culture concerns should stay out of core.
+- Add `ShotLieLabels` for stable UI text mapping.
+- Rename UI-facing state over time so names describe the displayed unit, for example `ApproachStartDistanceInputMeters`, while persisted/domain shot values remain explicit about feet/yards/meters.
 
-- `PuttingDistanceGenerator`: creates bell-curve distance sets.
-- `PuttingGamePresets`: exposes ladder, tour, benchmark definitions.
-- `PuttingGameScorer`: calculates expected putts and strokes gained for a given game definition.
-- `PuttingGameFactory`: builds `HolePuttingData` from a result.
+Benefits:
+
+- Fewer unit bugs.
+- Easier feet/meters preference implementation.
+- Less duplicated formatting and label logic.
+
+### 4. Move repository warnings/errors into typed operation results
+
+Current state:
+
+- `IRoundRepository` exposes mutable status flags such as `WasLastReadRecoveredFromBackup`.
+- Views generally catch exceptions and show alerts.
+- View models do not consistently expose `IsBusy`, `ErrorMessage`, or disabled states.
+- Repository status can be overwritten by a later repository call, which makes diagnostics and user warnings dependent on call order.
+
+Suggestion:
+
+Introduce operation result types:
+
+```csharp
+public sealed record RoundRepositoryResult<T>(
+    T Value,
+    IReadOnlyList<RoundRepositoryWarning> Warnings);
+
+public enum RoundRepositoryWarning
+{
+    RecoveredFromBackup,
+    MigratedFromLegacyStorage,
+    PreservedUnreadableActiveFile
+}
+```
+
+Then let view models own user-facing state:
+
+- `IsLoading`
+- `IsSaving`
+- `ErrorMessage`
+- `CanSubmit`
+- `CanDelete`
+- `StorageWarnings`
+
+Benefits:
+
+- Warnings travel with the data that caused them.
+- Pages become thinner.
+- Double-submit and repeated-tap issues become easier to prevent.
+- Save/load/import failures can be tested in view-model tests.
+
+### 5. Make storage schema-version behavior explicit
+
+Current state:
+
+- Versioned history documents are written with `schemaVersion = 1`.
+- Loading accepts any object with a `rounds` array and does not currently branch on `schemaVersion`.
+- Legacy arrays are still supported.
+
+Suggestion:
+
+- Treat missing `schemaVersion` plus `rounds` as v1-compatible if needed.
+- Switch on known versions when reading.
+- Return a clear unsupported-version error for future versions rather than silently reading a shape that may have changed.
+- Add tests for missing, current, older, and future schema versions.
+
+Benefits:
+
+- Future storage migrations become deliberate.
+- Importing a newer file from a future app version cannot silently corrupt assumptions.
+
+### 6. Continue extracting reusable MAUI view builders
+
+Current state:
+
+- `GolfTheme` and `AppViews` are good starts.
+- Large pages still define repeated local helpers such as cards, steppers, distance panels, stat blocks, quick action chips, picker panels, toggle rows, and metric rows.
+
+Suggestion:
+
+Keep this simple and code-first at first:
+
+- `MetricRow`
+- `SgMetric`
+- `CounterEditor`
+- `DistanceEditor`
+- `ShotPositionEditor`
+- `QuickChoiceGroup`
+- `ErrorBanner`
+- `StorageWarningBanner`
+- `AsyncActionButton`
+- `PageSectionHeader`
+
+Benefits:
+
+- Smaller page classes.
+- Consistent spacing and typography.
+- Easier accessibility work because labels/hints can be added once.
+
+### 7. Add an app statistics/query layer
+
+Current state:
+
+- `RoundResultViewModel` builds one-round summaries and analysis strings inline.
+- `RoundListItemViewModel` calculates history row summaries directly.
+- `TODO.md` includes periodic SG evaluations and made percentage by first-putt distance.
+- Benchmark metadata is now rich enough to support benchmark history and comparisons.
+
+Suggestion:
+
+Create a statistics service before adding more analysis UI:
+
+- `RoundStatisticsService`
+- `BenchmarkHistoryService`
+- `PuttingDistanceBucketService`
+- `PeriodFilter`
+- `SgTrendSummary`
+
+Useful outputs:
+
+- Total SG by category.
+- Average SG per round.
+- Best/worst round.
+- Trend over period.
+- Made percentage by distance bucket.
+- Benchmark best, last, average of last 3, and preset-specific trend.
+
+Benefits:
+
+- Result, history, benchmark, and future statistics screens use the same calculations.
+- Tests can cover analysis behavior without MAUI page dependencies.
+- The app can add richer insights without duplicating summary logic.
+
+## Medium Priority
+
+### 8. Gradually move app logic out of the MAUI project
+
+Current state:
+
+The test project links app view-model source files directly:
+
+- `HoleInputViewModel.cs`
+- `PuttingGameViewModel.cs`
+- `RoundListItemViewModel.cs`
+- `StartViewModel.cs`
+- `UiFormat.cs`
+- `ViewModelBase.cs`
+- `IRoundRepository.cs`
+
+This works, but it becomes fragile as view models depend on more MAUI-specific services.
+
+Suggestion:
+
+Consider a small `GolfSG.AppLogic` class library later:
+
+- View models that do not need direct MAUI APIs.
+- Repository interfaces and result types.
+- App services such as round editing, statistics, and settings.
+- UI formatting helpers that are not tied to controls.
 
 Benefits:
 
 - Cleaner tests.
-- Easier to add new benchmark versions.
-- Less risk of changing one game mode while fixing another.
+- Less compile-link trickery.
+- MAUI pages become closer to pure views.
 
-### 5. Add persistence tests
-
-Status: Implemented for repository/store behavior.
-
-Implemented:
-
-- Save creates the active file.
-- Same-ID save updates instead of duplicating through the mutation path.
-- Rounds load sorted by date.
-- Delete preserves remaining rounds.
-- Invalid/empty active JSON falls back to backup.
-- Legacy array files load and migrate.
-- Versioned export/import works.
-- Configured hole count and early finish survive serialization.
-- Putting benchmark metadata survives round-trip serialization.
-
-Remaining useful tests:
-
-- Newer/older schema versions are handled intentionally.
-- Import conflict/merge behavior if imports stop replacing the full history.
-
-Benefit:
-
-Persistence is where user trust lives. It deserves tests as soon as the app stores meaningful history.
-
-## Medium Priority
-
-### 6. Move repeated UI primitives into reusable controls/builders
+### 9. De-duplicate old and new approach calculation paths
 
 Current state:
 
-- Pages define repeated local methods like `Card`, `StepperButton`, field rows, colors, and button styles.
-- Several pages manually construct similar layouts.
-
-Why improve it:
-
-- UI changes require editing many pages.
-- Colors and spacing can drift.
-- Page classes are long and harder to scan.
+- `ApproachStrokesGainedCalculator` still has a distance-only `AddApproach` path.
+- `StrokesGainedApproachService` has the better shot-level SG formula and category boundary handling.
+- `StrokesGainedCalculator.BuildHole` supports both legacy distance-only approach fields and shot-level approach shots.
 
 Suggestion:
 
-Create reusable helpers or controls:
+- Treat shot-level approach as the preferred internal path.
+- Keep distance-only calculation only as a legacy compatibility path.
+- Make summaries and new UI flows operate on shot-level data.
+- Add comments/tests around which path is legacy and when it can be removed.
 
-- `AppCard`
-- `PrimaryButton`
-- `SecondaryButton`
-- `StepperControl`
-- `MetricRow`
-- `SectionHeader`
-- `NumericField`
+Benefits:
 
-In MAUI, this can be done as C# helper builders first, then moved to custom controls later if needed.
+- Fewer competing definitions of SG approach.
+- Less risk that a new feature accidentally uses the simplified MVP formula.
 
-Benefit:
-
-- Cleaner pages.
-- Consistent styling.
-- Faster UI iteration.
-
-### 7. Introduce app-wide design tokens
+### 10. Remove remaining game-mode string flow from new code
 
 Current state:
 
-- Colors are repeated in C# pages as `Color.FromArgb(...)`.
-- Some resources exist in XAML, but page code still owns many styling constants.
+- `PuttingGameDefinition` and `RoundGameInfo` are now strong enough for current game metadata.
+- `RoundTrackingOptions.PuttingGameMode` is still `string?` for backward compatibility.
+- `PuttingGameViewModel` still starts from mode strings for ladder/tour game paths.
 
 Suggestion:
 
-Centralize tokens:
+- Keep persisted legacy strings readable.
+- Prefer passing `PuttingGameDefinition` or stable preset IDs in new app logic.
+- Restrict string normalization to a compatibility boundary.
 
-- Colors
-- Spacing
-- Corner radius
-- Font sizes
-- Button heights
-- Card strokes
+Benefits:
 
-Possible approaches:
+- Less fragile benchmark/game routing.
+- Easier benchmark versioning.
+- Better separation between saved metadata and UI flow.
 
-- Static `AppTheme` class for C# UI.
-- XAML resources consumed by code.
-- A small `Theme` service if dynamic theme changes become useful.
-
-Benefit:
-
-- More polished UI consistency.
-- Dark mode becomes easier later.
-- Reduces magic values in pages.
-
-### 8. Add a settings service
+### 11. Add more view-model tests around round and hole entry
 
 Current state:
 
-- Some settings are implied by constants.
-- Distance-unit configuration is already listed in `TODO.md`.
-- Putting-game defaults live in `PuttingGame`.
+- Putting-game view-model coverage is now useful.
+- Start/history ordering has tests.
+- Hole-entry tests cover only a few important behaviors.
+- `RoundInputViewModel` is not directly covered.
+
+High-value tests:
+
+- Round setup cannot disable all SG categories.
+- Changing hole count preserves entered holes and prevents trimming entered data.
+- Editing a round preserves ID/date/tracking settings.
+- Approach finish on green carries putting distance when putting is enabled.
+- Approach miss carries ARG start distance/lie when ARG is enabled.
+- ARG finish on green carries putting distance when putting is enabled.
+- Manual override prevents carry-forward from overwriting user input.
+- Save failures surface a view-model error and do not navigate as success.
+- Repository backup/migration warnings surface in start/history state.
+
+### 12. Add settings behind an interface before adding feet/meters preference
+
+Current state:
+
+- There is a `FeatureSettings` helper.
+- UI and defaults are mostly constants.
+- `TODO.md` includes configurable distance units.
 
 Suggestion:
 
-Create an `IAppSettings` or `ISettingsRepository`.
+Add `IAppSettings` or `ISettingsRepository` for:
 
-Settings to support:
+- Preferred distance unit.
+- Default putting-game putt count.
+- Default custom game min/max distance.
+- Last selected benchmark type/order.
+- Whether detailed remaining distances are expanded by default.
 
-- Preferred distance unit: meters or feet.
-- Default putting game min/max distance.
-- Default custom putting attempt count.
-- Last selected game mode or benchmark.
-- Whether to show detailed remaining distances.
+Benefits:
 
-Benefit:
-
-- Settings survive app restarts.
-- View models stop relying only on static defaults.
-- Future preferences become easier to add.
-
-### 9. Add explicit validation results instead of inline strings
-
-Current state:
-
-- View models validate setup input and set string error messages directly.
-- Invalid input handling is tied to UI text.
-
-Suggestion:
-
-Use small validation result types:
-
-```csharp
-public sealed record ValidationResult(bool IsValid, string? Message);
-```
-
-Or for more structure:
-
-```csharp
-public sealed record FieldValidationError(string FieldName, string Message);
-```
-
-Benefit:
-
-- Validation can be tested without UI wording.
-- Later localization is easier.
-- UI can highlight the specific invalid field.
-
-### 10. Use culture-aware parsing consistently
-
-Status: Partially implemented.
-
-Current state:
-
-- Some code normalizes commas to dots and parses invariant culture.
-- Display uses Danish culture.
-- Putting-game setup now accepts both comma and dot decimals through a small local parser in `PuttingGameViewModel`.
-
-Suggestion:
-
-Create a central `NumberParser` or `DistanceInputParser` and use it everywhere.
-
-It should:
-
-- Accept both `1.5` and `1,5`.
-- Clamp where appropriate.
-- Return validation errors for impossible values.
-- Keep parsing rules consistent across round input and putting-game setup.
-
-Benefit:
-
-- Fewer subtle input bugs.
-- Better user experience in Denmark and other locales.
-
-### 11. Improve result summaries for benchmark games
-
-Current state:
-
-- Benchmark games save scores and show totals.
-- There is not yet a dedicated benchmark result breakdown.
-
-Suggestion:
-
-Add benchmark-specific result metrics:
-
-- Total strokes gained.
-- Strokes gained per 10 putts.
-- Putts holed by distance band.
-- One-putt percentage by distance band.
-- Best/worst distance band.
-- Comparison against previous attempts at the same benchmark preset.
-
-Benefit:
-
-- Makes benchmarks feel like a training product, not just a long putting game.
-- Gives the player actionable feedback.
-
-### 12. Make benchmark preset generation explicit and stable
-
-Status: Implemented.
-
-Implemented:
-
-- Short, normal, and thorough benchmark distances are explicit arrays in code.
-- The bell-curve generator remains available for custom games.
-- Benchmark definitions include preset IDs and version numbers.
-- Tests lock benchmark counts and the exact short benchmark distribution.
-
-Remaining follow-up:
-
-- Add exact snapshot tests for normal and thorough arrays too, not only counts.
-- If a future benchmark changes, add `benchmark-*-v2` instead of editing v1.
-
-Benefit:
-
-- Strong guarantee that all users get the same benchmark.
-- Benchmark versioning becomes easier.
-
-### 13. Add view-model tests
-
-Current state:
-
-- Core calculations are tested.
-- View-model flows are not tested.
-
-Important tests:
-
-- Starting a custom putting game creates the requested number of attempts.
-- Benchmark buttons start 40/75/100 putts.
-- Invalid setup input shows an error and does not start.
-- Submitting the final putt saves exactly one round.
-- Round input prevents both tracking toggles from being off.
-- Editing an existing round preserves its ID.
-
-Benefit:
-
-- Protects the user flows most likely to regress during UI changes.
-
-### 14. Add repository-level async/error states to view models
-
-Current state:
-
-- Save/load methods generally assume repository calls succeed.
-- UI does not expose loading, saving, or error states.
-
-Suggestion:
-
-Add properties like:
-
-- `IsBusy`
-- `ErrorMessage`
-- `CanSave`
-- `CanSubmit`
-
-And wrap repository calls in controlled error handling.
-
-Benefit:
-
-- Prevents double-submit.
-- Avoids silent failures.
-- Makes the app feel more robust on real devices.
+- Settings survive restart.
+- Unit preference can be implemented without scattering conditional logic.
+- View models stop depending on static defaults.
 
 ## Lower Priority, High Leverage Later
 
-### 15. Add structured logging
-
-Current state:
-
-- Debug logging is enabled, but app code does not log meaningful events.
-
-Suggestion:
-
-Inject `ILogger<T>` into repositories and major view models.
+### 13. Add structured logging at boundaries
 
 Log:
 
-- Save/load/delete failures.
-- Storage migrations.
-- Unexpected invalid data.
+- Storage read/write/import/export failures.
+- Backup recovery and legacy migration.
+- Unsupported schema versions.
 - Benchmark starts/completions.
+- Unexpected invalid persisted data.
 
-Avoid logging:
+Avoid:
 
-- Excessive per-keystroke input changes.
-- Sensitive personal data if added later.
+- Per-keystroke logging.
+- Full personal round history in logs.
 
-Benefit:
+### 14. Add CI and static analysis
 
-- Much easier debugging once the app is on phones.
+Suggested checks:
 
-### 16. Add CI checks
+- `dotnet restore GolfSG.sln`
+- `dotnet test tests/GolfSG.Tests/GolfSG.Tests.csproj`
+- Windows MAUI build if the runner supports it.
+- Analyzer pass after style noise is under control.
 
-Suggestion:
+Suggested config:
 
-Set up a simple GitHub Actions or Azure DevOps pipeline:
+- `.editorconfig`
+- Nullable warnings expectations.
+- Culture-aware parsing/formatting rules.
+- Async naming and unused member cleanup.
+- Treat selected warnings as errors later.
 
-- Restore.
-- Build core and tests.
-- Run tests.
-- Optionally build Windows target.
-- Fail on warnings once analyzer noise is under control.
-
-Benefit:
-
-- Prevents regressions before they land.
-- Makes refactoring safer.
-
-### 17. Add static analysis and formatting rules
-
-Suggestion:
-
-Add `.editorconfig` rules for:
-
-- Nullable reference types expectations.
-- Field naming.
-- Culture-aware formatting.
-- Async naming.
-- Analyzer severity.
-
-Consider:
-
-- Treating important warnings as errors.
-- Adding StyleCop or Roslyn analyzers later, not immediately.
-
-Benefit:
-
-- Keeps style consistent as the project grows.
-
-### 18. Consider separating app text for localization
+### 15. Keep localization as a planned cleanup
 
 Current state:
 
-- UI text mixes Danish and English.
-- Text is embedded in C# page construction.
+- User-facing text is embedded in C# pages and view models.
+- Danish is the primary UI language, while technical identifiers and some legacy strings are English.
 
 Suggestion:
 
-Decide on a primary language for MVP, then move strings to resources when the UI stabilizes.
+- Keep the MVP language decision simple for now.
+- Move strings into resources once the UI stabilizes.
+- Start with repeated alerts, validation messages, labels, and benchmark names.
 
-Benefit:
+## Implemented or Lowered From Earlier Priority
 
-- Cleaner localization.
-- Easier copy review.
-- Avoids accidental Danish/English mixing.
+These earlier recommendations are now done or no longer the first internal bottleneck:
 
-### 19. Improve data model naming
+- Putting-game responsibilities have mostly been split into presets, generation, scoring, and factory helpers.
+- Benchmark metadata is saved in `RoundGameInfo`.
+- Ladder benchmark presets and metadata are implemented.
+- Versioned persistence, atomic writes, backup fallback, legacy import, migration, import/export, and diagnostics are implemented.
+- Repository mutations are serialized.
+- Some view-model tests now exist for putting-game and start/history flows.
+- App theme tokens and basic shared view builders exist.
 
-Current state:
+## Suggested Refactor Slices
 
-- `HolePuttingData` now contains putting and approach fields.
-- That made sense historically, but it is becoming a general hole result model.
+### Slice 1: Shared units and labels
 
-Suggestion:
+Add:
 
-Rename later to something broader:
+- `DistanceConversions`
+- `DistanceInputParser`
+- `ShotLieLabels`
 
-- `HoleResult`
-- `HoleTrackingData`
-- `HolePerformance`
+Move duplicated constants and parsing/label mapping out of view models. Add focused tests. This is small and reduces risk for later work.
 
-Do this in a dedicated refactor commit because it will touch many files.
+### Slice 2: Shot input mapping
 
-Benefit:
+Add `ShotInputMapper` and move approach/ARG `GolfShot` construction out of `HoleInputViewModel`. Keep the current public view-model API intact. Add tests for approach-to-green, approach-to-ARG, holed approach, ARG-to-green, and penalty cases.
 
-- Domain language stays accurate.
-- Future approach/short-game/tee-shot tracking fits better.
+### Slice 3: Carry-forward service
 
-### 20. Add benchmark history and comparison models
+Move carry-forward decisions into `HoleCarryForwardService`. The view model should ask the service what to update, then apply updates with property notifications. Test manual override behavior separately from MAUI binding behavior.
 
-Suggestion:
+### Slice 4: Round operation state
 
-Once benchmark games are stable, add a dedicated statistics layer:
+Add `IsBusy`, `ErrorMessage`, and typed warnings to `StartViewModel`, `RoundInputViewModel`, and `PuttingGameViewModel`. Update pages to bind state instead of each page owning all error semantics.
 
-- `BenchmarkAttempt`
-- `BenchmarkSummary`
-- `BenchmarkTrend`
+### Slice 5: Statistics service
 
-Useful metrics:
-
-- Best score by preset.
-- Average of last 3 attempts.
-- Improvement trend.
-- Distance-band strengths and weaknesses.
-
-Benefit:
-
-- Turns benchmark mode into a real training feedback loop.
-
-## Suggested Near-Term Backlog
-
-### Sprint 1: Make benchmark data robust
-
-- Done: Replace benchmark generation with explicit preset arrays.
-- Done: Save benchmark preset ID and version in round metadata.
-- Done: Update history/result title to show benchmark name.
-- Done: Add short benchmark snapshot coverage.
-- Remaining: Add full snapshot coverage for normal and thorough benchmark arrays.
-
-### Sprint 2: Protect saved data
-
-- Done: Add storage schema version.
-- Done: Add atomic writes and backup recovery.
-- Done: Add repository tests with temp files.
-- Remaining: Add UI error messages for failed load/save/import.
-
-### Sprint 3: Clean up UI foundations
-
-- Extract shared button/card/field builders.
-- Centralize colors and spacing.
-- Add `IsBusy` and disabled states around save/submit.
-- Add view-model tests for putting-game setup and round save flow.
-
-### Sprint 4: Improve analysis value
-
-- Add made percentage by distance band.
-- Add benchmark-specific result screen details.
-- Add previous benchmark comparison.
-- Add period-based SG evaluation from `TODO.md`.
+Before adding periodic evaluations or benchmark trend UI, create a service that calculates those summaries from saved rounds. Use tests to lock the aggregation rules.
 
 ## Final Recommendation
 
-Putting games and benchmark rounds are now first-class enough to support trustworthy saved history and future comparisons. The next strongest technical move is to finish separating `PuttingGame` into presets, scoring, generation, and factory responsibilities, then add view-model tests around the flows that create and save those games.
+The strongest next technical move is to treat hole entry as its own internal subsystem. The calculation layer is reasonably isolated, persistence is now sturdy, and putting games have a healthier split than the old suggestions described. The internals will become much easier to extend if `HoleInputViewModel` stops being the place where every category rule, conversion, formatter, and shot mapping lives.
 
-Persistence safety is in a much sturdier place now: atomic writes, schema versioning, backup recovery, legacy migration, and repository tests are present. The remaining trust work is mostly user-facing: clear load/save/import error states and diagnostics.
+After that, broaden `HolePuttingData` into a real category-aware hole result model and put all statistics/benchmark history behind a tested query layer. That gives the app a clean path to periodic evaluations, made-percentage analysis, configurable units, and future SG categories without making the UI layer carry the domain complexity.

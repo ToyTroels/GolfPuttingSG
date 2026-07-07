@@ -35,6 +35,8 @@ Baseline-tabellen ligger i `src/GolfSG.Core/StrokesGainedCalculator.cs`.
 3. Vælg target, fx `Windows Machine` eller en Android-emulator.
 4. Tryk Run.
 
+Se `RUN_ON_PHONE.md` for agent-noter om at køre appen på en trådløst forbundet Android-telefon via ADB/MSBuild.
+
 ## Kommandoer
 
 ```powershell

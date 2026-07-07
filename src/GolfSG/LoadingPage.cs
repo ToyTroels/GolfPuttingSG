@@ -1,3 +1,5 @@
+using GolfSG.Views;
+
 namespace GolfSG;
 
 public sealed class LoadingPage : ContentPage
@@ -8,7 +10,7 @@ public sealed class LoadingPage : ContentPage
     public LoadingPage(AppShell appShell)
     {
         this.appShell = appShell;
-        BackgroundColor = Color.FromArgb("#0B241D");
+        BackgroundColor = GolfTheme.Colors.LoadingBackground;
         Shell.SetNavBarIsVisible(this, false);
 
         Content = new Grid

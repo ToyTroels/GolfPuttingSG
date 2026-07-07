@@ -4,8 +4,6 @@ namespace GolfSG.Core;
 
 public sealed class StrokesGainedApproachService : IStrokesGainedApproachService
 {
-    private const double FeetPerYard = 3;
-
     private static readonly IReadOnlyDictionary<ShotLie, ApproachReferencePoint[]> ApproachBaseline =
         new Dictionary<ShotLie, ApproachReferencePoint[]>
         {
@@ -161,7 +159,7 @@ public sealed class StrokesGainedApproachService : IStrokesGainedApproachService
 
         var distanceYards = unit switch
         {
-            DistanceUnit.Feet => distance / FeetPerYard,
+            DistanceUnit.Feet => DistanceConversions.FeetToYards(distance),
             DistanceUnit.Yards => distance,
             _ => throw new ArgumentOutOfRangeException(nameof(unit), unit, "Unsupported distance unit.")
         };
@@ -199,7 +197,7 @@ public sealed class StrokesGainedApproachService : IStrokesGainedApproachService
     {
         return unit switch
         {
-            DistanceUnit.Feet => distance / FeetPerYard,
+            DistanceUnit.Feet => DistanceConversions.FeetToYards(distance),
             DistanceUnit.Yards => distance,
             _ => throw new ArgumentOutOfRangeException(nameof(unit), unit, "Unsupported distance unit.")
         };

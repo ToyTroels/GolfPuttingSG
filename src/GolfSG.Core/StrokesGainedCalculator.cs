@@ -74,7 +74,7 @@ public static class StrokesGainedCalculator
 
         return hole with
         {
-            ApproachDistanceMeters = ToYards(shot.StartDistanceToPin, shot.StartDistanceUnit) * 0.9144,
+            ApproachDistanceMeters = DistanceConversions.YardsToMeters(ToYards(shot.StartDistanceToPin, shot.StartDistanceUnit)),
             ApproachShots = 1,
             ExpectedApproachShots = startExpectedStrokes,
             StrokesGainedApproach = ApproachService.CalculateShotSgApproach(shot),

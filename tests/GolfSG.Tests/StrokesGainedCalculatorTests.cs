@@ -323,6 +323,47 @@ public sealed class StrokesGainedCalculatorTests
     }
 
     [TestMethod]
+    public void PuttingGameTrainingRandomDistancesStayWithinConfiguredInterval()
+    {
+        var distances = PuttingGame.BuildTrainingDistancesMeters(
+            40,
+            2,
+            8,
+            PuttingTrainingDistanceDistribution.Random,
+            new Random(1234));
+
+        Assert.HasCount(40, distances);
+        Assert.IsTrue(distances.All(distance => distance >= 2 && distance <= 8));
+        Assert.IsGreaterThan(10, distances.Distinct().Count());
+    }
+
+    [TestMethod]
+    public void PuttingGameTrainingShortDistributionFavorsLowerEnd()
+    {
+        var distances = PuttingGame.BuildTrainingDistancesMeters(
+            200,
+            1,
+            11,
+            PuttingTrainingDistanceDistribution.Short,
+            new Random(1234));
+
+        Assert.IsLessThan(5d, distances.Average());
+    }
+
+    [TestMethod]
+    public void PuttingGameTrainingLongDistributionFavorsUpperEnd()
+    {
+        var distances = PuttingGame.BuildTrainingDistancesMeters(
+            200,
+            1,
+            11,
+            PuttingTrainingDistanceDistribution.Long,
+            new Random(1234));
+
+        Assert.IsGreaterThan(7d, distances.Average());
+    }
+
+    [TestMethod]
     public void PuttingGameBenchmarkDistancesHavePresetCounts()
     {
         Assert.HasCount(40, PuttingGame.GetBenchmarkDistancesMeters(PuttingGame.ShortBenchmark));
@@ -350,11 +391,58 @@ public sealed class StrokesGainedCalculatorTests
         var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalBenchmark);
 
         Assert.AreEqual(PuttingGameKind.Benchmark, definition.Kind);
+        Assert.AreEqual(PuttingBenchmarkType.BellCurve, definition.BenchmarkType);
         Assert.AreEqual(BenchmarkLength.Normal, definition.BenchmarkLength);
         Assert.AreEqual(PuttingGame.NormalBenchmarkPresetId, definition.PresetId);
         Assert.AreEqual(PuttingGame.BenchmarkPresetVersion, definition.PresetVersion);
         Assert.AreEqual(75, definition.AttemptCount);
         Assert.AreEqual("Normal benchmark", definition.DisplayName);
+    }
+
+    [TestMethod]
+    public void PuttingGameBuildsLadderBenchmarkDistancesAscending()
+    {
+        var distances = PuttingGame.BuildLadderDistancesMeters(
+            startDistanceMeters: 1,
+            endDistanceMeters: 3,
+            distanceStepMeters: 1,
+            puttsPerDistance: 2);
+
+        CollectionAssert.AreEqual(new[] { 1d, 1d, 2d, 2d, 3d, 3d }, distances.ToArray());
+    }
+
+    [TestMethod]
+    public void PuttingGameLadderBenchmarkDefinitionIncludesPresetMetadata()
+    {
+        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalLadderBenchmark);
+
+        Assert.AreEqual(PuttingGameKind.Benchmark, definition.Kind);
+        Assert.AreEqual(PuttingBenchmarkType.Ladder, definition.BenchmarkType);
+        Assert.AreEqual(BenchmarkLength.Normal, definition.BenchmarkLength);
+        Assert.AreEqual(PuttingGame.NormalLadderBenchmarkPresetId, definition.PresetId);
+        Assert.AreEqual(PuttingGame.BenchmarkPresetVersion, definition.PresetVersion);
+        Assert.AreEqual(30, definition.AttemptCount);
+        Assert.AreEqual(1, definition.StartDistanceMeters);
+        Assert.AreEqual(6, definition.EndDistanceMeters);
+        Assert.AreEqual(1, definition.DistanceStepMeters);
+        Assert.AreEqual(5, definition.PuttsPerDistance);
+        Assert.AreEqual("Normal ladder benchmark", definition.DisplayName);
+        Assert.IsTrue(definition.DistancesMeters.SequenceEqual(definition.DistancesMeters.Order()));
+    }
+
+    [TestMethod]
+    public void PuttingGameThoroughLadderBenchmarkReachesFifteenMetersWithWiderLongSteps()
+    {
+        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.ThoroughLadderBenchmark);
+        var distinctDistances = definition.DistancesMeters.Distinct().ToArray();
+
+        CollectionAssert.AreEqual(new[] { 1d, 2d, 3d, 4d, 5d, 6d, 7d, 8d, 9d, 10d, 12.5d, 15d }, distinctDistances);
+        Assert.AreEqual(60, definition.AttemptCount);
+        Assert.AreEqual(15, definition.EndDistanceMeters);
+        Assert.IsNull(definition.DistanceStepMeters);
+        Assert.AreEqual("1 m trin til 10 m, derefter 2,5 m", definition.DistanceStepDescription);
+        Assert.AreEqual(PuttingGame.ThoroughLadderBenchmarkPresetVersion, definition.PresetVersion);
+        Assert.AreEqual(PuttingGame.ThoroughLadderBenchmarkPresetId, definition.PresetId);
     }
 
     [TestMethod]

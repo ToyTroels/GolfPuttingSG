@@ -6,11 +6,11 @@ namespace GolfSG.Views;
 
 public sealed class PuttingGamePage : ContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
-    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
-    private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
-    private static readonly Color TextColor = Color.FromArgb("#202421");
-    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
+    private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
+    private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
+    private static readonly Color PrimaryGreen = GolfTheme.Colors.PrimaryGreen;
+    private static readonly Color TextColor = GolfTheme.Colors.Text;
+    private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
 
     private readonly PuttingGameViewModel viewModel;
     private string? completedRoundId;
@@ -53,12 +53,16 @@ public sealed class PuttingGamePage : ContentPage
         };
         submitButton.SetBinding(Button.TextProperty, nameof(PuttingGameViewModel.PrimaryActionText));
         submitButton.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsActive));
+        submitButton.SetBinding(VisualElement.IsEnabledProperty, nameof(PuttingGameViewModel.CanSubmit));
         submitButton.Clicked += async (_, _) =>
         {
-            submitButton.IsEnabled = false;
             try
             {
                 completedRoundId = await viewModel.SubmitAsync();
+                if (viewModel.HasError)
+                {
+                    await DisplayAlertAsync("Resultatet kunne ikke gemmes", viewModel.ErrorMessage, "OK");
+                }
             }
             catch (Exception)
             {
@@ -66,10 +70,6 @@ public sealed class PuttingGamePage : ContentPage
                     "Resultatet kunne ikke gemmes",
                     "Prøv igen, eller tjek lagring under Indstillinger.",
                     "OK");
-            }
-            finally
-            {
-                submitButton.IsEnabled = true;
             }
         };
 
@@ -82,6 +82,22 @@ public sealed class PuttingGamePage : ContentPage
         var completePanel = CompletePanel();
         completePanel.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsComplete));
 
+        var error = new Border
+        {
+            BackgroundColor = GolfTheme.Colors.DangerBackground,
+            Stroke = GolfTheme.Colors.DangerText,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 12,
+            Margin = new Thickness(0, 0, 0, 10),
+            Content = new Label
+            {
+                FontSize = 14,
+                TextColor = GolfTheme.Colors.DangerText
+            }
+        };
+        error.SetBinding(IsVisibleProperty, nameof(PuttingGameViewModel.HasError));
+        ((Label)error.Content).SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.ErrorMessage));
+
         var scrollView = new ScrollView
         {
             Content = new VerticalStackLayout
@@ -91,6 +107,7 @@ public sealed class PuttingGamePage : ContentPage
                 Children =
                 {
                     GameTitleLabel(),
+                    error,
                     setupPanel,
                     activePanel,
                     completePanel
@@ -130,6 +147,15 @@ public sealed class PuttingGamePage : ContentPage
         var holeCount = NumericEntry(nameof(PuttingGameViewModel.HoleCountText));
         var minimumDistance = NumericEntry(nameof(PuttingGameViewModel.MinimumDistanceMetersText));
         var maximumDistance = NumericEntry(nameof(PuttingGameViewModel.MaximumDistanceMetersText));
+        var distanceDistribution = new Picker
+        {
+            Title = "Fordeling",
+            TextColor = TextColor,
+            BackgroundColor = Colors.White,
+            HeightRequest = 48
+        };
+        distanceDistribution.SetBinding(Picker.ItemsSourceProperty, nameof(PuttingGameViewModel.TrainingDistanceDistributionOptions));
+        distanceDistribution.SetBinding(Picker.SelectedItemProperty, nameof(PuttingGameViewModel.SelectedTrainingDistanceDistribution), BindingMode.TwoWay);
 
         var error = new Label
         {
@@ -165,34 +191,11 @@ public sealed class PuttingGamePage : ContentPage
                 Field("Putts", holeCount),
                 Field("Minimumsafstand (m)", minimumDistance),
                 Field("Maksimumsafstand (m)", maximumDistance),
+                Field("Afstandsfordeling", distanceDistribution),
                 error,
-                start,
-                new BoxView
-                {
-                    HeightRequest = 1,
-                    BackgroundColor = CardStroke,
-                    Margin = new Thickness(0, 4)
-                },
-                BenchmarkToggleButton(),
+                start
             }
         });
-    }
-
-    private Button BenchmarkToggleButton()
-    {
-        var button = new Button
-        {
-            Text = "Test",
-            BackgroundColor = Colors.White,
-            BorderColor = PrimaryGreen,
-            BorderWidth = 1,
-            TextColor = PrimaryGreen,
-            CornerRadius = 8,
-            HeightRequest = 50,
-            FontAttributes = FontAttributes.Bold
-        };
-        button.Clicked += async (_, _) => await Navigation.PushAsync(new PuttingBenchmarkPage(viewModel));
-        return button;
     }
 
     private View ActivePanel()
@@ -538,7 +541,7 @@ public sealed class PuttingGamePage : ContentPage
         return entry;
     }
 
-    private static View Field(string labelText, Entry entry)
+    private static View Field(string labelText, View input)
     {
         return new VerticalStackLayout
         {
@@ -551,7 +554,7 @@ public sealed class PuttingGamePage : ContentPage
                     TextColor = MutedTextColor,
                     FontAttributes = FontAttributes.Bold
                 },
-                entry
+                input
             }
         };
     }

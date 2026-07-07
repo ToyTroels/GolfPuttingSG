@@ -6,11 +6,11 @@ namespace GolfSG.Views;
 
 public sealed class SettingsPage : ContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
-    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
-    private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
-    private static readonly Color TextColor = Color.FromArgb("#202421");
-    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
+    private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
+    private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
+    private static readonly Color PrimaryGreen = GolfTheme.Colors.PrimaryGreen;
+    private static readonly Color TextColor = GolfTheme.Colors.Text;
+    private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
     private readonly IRoundRepository repository;
 
     public SettingsPage(IRoundRepository repository)
@@ -79,10 +79,78 @@ public sealed class SettingsPage : ContentPage
                     ReferenceItem(
                         "Lagring",
                         "Vis aktiv filsti og antal gemte runder",
-                        () => new StorageDiagnosticsPage(repository))
+                        () => new StorageDiagnosticsPage(repository)),
+                    new Label
+                    {
+                        Text = "Beta",
+                        FontSize = 18,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = TextColor,
+                        Margin = new Thickness(0, 8, 0, 0)
+                    },
+                    BetaFeaturesItem()
                 }
             }
         };
+    }
+
+    private View BetaFeaturesItem()
+    {
+        var checkbox = new CheckBox
+        {
+            Color = PrimaryGreen,
+            IsChecked = FeatureSettings.EnableBetaFeatures,
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        checkbox.CheckedChanged += (_, args) => FeatureSettings.EnableBetaFeatures = args.Value;
+
+        var card = new Border
+        {
+            BackgroundColor = Colors.White,
+            Stroke = CardStroke,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 14,
+            Content = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Auto),
+                    new ColumnDefinition(GridLength.Star)
+                },
+                ColumnSpacing = 12,
+                Children =
+                {
+                    checkbox.Column(0),
+                    new VerticalStackLayout
+                    {
+                        Spacing = 4,
+                        Children =
+                        {
+                            new Label
+                            {
+                                Text = "Aktiver beta-funktioner",
+                                FontSize = 17,
+                                FontAttributes = FontAttributes.Bold,
+                                TextColor = TextColor
+                            },
+                            new Label
+                            {
+                                Text = "Vis funktioner der stadig er under udvikling.",
+                                FontSize = 13,
+                                TextColor = MutedTextColor
+                            }
+                        }
+                    }.Column(1)
+                }
+            }
+        };
+
+        var tap = new TapGestureRecognizer();
+        tap.Tapped += (_, _) => checkbox.IsChecked = !checkbox.IsChecked;
+        card.GestureRecognizers.Add(tap);
+
+        return card;
     }
 
     private View ReferenceItem(string title, string subtitle, Func<Page> createPage)

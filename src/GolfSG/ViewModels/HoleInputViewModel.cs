@@ -13,8 +13,6 @@ public sealed class HoleInputViewModel : ViewModelBase
     private const double ApproachDistanceStepMeters = 1;
     private const double AroundGreenDistanceStepMeters = 1;
     private const double GreenFinishDistanceStepMeters = 0.1;
-    private const double MetersPerYard = 0.9144;
-    private const double MetersPerFoot = 0.3048;
 
     private string distanceText = string.Empty;
     private string approachDistanceText = string.Empty;
@@ -132,7 +130,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => distanceText;
         set
         {
-            var normalized = value.Replace(',', '.');
+            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
             if (SetProperty(ref distanceText, normalized))
             {
                 if (!isApplyingApproachCarryForward)
@@ -174,7 +172,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => approachDistanceText;
         set
         {
-            var normalized = value.Replace(',', '.');
+            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
             if (SetProperty(ref approachDistanceText, normalized))
             {
                 OnPropertyChanged(nameof(ApproachDistanceMeters));
@@ -239,7 +237,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => approachStartDistanceText;
         set
         {
-            var normalized = value.Replace(',', '.');
+            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
             if (SetProperty(ref approachStartDistanceText, normalized))
             {
                 OnPropertyChanged(nameof(ApproachStartDistanceYards));
@@ -262,7 +260,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => approachEndDistanceText;
         set
         {
-            var normalized = value.Replace(',', '.');
+            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
             if (SetProperty(ref approachEndDistanceText, normalized))
             {
                 OnPropertyChanged(nameof(ApproachEndDistance));
@@ -286,7 +284,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => approachEndDistanceToGreenEdgeText;
         set
         {
-            var normalized = value.Replace(',', '.');
+            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
             if (SetProperty(ref approachEndDistanceToGreenEdgeText, normalized))
             {
                 OnPropertyChanged(nameof(ApproachEndDistanceToGreenEdgeYards));
@@ -386,7 +384,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => aroundGreenStartDistanceText;
         set
         {
-            var normalized = value.Replace(',', '.');
+            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
             if (SetProperty(ref aroundGreenStartDistanceText, normalized))
             {
                 if (!isApplyingApproachCarryForward)
@@ -415,7 +413,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => aroundGreenEndDistanceText;
         set
         {
-            var normalized = value.Replace(',', '.');
+            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
             if (SetProperty(ref aroundGreenEndDistanceText, normalized))
             {
                 OnPropertyChanged(nameof(AroundGreenEndDistance));
@@ -757,8 +755,8 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public void Load(HolePuttingData hole)
     {
-        distanceText = hole.FirstPuttDistanceMeters > 0 ? hole.FirstPuttDistanceMeters.ToString("0.###") : string.Empty;
-        approachDistanceText = hole.ApproachDistanceMeters > 0 ? hole.ApproachDistanceMeters.ToString("0.###") : string.Empty;
+        distanceText = hole.FirstPuttDistanceMeters > 0 ? FormatStoredDistance(hole.FirstPuttDistanceMeters, 1) : string.Empty;
+        approachDistanceText = hole.ApproachDistanceMeters > 0 ? FormatStoredDistance(hole.ApproachDistanceMeters, 1) : string.Empty;
         approachStartDistanceText = hole.ApproachStartDistanceYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachStartDistanceYards), 0) : string.Empty;
         approachEndDistanceText = hole.ApproachEndDistance > 0 ? FormatStoredDistance(ToMeters(hole.ApproachEndDistance, hole.ApproachEndDistanceUnit), 0) : string.Empty;
         approachEndDistanceToGreenEdgeText = hole.ApproachEndDistanceToGreenEdgeYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachEndDistanceToGreenEdgeYards), 0) : string.Empty;
@@ -927,23 +925,16 @@ public sealed class HoleInputViewModel : ViewModelBase
     private GolfShot BuildApproachShot()
     {
         var endLie = ParseLie(ApproachEndLieText);
-        return new GolfShot
-        {
-            HoleNumber = HoleNumber,
-            Par = ApproachPar,
-            ShotNumber = ApproachIsTeeShot ? 1 : 2,
-            IsTeeShot = ApproachIsTeeShot,
-            StartDistanceToPin = MetersToYards(ParseDistance(ApproachStartDistanceText)),
-            StartDistanceUnit = DistanceUnit.Yards,
-            StartLie = ParseLie(ApproachStartLieText),
-            StartDistanceToGreenEdgeYards = MetersToYards(ParseDistance(ApproachStartDistanceText)),
-            EndDistanceToPin = ApproachHoled ? 0 : ToShotDistance(ParseDistance(ApproachEndDistanceText), endLie),
-            EndDistanceUnit = endLie == ShotLie.Green ? DistanceUnit.Feet : DistanceUnit.Yards,
-            EndLie = endLie,
-            EndDistanceToGreenEdgeYards = 0,
-            PenaltyStrokes = ApproachPenaltyStrokes,
-            Holed = ApproachHoled || endLie == ShotLie.Holed
-        };
+        return ShotInputMapper.BuildApproachShot(new ApproachShotInput(
+            HoleNumber,
+            ApproachPar,
+            ApproachIsTeeShot,
+            ParseDistance(ApproachStartDistanceText),
+            ParseLie(ApproachStartLieText),
+            ParseDistance(ApproachEndDistanceText),
+            endLie,
+            ApproachPenaltyStrokes,
+            ApproachHoled));
     }
 
     private double GetApproachFinishStep() => ApproachDistanceStepMeters;
@@ -985,20 +976,15 @@ public sealed class HoleInputViewModel : ViewModelBase
     private GolfShot BuildAroundGreenShot(int shotNumber)
     {
         var endLie = ParseLie(AroundGreenEndLieText);
-        return new GolfShot
-        {
-            HoleNumber = HoleNumber,
-            ShotNumber = shotNumber,
-            StartDistanceToPin = MetersToYards(ParseDistance(AroundGreenStartDistanceText)),
-            StartDistanceUnit = DistanceUnit.Yards,
-            StartLie = ParseLie(AroundGreenStartLieText),
-            StartDistanceToGreenEdgeYards = Math.Min(MetersToYards(ParseDistance(AroundGreenStartDistanceText)), 30),
-            EndDistanceToPin = AroundGreenHoled ? 0 : ToShotDistance(ParseDistance(AroundGreenEndDistanceText), endLie),
-            EndDistanceUnit = endLie == ShotLie.Green ? DistanceUnit.Feet : DistanceUnit.Yards,
-            EndLie = endLie,
-            PenaltyStrokes = AroundGreenPenaltyStrokes,
-            Holed = AroundGreenHoled || endLie == ShotLie.Holed
-        };
+        return ShotInputMapper.BuildAroundGreenShot(new AroundGreenShotInput(
+            HoleNumber,
+            shotNumber,
+            ParseDistance(AroundGreenStartDistanceText),
+            ParseLie(AroundGreenStartLieText),
+            ParseDistance(AroundGreenEndDistanceText),
+            endLie,
+            AroundGreenPenaltyStrokes,
+            AroundGreenHoled));
     }
 
     private double GetAroundGreenFinishStep()
@@ -1019,102 +1005,73 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     private void ApplyAroundGreenCarryForward()
     {
-        if (!TrackAroundGreen || !TrackPutting || AroundGreenFinishedHoled)
-        {
-            return;
-        }
+        var result = HoleCarryForwardService.FromAroundGreen(new AroundGreenCarryForwardRequest(
+            TrackAroundGreen,
+            TrackPutting,
+            AroundGreenFinishedHoled,
+            ParseDistance(AroundGreenEndDistanceText),
+            ParseLie(AroundGreenEndLieText),
+            hasManualPuttingDistanceOverride,
+            MaxFirstPuttDistanceMeters));
 
-        if (ParseLie(AroundGreenEndLieText) != ShotLie.Green)
-        {
-            return;
-        }
-
-        var endDistanceMeters = ParseDistance(AroundGreenEndDistanceText);
-        if (endDistanceMeters <= 0)
-        {
-            return;
-        }
-
-        var carriedDistanceMeters = Math.Min(endDistanceMeters, MaxFirstPuttDistanceMeters);
-        if (!hasManualPuttingDistanceOverride)
-        {
-            ApplyApproachCarryForwardValue(() =>
-            {
-                FirstPuttDistanceMeters = carriedDistanceMeters;
-                carriedPuttingDistanceFromAroundGreenMeters = ParseDistance(DistanceText);
-                carriedPuttingDistanceFromApproachMeters = null;
-            });
-        }
+        ApplyCarryForwardResult(result);
     }
 
     private void ApplyApproachCarryForward()
     {
-        if (!TrackApproach || ApproachFinishedHoled)
-        {
-            return;
-        }
+        var result = HoleCarryForwardService.FromApproach(new ApproachCarryForwardRequest(
+            TrackApproach,
+            TrackPutting,
+            TrackAroundGreen,
+            ApproachFinishedHoled,
+            ParseDistance(ApproachEndDistanceText),
+            ParseLie(ApproachEndLieText),
+            hasManualPuttingDistanceOverride,
+            ParseDistance(AroundGreenStartDistanceText),
+            carriedAroundGreenStartDistanceFromApproachMeters,
+            AroundGreenStartLieText,
+            carriedAroundGreenStartLieFromApproach,
+            MaxFirstPuttDistanceMeters,
+            MaxAroundGreenDistanceMeters));
 
-        var endDistanceMeters = ParseDistance(ApproachEndDistanceText);
-        if (endDistanceMeters <= 0)
-        {
-            return;
-        }
-
-        var endLie = ParseLie(ApproachEndLieText);
-        if (endLie == ShotLie.Green)
-        {
-            CarryApproachDistanceToPutting(endDistanceMeters);
-            return;
-        }
-
-        CarryApproachDistanceToAroundGreen(endDistanceMeters, endLie);
+        ApplyCarryForwardResult(result);
     }
 
-    private void CarryApproachDistanceToPutting(double endDistanceMeters)
+    private void ApplyCarryForwardResult(HoleCarryForwardResult result)
     {
-        if (!TrackPutting)
+        if (result == HoleCarryForwardResult.Empty)
         {
             return;
         }
 
-        var carriedDistanceMeters = Math.Min(endDistanceMeters, MaxFirstPuttDistanceMeters);
-        if (!hasManualPuttingDistanceOverride)
+        ApplyApproachCarryForwardValue(() =>
         {
-            ApplyApproachCarryForwardValue(() =>
+            if (result.PuttingDistanceMeters is not null)
             {
-                FirstPuttDistanceMeters = carriedDistanceMeters;
-                carriedPuttingDistanceFromApproachMeters = ParseDistance(DistanceText);
-            });
-        }
-    }
+                FirstPuttDistanceMeters = result.PuttingDistanceMeters.Value;
+                if (result.PuttingSource == HoleCarryForwardPuttingSource.Approach)
+                {
+                    carriedPuttingDistanceFromApproachMeters = ParseDistance(DistanceText);
+                }
+                else if (result.PuttingSource == HoleCarryForwardPuttingSource.AroundGreen)
+                {
+                    carriedPuttingDistanceFromAroundGreenMeters = ParseDistance(DistanceText);
+                    carriedPuttingDistanceFromApproachMeters = null;
+                }
+            }
 
-    private void CarryApproachDistanceToAroundGreen(double endDistanceMeters, ShotLie endLie)
-    {
-        if (!TrackAroundGreen)
-        {
-            return;
-        }
-
-        var carriedDistanceMeters = Math.Min(endDistanceMeters, MaxAroundGreenDistanceMeters);
-        if (CanReplaceCarriedValue(ParseDistance(AroundGreenStartDistanceText), carriedAroundGreenStartDistanceFromApproachMeters))
-        {
-            ApplyApproachCarryForwardValue(() =>
+            if (result.AroundGreenStartDistanceMeters is not null)
             {
-                AroundGreenStartDistanceYards = carriedDistanceMeters;
+                AroundGreenStartDistanceYards = result.AroundGreenStartDistanceMeters.Value;
                 carriedAroundGreenStartDistanceFromApproachMeters = ParseDistance(AroundGreenStartDistanceText);
-            });
-        }
+            }
 
-        var carriedLieText = FormatAroundGreenStartLie(endLie);
-        if (string.IsNullOrWhiteSpace(carriedAroundGreenStartLieFromApproach) ||
-            string.Equals(AroundGreenStartLieText, carriedAroundGreenStartLieFromApproach, StringComparison.Ordinal))
-        {
-            ApplyApproachCarryForwardValue(() =>
+            if (!string.IsNullOrWhiteSpace(result.AroundGreenStartLieText))
             {
-                AroundGreenStartLieText = carriedLieText;
-                carriedAroundGreenStartLieFromApproach = carriedLieText;
-            });
-        }
+                AroundGreenStartLieText = result.AroundGreenStartLieText;
+                carriedAroundGreenStartLieFromApproach = result.AroundGreenStartLieText;
+            }
+        });
     }
 
     private void ApplyApproachCarryForwardValue(Action apply)
@@ -1132,8 +1089,9 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     private void ClearCarriedPuttingDistanceIfManuallyChanged()
     {
-        if (carriedPuttingDistanceFromApproachMeters is not null &&
-            !AreDistancesEqual(ParseDistance(DistanceText), carriedPuttingDistanceFromApproachMeters.Value))
+        if (HoleCarryForwardService.ShouldClearCarriedDistance(
+            ParseDistance(DistanceText),
+            carriedPuttingDistanceFromApproachMeters))
         {
             carriedPuttingDistanceFromApproachMeters = null;
         }
@@ -1141,8 +1099,9 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     private void ClearCarriedAroundGreenPuttingDistanceIfManuallyChanged()
     {
-        if (carriedPuttingDistanceFromAroundGreenMeters is not null &&
-            !AreDistancesEqual(ParseDistance(DistanceText), carriedPuttingDistanceFromAroundGreenMeters.Value))
+        if (HoleCarryForwardService.ShouldClearCarriedDistance(
+            ParseDistance(DistanceText),
+            carriedPuttingDistanceFromAroundGreenMeters))
         {
             carriedPuttingDistanceFromAroundGreenMeters = null;
         }
@@ -1150,8 +1109,9 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     private void ClearCarriedAroundGreenDistanceIfManuallyChanged()
     {
-        if (carriedAroundGreenStartDistanceFromApproachMeters is not null &&
-            !AreDistancesEqual(ParseDistance(AroundGreenStartDistanceText), carriedAroundGreenStartDistanceFromApproachMeters.Value))
+        if (HoleCarryForwardService.ShouldClearCarriedDistance(
+            ParseDistance(AroundGreenStartDistanceText),
+            carriedAroundGreenStartDistanceFromApproachMeters))
         {
             carriedAroundGreenStartDistanceFromApproachMeters = null;
         }
@@ -1159,111 +1119,29 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     private void ClearCarriedAroundGreenLieIfManuallyChanged()
     {
-        if (!string.IsNullOrWhiteSpace(carriedAroundGreenStartLieFromApproach) &&
-            !string.Equals(AroundGreenStartLieText, carriedAroundGreenStartLieFromApproach, StringComparison.Ordinal))
+        if (HoleCarryForwardService.ShouldClearCarriedLie(
+            AroundGreenStartLieText,
+            carriedAroundGreenStartLieFromApproach))
         {
             carriedAroundGreenStartLieFromApproach = null;
         }
     }
 
-    private static bool CanReplaceCarriedValue(double currentDistance, double? previousCarriedDistance)
-    {
-        return currentDistance <= 0 ||
-            (previousCarriedDistance is not null && AreDistancesEqual(currentDistance, previousCarriedDistance.Value));
-    }
+    private static string FormatAroundGreenStartLie(ShotLie lie) => ShotLieLabels.FormatAroundGreenStart(lie);
 
-    private static bool AreDistancesEqual(double first, double second) => Math.Abs(first - second) < 0.05;
+    private static ShotLie ParseLie(string text) => ShotLieLabels.Parse(text);
 
-    private static string FormatAroundGreenStartLie(ShotLie lie)
-    {
-        return lie switch
-        {
-            ShotLie.Fairway or ShotLie.FairwayCut => "Kortklippet",
-            ShotLie.Sand => "Sand",
-            ShotLie.Recovery => "Problemlie",
-            _ => "Rough"
-        };
-    }
+    private static string FormatLie(ShotLie lie) => ShotLieLabels.Format(lie);
 
-    private static ShotLie ParseLie(string text)
-    {
-        return text switch
-        {
-            "Kortklippet" => ShotLie.FairwayCut,
-            "Fairway cut" => ShotLie.FairwayCut,
-            "Fairway" => ShotLie.Fairway,
-            "Tee" => ShotLie.Tee,
-            "Sand" => ShotLie.Sand,
-            "Problemlie" => ShotLie.Recovery,
-            "Recovery" => ShotLie.Recovery,
-            "Green" => ShotLie.Green,
-            "I hul" => ShotLie.Holed,
-            "Holed" => ShotLie.Holed,
-            _ => ShotLie.Rough
-        };
-    }
+    private static double ToMeters(double distance, DistanceUnit unit) => DistanceConversions.ToMeters(distance, unit);
 
-    private static string FormatLie(ShotLie lie)
-    {
-        return lie switch
-        {
-            ShotLie.FairwayCut => "Kortklippet",
-            ShotLie.Fairway => "Fairway",
-            ShotLie.Tee => "Tee",
-            ShotLie.Sand => "Sand",
-            ShotLie.Recovery => "Problemlie",
-            ShotLie.Green => "Green",
-            ShotLie.Holed => "I hul",
-            _ => "Rough"
-        };
-    }
+    private static double YardsToMeters(double distanceYards) => DistanceConversions.YardsToMeters(distanceYards);
 
-    private static double ToShotDistance(double distanceMeters, ShotLie endLie)
-    {
-        return endLie == ShotLie.Green
-            ? MetersToFeet(distanceMeters)
-            : MetersToYards(distanceMeters);
-    }
+    private static double ParseDistance(string text) => DistanceInputParser.ParseOrZero(text);
 
-    private static double ToMeters(double distance, DistanceUnit unit)
-    {
-        return unit switch
-        {
-            DistanceUnit.Feet => distance * MetersPerFoot,
-            DistanceUnit.Yards => YardsToMeters(distance),
-            _ => distance
-        };
-    }
+    private static string FormatStoredDistance(double value, int decimals) => DistanceInputParser.FormatStored(value, decimals);
 
-    private static double MetersToYards(double distanceMeters) => distanceMeters / MetersPerYard;
-
-    private static double MetersToFeet(double distanceMeters) => distanceMeters / MetersPerFoot;
-
-    private static double YardsToMeters(double distanceYards) => distanceYards * MetersPerYard;
-
-    private static double ParseDistance(string text)
-    {
-        return double.TryParse(
-            text,
-            System.Globalization.NumberStyles.Number,
-            System.Globalization.CultureInfo.InvariantCulture,
-            out var value)
-            ? value
-            : 0;
-    }
-
-    private static string FormatStoredDistance(double value, int decimals)
-    {
-        return value.ToString(decimals == 0 ? "0" : "0.#", System.Globalization.CultureInfo.InvariantCulture);
-    }
-
-    private static string FormatSliderDistance(double value, int decimals)
-    {
-        var rounded = Math.Round(Math.Max(0, value), decimals);
-        return rounded <= 0
-            ? string.Empty
-            : rounded.ToString(decimals == 0 ? "0" : "0.#", System.Globalization.CultureInfo.InvariantCulture);
-    }
+    private static string FormatSliderDistance(double value, int decimals) => DistanceInputParser.FormatSlider(value, decimals);
 }
 
 public sealed record AroundGreenShotSummaryViewModel(
@@ -1272,15 +1150,12 @@ public sealed record AroundGreenShotSummaryViewModel(
     string EndText,
     string PenaltyText)
 {
-    private const double MetersPerYard = 0.9144;
-    private const double MetersPerFoot = 0.3048;
-
     public static AroundGreenShotSummaryViewModel FromShot(GolfShot shot, int shotNumber)
     {
-        var start = $"{UiFormat.WholeMeters(ToMeters(shot.StartDistanceToPin, shot.StartDistanceUnit))} {FormatLie(shot.StartLie).ToLowerInvariant()}";
+        var start = $"{UiFormat.WholeMeters(ToMeters(shot.StartDistanceToPin, shot.StartDistanceUnit))} {ShotLieLabels.Format(shot.StartLie).ToLowerInvariant()}";
         var end = shot.Holed || shot.EndLie == ShotLie.Holed
             ? "I hul"
-            : $"{UiFormat.Meters(ToMeters(shot.EndDistanceToPin, shot.EndDistanceUnit))} {FormatLie(shot.EndLie).ToLowerInvariant()}";
+            : $"{UiFormat.Meters(ToMeters(shot.EndDistanceToPin, shot.EndDistanceUnit))} {ShotLieLabels.Format(shot.EndLie).ToLowerInvariant()}";
         var penalties = shot.PenaltyStrokes == 1
             ? "1 strafslag"
             : $"{shot.PenaltyStrokes} strafslag";
@@ -1292,28 +1167,5 @@ public sealed record AroundGreenShotSummaryViewModel(
             penalties);
     }
 
-    private static double ToMeters(double distance, DistanceUnit unit)
-    {
-        return unit switch
-        {
-            DistanceUnit.Feet => distance * MetersPerFoot,
-            DistanceUnit.Yards => distance * MetersPerYard,
-            _ => distance
-        };
-    }
-
-    private static string FormatLie(ShotLie lie)
-    {
-        return lie switch
-        {
-            ShotLie.FairwayCut => "Kortklippet",
-            ShotLie.Fairway => "Fairway",
-            ShotLie.Tee => "Tee",
-            ShotLie.Sand => "Sand",
-            ShotLie.Recovery => "Problemlie",
-            ShotLie.Green => "Green",
-            ShotLie.Holed => "I hul",
-            _ => "Rough"
-        };
-    }
+    private static double ToMeters(double distance, DistanceUnit unit) => DistanceConversions.ToMeters(distance, unit);
 }

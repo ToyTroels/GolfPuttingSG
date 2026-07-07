@@ -4,14 +4,13 @@ namespace GolfSG.Core;
 
 public static class PuttingStrokesGainedCalculator
 {
-    private const double MetersPerFoot = 0.3048;
-    private const double ThreeFeetMeters = 3 * MetersPerFoot;
-    private const double TenFeetMeters = 10 * MetersPerFoot;
-    private const double FifteenFeetMeters = 15 * MetersPerFoot;
-    private const double TwentyFeetMeters = 20 * MetersPerFoot;
-    private const double TwentyFiveFeetMeters = 25 * MetersPerFoot;
+    private const double ThreeFeetMeters = 3 * DistanceConversions.MetersPerFoot;
+    private const double TenFeetMeters = 10 * DistanceConversions.MetersPerFoot;
+    private const double FifteenFeetMeters = 15 * DistanceConversions.MetersPerFoot;
+    private const double TwentyFeetMeters = 20 * DistanceConversions.MetersPerFoot;
+    private const double TwentyFiveFeetMeters = 25 * DistanceConversions.MetersPerFoot;
 
-    public const double ShortPuttMaximumMeters = 5 * MetersPerFoot;
+    public const double ShortPuttMaximumMeters = 5 * DistanceConversions.MetersPerFoot;
 
     private static readonly StrokesGainedReferencePoint[] PgaExpectedPuttsBaseline =
     [

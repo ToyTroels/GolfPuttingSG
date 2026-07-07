@@ -6,11 +6,11 @@ namespace GolfSG.Views;
 
 public sealed class RoundResultPage : ContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
-    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
-    private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
-    private static readonly Color TextColor = Color.FromArgb("#202421");
-    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
+    private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
+    private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
+    private static readonly Color PrimaryGreen = GolfTheme.Colors.PrimaryGreen;
+    private static readonly Color TextColor = GolfTheme.Colors.Text;
+    private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
 
     private readonly RoundResultViewModel viewModel;
 

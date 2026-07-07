@@ -6,13 +6,13 @@ namespace GolfSG.Views;
 
 public sealed class HoleEntryPage : ContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
-    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
-    private static readonly Color InputBackground = Color.FromArgb("#FAFBFA");
-    private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
-    private static readonly Color SoftGreen = Color.FromArgb("#EEF5EF");
-    private static readonly Color TextColor = Color.FromArgb("#202421");
-    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
+    private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
+    private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
+    private static readonly Color InputBackground = GolfTheme.Colors.InputBackground;
+    private static readonly Color PrimaryGreen = GolfTheme.Colors.PrimaryGreen;
+    private static readonly Color SoftGreen = GolfTheme.Colors.SoftGreen;
+    private static readonly Color TextColor = GolfTheme.Colors.Text;
+    private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
 
     private readonly RoundInputViewModel roundViewModel;
     private readonly HoleInputViewModel viewModel;
@@ -634,16 +634,9 @@ public sealed class HoleEntryPage : ContentPage
                     StrokeThickness = 1,
                     StrokeShape = new RoundRectangle { CornerRadius = 8 },
                     Padding = new Thickness(10, 8),
-                    Content = new Grid
+                    Content = new VerticalStackLayout
                     {
-                        ColumnDefinitions =
-                        {
-                            new ColumnDefinition(GridLength.Star),
-                            new ColumnDefinition(GridLength.Auto),
-                            new ColumnDefinition(GridLength.Auto),
-                            new ColumnDefinition(GridLength.Auto)
-                        },
-                        ColumnSpacing = 8,
+                        Spacing = 6,
                         Children =
                         {
                             new Label
@@ -651,11 +644,24 @@ public sealed class HoleEntryPage : ContentPage
                                 Text = title,
                                 FontSize = 13,
                                 TextColor = MutedTextColor,
-                                VerticalTextAlignment = TextAlignment.Center
-                            }.Column(0),
-                            distanceValue.Column(1),
-                            minus.Column(2),
-                            plus.Column(3)
+                                LineBreakMode = LineBreakMode.NoWrap
+                            },
+                            new Grid
+                            {
+                                ColumnDefinitions =
+                                {
+                                    new ColumnDefinition(GridLength.Star),
+                                    new ColumnDefinition(GridLength.Auto),
+                                    new ColumnDefinition(GridLength.Auto)
+                                },
+                                ColumnSpacing = 8,
+                                Children =
+                                {
+                                    distanceValue.Column(0),
+                                    minus.Column(1),
+                                    plus.Column(2)
+                                }
+                            }
                         }
                     }
                 },

@@ -254,12 +254,12 @@ public sealed class RoundFileStoreTests
     {
         using var directory = TestDirectory.Create();
         var store = new RoundFileStore(directory.Path);
-        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalBenchmark);
+        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalLadderBenchmark);
         var round = new Round(
             "benchmark",
             new DateTime(2026, 6, 1),
             [PuttingGame.BuildPutt(1, definition.DistancesMeters[0], 2)],
-            new RoundTrackingOptions(true, false, false, true, PuttingGame.NormalBenchmark),
+            new RoundTrackingOptions(true, false, false, true, PuttingGame.NormalLadderBenchmark),
             1,
             false,
             PuttingGame.CreateRoundGameInfo(definition));
@@ -271,10 +271,15 @@ public sealed class RoundFileStoreTests
         var gameInfo = rounds[0].GameInfo;
         Assert.IsNotNull(gameInfo);
         Assert.AreEqual("PuttingBenchmark", gameInfo.Type);
-        Assert.AreEqual("Normal benchmark", gameInfo.DisplayName);
-        Assert.AreEqual(PuttingGame.NormalBenchmarkPresetId, gameInfo.PresetId);
+        Assert.AreEqual("Normal ladder benchmark", gameInfo.DisplayName);
+        Assert.AreEqual(PuttingGame.NormalLadderBenchmarkPresetId, gameInfo.PresetId);
         Assert.AreEqual(PuttingGame.BenchmarkPresetVersion, gameInfo.PresetVersion);
-        Assert.AreEqual(75, gameInfo.AttemptCount);
+        Assert.AreEqual(PuttingBenchmarkType.Ladder, gameInfo.BenchmarkType);
+        Assert.AreEqual(30, gameInfo.AttemptCount);
+        Assert.AreEqual(1, gameInfo.StartDistanceMeters);
+        Assert.AreEqual(6, gameInfo.EndDistanceMeters);
+        Assert.AreEqual(1, gameInfo.DistanceStepMeters);
+        Assert.AreEqual(5, gameInfo.PuttsPerDistance);
     }
 
     private static Round CreateRound(string id, DateTime date, int putts) => new(

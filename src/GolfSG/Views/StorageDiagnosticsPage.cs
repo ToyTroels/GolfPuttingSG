@@ -1,28 +1,22 @@
 using GolfSG.Services;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
-using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Storage;
 
 namespace GolfSG.Views;
 
 public sealed class StorageDiagnosticsPage : ContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
-    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
-    private static readonly Color TextColor = Color.FromArgb("#202421");
-    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
-
     private readonly IRoundRepository repository;
     private readonly Label savedRounds = new()
     {
         FontSize = 24,
         FontAttributes = FontAttributes.Bold,
-        TextColor = TextColor
+        TextColor = GolfTheme.Colors.Text
     };
     private readonly Label storageStatus = new()
     {
         FontSize = 14,
-        TextColor = MutedTextColor,
+        TextColor = GolfTheme.Colors.MutedText,
         LineBreakMode = LineBreakMode.WordWrap
     };
 
@@ -30,7 +24,7 @@ public sealed class StorageDiagnosticsPage : ContentPage
     {
         this.repository = repository;
         Title = "Lagring";
-        BackgroundColor = PageBackground;
+        BackgroundColor = GolfTheme.Colors.PageBackground;
         BuildLayout();
     }
 
@@ -52,13 +46,7 @@ public sealed class StorageDiagnosticsPage : ContentPage
                 Spacing = 14,
                 Children =
                 {
-                    new Label
-                    {
-                        Text = "Lagring",
-                        FontSize = 30,
-                        FontAttributes = FontAttributes.Bold,
-                        TextColor = TextColor
-                    },
+                    AppViews.PageTitle("Lagring"),
                     DiagnosticCard(
                         "Aktiv fil",
                         repository.ActiveStoragePath,
@@ -152,48 +140,33 @@ public sealed class StorageDiagnosticsPage : ContentPage
             {
                 Text = value,
                 FontSize = 14,
-                TextColor = MutedTextColor,
+                TextColor = GolfTheme.Colors.MutedText,
                 LineBreakMode = lineBreakValue ? LineBreakMode.CharacterWrap : LineBreakMode.WordWrap
             });
     }
 
     private static View DiagnosticCard(string title, View value)
     {
-        return new Border
+        return AppViews.Card(new VerticalStackLayout
         {
-            BackgroundColor = Colors.White,
-            Stroke = CardStroke,
-            StrokeShape = new RoundRectangle { CornerRadius = 8 },
-            Padding = 14,
-            Content = new VerticalStackLayout
+            Spacing = 6,
+            Children =
             {
-                Spacing = 6,
-                Children =
+                new Label
                 {
-                    new Label
-                    {
-                        Text = title,
-                        FontSize = 14,
-                        FontAttributes = FontAttributes.Bold,
-                        TextColor = TextColor
-                    },
-                    value
-                }
+                    Text = title,
+                    FontSize = 14,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = GolfTheme.Colors.Text
+                },
+                value
             }
-        };
+        });
     }
 
     private static View ActionButton(string text, Func<Task> action)
     {
-        var button = new Button
-        {
-            Text = text,
-            BackgroundColor = Colors.White,
-            BorderColor = Color.FromArgb("#0F5132"),
-            BorderWidth = 1,
-            TextColor = Color.FromArgb("#0F5132"),
-            CornerRadius = 8
-        };
+        var button = AppViews.SecondaryButton(text);
         button.Clicked += async (_, _) => await action();
         return button;
     }

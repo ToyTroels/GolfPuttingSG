@@ -32,10 +32,15 @@ public static class MauiProgram
         builder.Services.AddTransient<RoundInputViewModel>();
         builder.Services.AddTransient<PuttingGameViewModel>();
         builder.Services.AddTransient<RoundResultViewModel>();
+        builder.Services.AddTransient<EvaluationViewModel>();
+        builder.Services.AddTransient<BenchmarkHistoryViewModel>();
         builder.Services.AddTransient<StartPage>();
         builder.Services.AddTransient<SettingsPage>();
         builder.Services.AddTransient<RoundInputPage>();
+        builder.Services.AddTransient<PuttingGamesPage>();
         builder.Services.AddTransient<PuttingGamePage>();
+        builder.Services.AddTransient<BenchmarkHistoryPage>();
+        builder.Services.AddTransient<EvaluationPage>();
         builder.Services.AddTransient<RoundResultPage>();
         builder.Services.AddTransient<RoundHistoryPage>();
 

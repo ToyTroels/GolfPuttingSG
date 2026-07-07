@@ -1,24 +1,21 @@
+using GolfSG.Services;
 using GolfSG.ViewModels;
-using Microsoft.Maui.Controls.Shapes;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GolfSG.Views;
 
 public sealed class PuttingBenchmarkPage : ContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
-    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
-    private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
-    private static readonly Color TextColor = Color.FromArgb("#202421");
-    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
-
+    private readonly IServiceProvider services;
     private readonly PuttingGameViewModel viewModel;
 
-    public PuttingBenchmarkPage(PuttingGameViewModel viewModel)
+    public PuttingBenchmarkPage(IServiceProvider services)
     {
-        this.viewModel = viewModel;
+        this.services = services;
+        viewModel = services.GetRequiredService<PuttingGameViewModel>();
         BindingContext = viewModel;
         Title = "Test";
-        BackgroundColor = PageBackground;
+        BackgroundColor = GolfTheme.Colors.PageBackground;
         BuildLayout();
     }
 
@@ -27,12 +24,58 @@ public sealed class PuttingBenchmarkPage : ContentPage
         var distanceOrder = new Picker
         {
             Title = "Afstandsrækkefølge",
-            TextColor = TextColor,
+            TextColor = GolfTheme.Colors.Text,
             BackgroundColor = Colors.White,
             HeightRequest = 48
         };
         distanceOrder.SetBinding(Picker.ItemsSourceProperty, nameof(PuttingGameViewModel.BenchmarkDistanceOrderOptions));
         distanceOrder.SetBinding(Picker.SelectedItemProperty, nameof(PuttingGameViewModel.SelectedBenchmarkDistanceOrder), BindingMode.TwoWay);
+
+        var benchmarkOptions = new VerticalStackLayout
+        {
+            Spacing = 12,
+            Children =
+            {
+                new Label
+                {
+                    Text = "Afstandsrækkefølge",
+                    TextColor = GolfTheme.Colors.MutedText,
+                    FontAttributes = FontAttributes.Bold
+                },
+                distanceOrder,
+                new Label
+                {
+                    Text = "Bell-curve benchmark",
+                    TextColor = GolfTheme.Colors.MutedText,
+                    FontAttributes = FontAttributes.Bold,
+                    Margin = new Thickness(0, 8, 0, 0)
+                },
+                BenchmarkButton(nameof(PuttingGameViewModel.ShortBenchmarkText), viewModel.StartShortBenchmark),
+                BenchmarkButton(nameof(PuttingGameViewModel.NormalBenchmarkText), viewModel.StartNormalBenchmark),
+                BenchmarkButton(nameof(PuttingGameViewModel.ThoroughBenchmarkText), viewModel.StartThoroughBenchmark)
+            }
+        };
+
+        if (FeatureSettings.EnableBetaFeatures)
+        {
+            benchmarkOptions.Children.Add(new BoxView
+            {
+                HeightRequest = 1,
+                BackgroundColor = GolfTheme.Colors.CardStroke,
+                Margin = new Thickness(0, 4)
+            });
+            benchmarkOptions.Children.Add(new Label
+            {
+                Text = "Ladder benchmark",
+                TextColor = GolfTheme.Colors.MutedText,
+                FontAttributes = FontAttributes.Bold
+            });
+            benchmarkOptions.Children.Add(BenchmarkButton(nameof(PuttingGameViewModel.ShortLadderBenchmarkText), viewModel.StartShortLadderBenchmark));
+            benchmarkOptions.Children.Add(BenchmarkButton(nameof(PuttingGameViewModel.NormalLadderBenchmarkText), viewModel.StartNormalLadderBenchmark));
+            benchmarkOptions.Children.Add(BenchmarkButton(nameof(PuttingGameViewModel.ThoroughLadderBenchmarkText), viewModel.StartThoroughLadderBenchmark));
+        }
+
+        benchmarkOptions.Children.Add(BackButton());
 
         Content = new ScrollView
         {
@@ -42,103 +85,43 @@ public sealed class PuttingBenchmarkPage : ContentPage
                 Spacing = 10,
                 Children =
                 {
-                    new Label
+                    AppViews.PageTitle("Test"),
+                    AppViews.Card(new VerticalStackLayout
                     {
-                        Text = "Test",
-                        FontSize = 26,
-                        FontAttributes = FontAttributes.Bold,
-                        TextColor = TextColor
-                    },
-                    Card(new VerticalStackLayout
-                    {
-                        Spacing = 12,
-                        Children =
-                        {
-                            new Label
-                            {
-                                Text = "Afstandsrækkefølge",
-                                TextColor = MutedTextColor,
-                                FontAttributes = FontAttributes.Bold
-                            },
-                            distanceOrder,
-                            new Label
-                            {
-                                Text = "Benchmark-længde",
-                                TextColor = MutedTextColor,
-                                FontAttributes = FontAttributes.Bold,
-                                Margin = new Thickness(0, 8, 0, 0)
-                            },
-                            BenchmarkButton(nameof(PuttingGameViewModel.ShortBenchmarkText), viewModel.StartShortBenchmark),
-                            BenchmarkButton(nameof(PuttingGameViewModel.NormalBenchmarkText), viewModel.StartNormalBenchmark),
-                            BenchmarkButton(nameof(PuttingGameViewModel.ThoroughBenchmarkText), viewModel.StartThoroughBenchmark),
-                            BackButton()
-                        }
-                    })
+                        Children = { benchmarkOptions }
+                    }, new Thickness(0, 0, 0, 10))
                 }
             }
         };
     }
 
-    protected override bool OnBackButtonPressed()
-    {
-        _ = ReturnToPuttingGameAsync();
-        return true;
-    }
-
     private Button BenchmarkButton(string bindingPath, Action startBenchmark)
     {
-        var button = new Button
-        {
-            BackgroundColor = PrimaryGreen,
-            TextColor = Colors.White,
-            CornerRadius = 8,
-            HeightRequest = 50,
-            FontAttributes = FontAttributes.Bold
-        };
+        var button = AppViews.PrimaryButton("");
         button.SetBinding(Button.TextProperty, bindingPath);
         button.Clicked += async (_, _) =>
         {
             startBenchmark();
-            await ReturnToPuttingGameAsync();
+            await OpenBenchmarkGameAsync();
         };
         return button;
     }
 
     private Button BackButton()
     {
-        var button = new Button
-        {
-            Text = "Tilbage",
-            BackgroundColor = Colors.White,
-            BorderColor = PrimaryGreen,
-            BorderWidth = 1,
-            TextColor = PrimaryGreen,
-            CornerRadius = 8,
-            HeightRequest = 50
-        };
-        button.Clicked += async (_, _) => await ReturnToPuttingGameAsync();
+        var button = AppViews.SecondaryButton("Tilbage");
+        button.Clicked += async (_, _) => await Navigation.PopAsync();
         return button;
     }
 
-    private async Task ReturnToPuttingGameAsync()
+    private async Task OpenBenchmarkGameAsync()
     {
-        while (Navigation.NavigationStack.LastOrDefault() is not null &&
-            Navigation.NavigationStack.LastOrDefault() is not PuttingGamePage)
+        var page = new PuttingGamePage(viewModel);
+        await Navigation.PushAsync(page);
+        if (Navigation.NavigationStack.Contains(this))
         {
-            await Navigation.PopAsync();
+            Navigation.RemovePage(this);
         }
     }
 
-    private static Border Card(View content)
-    {
-        return new Border
-        {
-            BackgroundColor = Colors.White,
-            Stroke = CardStroke,
-            StrokeShape = new RoundRectangle { CornerRadius = 8 },
-            Padding = 14,
-            Margin = new Thickness(0, 0, 0, 10),
-            Content = content
-        };
-    }
 }

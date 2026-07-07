@@ -4,8 +4,6 @@ namespace GolfSG.Core;
 
 public sealed class StrokesGainedAroundGreenService : IStrokesGainedAroundGreenService
 {
-    private const double FeetPerYard = 3;
-
     private static readonly IReadOnlyDictionary<ShotLie, AroundGreenBaselinePoint[]> AroundGreenBaseline =
         new Dictionary<ShotLie, AroundGreenBaselinePoint[]>
         {
@@ -153,7 +151,7 @@ public sealed class StrokesGainedAroundGreenService : IStrokesGainedAroundGreenS
 
         var distanceYards = unit switch
         {
-            DistanceUnit.Feet => distance / FeetPerYard,
+            DistanceUnit.Feet => DistanceConversions.FeetToYards(distance),
             DistanceUnit.Yards => distance,
             _ => throw new ArgumentOutOfRangeException(nameof(unit), unit, "Unsupported distance unit.")
         };

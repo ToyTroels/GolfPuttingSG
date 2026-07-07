@@ -1,5 +1,5 @@
-using GolfSG.Core;
 using GolfSG.ViewModels;
+using GolfSG.Services;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +9,7 @@ public sealed class StartPage : ContentPage
 {
     private readonly StartViewModel viewModel;
     private readonly IServiceProvider services;
+    private Button? evaluationButton;
 
     public StartPage(StartViewModel viewModel, IServiceProvider services)
     {
@@ -16,7 +17,7 @@ public sealed class StartPage : ContentPage
         this.services = services;
         BindingContext = viewModel;
         Title = "Putting SG";
-        BackgroundColor = Color.FromArgb("#F4F1E8");
+        BackgroundColor = GolfTheme.Colors.PageBackground;
         BuildLayout();
         ToolbarItems.Add(new ToolbarItem
         {
@@ -30,6 +31,11 @@ public sealed class StartPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        if (evaluationButton is not null)
+        {
+            evaluationButton.IsVisible = FeatureSettings.EnableBetaFeatures;
+        }
+
         try
         {
             await viewModel.LoadAsync();
@@ -45,110 +51,88 @@ public sealed class StartPage : ContentPage
 
     private void BuildLayout()
     {
-        var newRoundButton = new Button
-        {
-            Text = "Ny runde",
-            BackgroundColor = Color.FromArgb("#0F5132"),
-            TextColor = Colors.White,
-            CornerRadius = 8
-        };
+        var newRoundButton = AppViews.PrimaryButton("Ny runde");
+        newRoundButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         newRoundButton.Clicked += async (_, _) =>
             await Navigation.PushAsync(services.GetRequiredService<RoundInputPage>());
 
-        var puttingGameButton = new Button
-        {
-            Text = "Putting-spil",
-            BackgroundColor = Colors.White,
-            BorderColor = Color.FromArgb("#0F5132"),
-            BorderWidth = 1,
-            TextColor = Color.FromArgb("#0F5132"),
-            CornerRadius = 8
-        };
+        var puttingGameButton = AppViews.SecondaryButton("Putting-spil");
+        puttingGameButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         puttingGameButton.Clicked += async (_, _) =>
-        {
-            var page = services.GetRequiredService<PuttingGamePage>();
-            page.Start(PuttingGame.LadderMode);
-            await Navigation.PushAsync(page);
-        };
+            await Navigation.PushAsync(services.GetRequiredService<PuttingGamesPage>());
 
-        var tourRoundGameButton = new Button
-        {
-            Text = "Tour-runde",
-            BackgroundColor = Colors.White,
-            BorderColor = Color.FromArgb("#0F5132"),
-            BorderWidth = 1,
-            TextColor = Color.FromArgb("#0F5132"),
-            CornerRadius = 8
-        };
-        tourRoundGameButton.Clicked += async (_, _) =>
-        {
-            var page = services.GetRequiredService<PuttingGamePage>();
-            page.Start(PuttingGame.TourRoundMode);
-            await Navigation.PushAsync(page);
-        };
-
-        var historyButton = new Button
-        {
-            Text = "Historik",
-            BackgroundColor = Colors.White,
-            BorderColor = Color.FromArgb("#0F5132"),
-            BorderWidth = 1,
-            TextColor = Color.FromArgb("#0F5132"),
-            CornerRadius = 8
-        };
+        var historyButton = AppViews.SecondaryButton("Historik");
+        historyButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         historyButton.Clicked += async (_, _) =>
             await Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>());
 
+        evaluationButton = AppViews.SecondaryButton("SG evaluering beta");
+        evaluationButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
+        evaluationButton.IsVisible = FeatureSettings.EnableBetaFeatures;
+        evaluationButton.Clicked += async (_, _) =>
+            await Navigation.PushAsync(services.GetRequiredService<EvaluationPage>());
+
         var warning = new Border
         {
-            BackgroundColor = Color.FromArgb("#FFF7E0"),
-            Stroke = Color.FromArgb("#D59A20"),
+            BackgroundColor = GolfTheme.Colors.WarningBackground,
+            Stroke = GolfTheme.Colors.WarningStroke,
             StrokeShape = new RoundRectangle { CornerRadius = 8 },
             Padding = 12,
             Margin = new Thickness(0, 0, 0, 12),
             Content = new Label
             {
                 FontSize = 14,
-                TextColor = Color.FromArgb("#5A3B00")
+                TextColor = GolfTheme.Colors.WarningText
             }
         };
         warning.SetBinding(IsVisibleProperty, nameof(StartViewModel.ShowRecoveredFromBackupWarning));
         ((Label)warning.Content).SetBinding(Label.TextProperty, nameof(StartViewModel.RecoveredFromBackupWarningText));
 
+        var error = new Border
+        {
+            BackgroundColor = GolfTheme.Colors.DangerBackground,
+            Stroke = GolfTheme.Colors.DangerText,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 12,
+            Margin = new Thickness(0, 0, 0, 12),
+            Content = new Label
+            {
+                FontSize = 14,
+                TextColor = GolfTheme.Colors.DangerText
+            }
+        };
+        error.SetBinding(IsVisibleProperty, nameof(StartViewModel.HasError));
+        ((Label)error.Content).SetBinding(Label.TextProperty, nameof(StartViewModel.ErrorMessage));
+
         var rounds = new CollectionView
         {
             SelectionMode = SelectionMode.None,
-            ItemTemplate = RoundTemplate(OpenRoundAsync, DeleteRoundAsync),
+            ItemTemplate = RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync),
             Header = new VerticalStackLayout
             {
                 Spacing = 0,
                 Children =
                 {
                     warning,
-                    new Label
-                    {
-                        Text = "Putting SG",
-                        FontSize = 34,
-                        FontAttributes = FontAttributes.Bold,
-                        TextColor = Color.FromArgb("#202421")
-                    },
+                    error,
+                    AppViews.PageTitle("Putting SG", 34),
                     new Label
                     {
                         Text = "Registrer strokes gained putting mod PGA Tour-baseline",
                         FontSize = 16,
-                        TextColor = Color.FromArgb("#4E5851")
+                        TextColor = GolfTheme.Colors.MutedText
                     },
                     new VerticalStackLayout
                     {
                         Spacing = 10,
-                        Children = { newRoundButton, puttingGameButton, tourRoundGameButton, historyButton }
+                        Children = { newRoundButton, puttingGameButton, historyButton, evaluationButton }
                     }.Margin(new Thickness(0, 16, 0, 18)),
                     new Label
                     {
                         Text = "Seneste runder og spil",
                         FontSize = 18,
                         FontAttributes = FontAttributes.Bold,
-                        TextColor = Color.FromArgb("#202421")
+                        TextColor = GolfTheme.Colors.Text
                     }.Margin(new Thickness(0, 0, 0, 8))
                 }
             },
@@ -156,7 +140,7 @@ public sealed class StartPage : ContentPage
             {
                 Text = "Ingen gemte runder endnu.",
                 FontSize = 14,
-                TextColor = Color.FromArgb("#4E5851"),
+                TextColor = GolfTheme.Colors.MutedText,
                 Margin = new Thickness(0, 8, 0, 0)
             }
         };
@@ -208,9 +192,14 @@ public sealed class StartPage : ContentPage
         }
     }
 
+    private async Task ShowRoundActionsAsync(RoundListItemViewModel item)
+    {
+        await Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false);
+    }
+
     private static DataTemplate RoundTemplate(
         Func<RoundListItemViewModel, Task> openRoundAsync,
-        Func<RoundListItemViewModel, Task> deleteRoundAsync)
+        Func<RoundListItemViewModel, Task> showRoundActionsAsync)
     {
         return new DataTemplate(() =>
         {
@@ -221,39 +210,18 @@ public sealed class StartPage : ContentPage
             {
                 FontSize = 18,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = Color.FromArgb("#0F5132"),
+                TextColor = GolfTheme.Colors.PrimaryGreen,
                 HorizontalTextAlignment = TextAlignment.End
             };
             sg.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.TotalSgText));
 
-            var detail = new Label { FontSize = 14, TextColor = Color.FromArgb("#4E5851") };
+            var detail = new Label { FontSize = 14, TextColor = GolfTheme.Colors.MutedText };
             detail.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DetailText));
 
-            var delete = new Button
-            {
-                Text = "Slet",
-                BackgroundColor = Colors.White,
-                BorderColor = Color.FromArgb("#9D2F2F"),
-                BorderWidth = 1,
-                TextColor = Color.FromArgb("#9D2F2F"),
-                CornerRadius = 8,
-                FontAttributes = FontAttributes.Bold,
-                FontSize = 12,
-                HeightRequest = 36,
-                Padding = new Thickness(10, 0)
-            };
-            delete.Clicked += async (sender, _) =>
-            {
-                if (sender is BindableObject { BindingContext: RoundListItemViewModel item })
-                {
-                    await deleteRoundAsync(item);
-                }
-            };
-
-            var card = new Border
+            var card = new LongPressBorder
             {
                 BackgroundColor = Colors.White,
-                Stroke = Color.FromArgb("#DCE4DD"),
+                Stroke = GolfTheme.Colors.CardStroke,
                 StrokeShape = new RoundRectangle { CornerRadius = 8 },
                 Padding = 14,
                 Margin = new Thickness(0, 0, 0, 10),
@@ -273,8 +241,7 @@ public sealed class StartPage : ContentPage
                             ColumnSpacing = 8,
                             Children = { date.Column(0), sg.Column(1) }
                         },
-                        detail,
-                        delete
+                        detail
                     }
                 }
             };
@@ -290,6 +257,20 @@ public sealed class StartPage : ContentPage
             };
 
             card.GestureRecognizers.Add(tap);
+
+            card.LongPressed += async (_, _) =>
+            {
+                if (card.BindingContext is RoundListItemViewModel item)
+                {
+                    await showRoundActionsAsync(item);
+                }
+            };
+            card.PressedChanged += (_, isPressed) =>
+            {
+                card.BackgroundColor = isPressed ? GolfTheme.Colors.SoftPressedGreen : Colors.White;
+                card.Stroke = isPressed ? GolfTheme.Colors.PrimaryGreen : GolfTheme.Colors.CardStroke;
+                _ = card.ScaleToAsync(isPressed ? 0.985 : 1, 80, Easing.CubicOut);
+            };
 
             return card;
         });

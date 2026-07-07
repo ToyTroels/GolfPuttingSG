@@ -1,3 +1,4 @@
+using GolfSG.Core;
 using GolfSG.Core.Models;
 using GolfSG.Services;
 using GolfSG.ViewModels;
@@ -21,6 +22,14 @@ public sealed class PuttingGameViewModelTests
         Assert.IsTrue(viewModel.HasRemainingDistanceDetails);
         Assert.IsFalse(viewModel.ShowRemainingDistanceDetails);
         Assert.AreEqual("Registrer putt", viewModel.PrimaryActionText);
+    }
+
+    [TestMethod]
+    public void ConfiguredGameDefaultsToTwentyPutts()
+    {
+        var viewModel = new PuttingGameViewModel(new InMemoryRoundRepository());
+
+        Assert.AreEqual("20", viewModel.HoleCountText);
     }
 
     [TestMethod]
@@ -60,6 +69,79 @@ public sealed class PuttingGameViewModelTests
         Assert.AreEqual(2, repository.Rounds[0].CompletedHoleCount);
     }
 
+    [TestMethod]
+    public async Task LadderBenchmarkSavesPresetMetadata()
+    {
+        var repository = new InMemoryRoundRepository();
+        var viewModel = new PuttingGameViewModel(repository);
+        viewModel.StartNormalLadderBenchmark();
+
+        Assert.IsTrue(viewModel.IsActive);
+        Assert.AreEqual("Normal ladder benchmark", viewModel.GameTitle);
+        Assert.AreEqual("Putt 1 af 30", viewModel.ProgressText);
+        Assert.AreEqual("1,0 m", viewModel.CurrentDistanceText);
+
+        string? completedRoundId = null;
+        for (var index = 0; index < 30; index++)
+        {
+            completedRoundId = await viewModel.SubmitAsync();
+        }
+
+        Assert.IsFalse(string.IsNullOrWhiteSpace(completedRoundId));
+        Assert.HasCount(1, repository.Rounds);
+        var gameInfo = repository.Rounds[0].GameInfo;
+        Assert.IsNotNull(gameInfo);
+        Assert.AreEqual("PuttingBenchmark", gameInfo.Type);
+        Assert.AreEqual(PuttingBenchmarkType.Ladder, gameInfo.BenchmarkType);
+        Assert.AreEqual(PuttingGame.NormalLadderBenchmarkPresetId, gameInfo.PresetId);
+        Assert.AreEqual(30, gameInfo.AttemptCount);
+        Assert.AreEqual(1, gameInfo.StartDistanceMeters);
+        Assert.AreEqual(6, gameInfo.EndDistanceMeters);
+        Assert.AreEqual(1, gameInfo.DistanceStepMeters);
+        Assert.AreEqual(5, gameInfo.PuttsPerDistance);
+        Assert.IsTrue(repository.Rounds[0].Holes.Select(hole => hole.FirstPuttDistanceMeters)
+            .SequenceEqual(repository.Rounds[0].Holes.Select(hole => hole.FirstPuttDistanceMeters).Order()));
+    }
+
+    [TestMethod]
+    public void LadderBenchmarkHistorySummaryShowsPresetDetails()
+    {
+        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalLadderBenchmark);
+        var round = new Round(
+            "ladder",
+            new DateTime(2026, 6, 1),
+            [PuttingGame.BuildPutt(1, definition.DistancesMeters[0], 2)],
+            new RoundTrackingOptions(true, false, false, true, PuttingGame.NormalLadderBenchmark),
+            1,
+            false,
+            PuttingGame.CreateRoundGameInfo(definition));
+
+        var item = new RoundListItemViewModel(round);
+
+        StringAssert.Contains(item.DetailText, "Normal ladder benchmark");
+        StringAssert.Contains(item.DetailText, "1,0 m-6,0 m");
+        StringAssert.Contains(item.DetailText, "1,0 m trin");
+        StringAssert.Contains(item.DetailText, "5 pr. afstand");
+    }
+
+    [TestMethod]
+    public async Task FinalSubmitSaveFailureKeepsGameActiveAndShowsError()
+    {
+        var repository = new InMemoryRoundRepository { ThrowOnSave = true };
+        var viewModel = CreateConfiguredGame(1, repository);
+
+        var completedRoundId = await viewModel.SubmitAsync();
+
+        Assert.IsNull(completedRoundId);
+        Assert.IsTrue(viewModel.IsActive);
+        Assert.IsFalse(viewModel.IsComplete);
+        Assert.IsTrue(viewModel.HasError);
+        StringAssert.Contains(viewModel.ErrorMessage, "gemmes");
+        Assert.AreEqual("Putt 1 af 1", viewModel.ProgressText);
+        Assert.AreEqual("Gem og afslut", viewModel.PrimaryActionText);
+        Assert.HasCount(0, repository.Rounds);
+    }
+
     private static PuttingGameViewModel CreateConfiguredGame(
         int puttCount,
         InMemoryRoundRepository? repository = null)
@@ -78,6 +160,8 @@ public sealed class PuttingGameViewModelTests
     private sealed class InMemoryRoundRepository : IRoundRepository
     {
         public List<Round> Rounds { get; } = [];
+
+        public bool ThrowOnSave { get; init; }
 
         public string ActiveStoragePath => string.Empty;
 
@@ -98,6 +182,11 @@ public sealed class PuttingGameViewModelTests
 
         public Task SaveRoundAsync(Round round)
         {
+            if (ThrowOnSave)
+            {
+                throw new IOException("Save failed.");
+            }
+
             Rounds.RemoveAll(existingRound => existingRound.Id == round.Id);
             Rounds.Add(round);
             return Task.CompletedTask;

@@ -6,11 +6,11 @@ namespace GolfSG.Views;
 
 public sealed class RoundInputPage : ContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
-    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
-    private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
-    private static readonly Color TextColor = Color.FromArgb("#202421");
-    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
+    private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
+    private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
+    private static readonly Color PrimaryGreen = GolfTheme.Colors.PrimaryGreen;
+    private static readonly Color TextColor = GolfTheme.Colors.Text;
+    private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
 
     private readonly RoundInputViewModel viewModel;
 
@@ -37,6 +37,10 @@ public sealed class RoundInputPage : ContentPage
     public async Task LoadAsync(string? roundId)
     {
         await viewModel.LoadAsync(roundId);
+        if (viewModel.HasError)
+        {
+            await DisplayAlertAsync("Runden kunne ikke indl\u00e6ses", viewModel.ErrorMessage, "OK");
+        }
     }
 
     protected override bool OnBackButtonPressed()
@@ -88,12 +92,23 @@ public sealed class RoundInputPage : ContentPage
             HeightRequest = 48
         };
         saveButton.SetBinding(Button.TextProperty, nameof(RoundInputViewModel.SaveButtonText));
+        saveButton.SetBinding(VisualElement.IsEnabledProperty, nameof(RoundInputViewModel.CanSave));
         saveButton.Clicked += async (_, _) =>
         {
             saveButton.IsEnabled = false;
             try
             {
                 var roundId = await viewModel.SaveAsync();
+                if (string.IsNullOrWhiteSpace(roundId))
+                {
+                    if (viewModel.HasError)
+                    {
+                        await DisplayAlertAsync("Runden kunne ikke gemmes", viewModel.ErrorMessage, "OK");
+                    }
+
+                    return;
+                }
+
                 var page = Handler!.MauiContext!.Services.GetRequiredService<RoundResultPage>();
                 await page.LoadAsync(roundId);
                 await Navigation.PushAsync(page);
@@ -112,6 +127,38 @@ public sealed class RoundInputPage : ContentPage
         };
         saveButton.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.IsRoundVisible));
 
+        var error = new Border
+        {
+            BackgroundColor = GolfTheme.Colors.DangerBackground,
+            Stroke = GolfTheme.Colors.DangerText,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 12,
+            Margin = new Thickness(0, 0, 0, 10),
+            Content = new Label
+            {
+                FontSize = 14,
+                TextColor = GolfTheme.Colors.DangerText
+            }
+        };
+        error.SetBinding(IsVisibleProperty, nameof(RoundInputViewModel.HasError));
+        ((Label)error.Content).SetBinding(Label.TextProperty, nameof(RoundInputViewModel.ErrorMessage));
+
+        var roundError = new Border
+        {
+            BackgroundColor = GolfTheme.Colors.DangerBackground,
+            Stroke = GolfTheme.Colors.DangerText,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 12,
+            Margin = new Thickness(0, 0, 0, 10),
+            Content = new Label
+            {
+                FontSize = 14,
+                TextColor = GolfTheme.Colors.DangerText
+            }
+        };
+        roundError.SetBinding(IsVisibleProperty, nameof(RoundInputViewModel.HasError));
+        ((Label)roundError.Content).SetBinding(Label.TextProperty, nameof(RoundInputViewModel.ErrorMessage));
+
         var setupView = new ScrollView
         {
             Content = new VerticalStackLayout
@@ -120,6 +167,7 @@ public sealed class RoundInputPage : ContentPage
                 Children =
                 {
                     title,
+                    error,
                     HoleCountPanel().Margin(new Thickness(0, 12, 0, 0)),
                     TrackingPanel(),
                     startButton.Margin(new Thickness(0, 8, 0, 0))
@@ -143,6 +191,7 @@ public sealed class RoundInputPage : ContentPage
                         TextColor = TextColor,
                         Margin = new Thickness(0, 2, 0, 10)
                     },
+                    roundError,
                     HoleCountPanel(),
                     RoundProgressPanel(),
                     holes,

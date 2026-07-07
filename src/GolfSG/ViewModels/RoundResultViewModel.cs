@@ -7,8 +7,6 @@ namespace GolfSG.ViewModels;
 
 public sealed class RoundResultViewModel : ViewModelBase
 {
-    private const double MetersPerYard = 0.9144;
-
     private readonly IRoundRepository repository;
     private Round? round;
     private RoundSummary? summary;
@@ -78,7 +76,7 @@ public sealed class RoundResultViewModel : ViewModelBase
         HoleResults.Clear();
         foreach (var hole in round.Holes.Where(round.IsTrackedHoleCompleted))
         {
-            HoleResults.Add(new HoleResultItemViewModel(hole, trackingOptions));
+            HoleResults.Add(new HoleResultItemViewModel(HoleResultMapper.ToResult(hole), trackingOptions));
         }
 
         PuttingDistanceBuckets.Clear();
@@ -125,9 +123,12 @@ public sealed class RoundResultViewModel : ViewModelBase
             }
 
             var missedShortPutts = round.Holes.Count(hole =>
-                hole.IsCompleted &&
-                hole.FirstPuttDistanceMeters < StrokesGainedCalculator.ShortPuttMaximumMeters &&
-                hole.Putts >= 2);
+            {
+                var result = HoleResultMapper.ToResult(hole);
+                return result.Putting is { IsCompleted: true } putting &&
+                    putting.FirstPuttDistanceMeters < StrokesGainedCalculator.ShortPuttMaximumMeters &&
+                    putting.Putts >= 2;
+            });
 
             if (missedShortPutts >= 2)
             {
@@ -213,41 +214,39 @@ public sealed class RoundResultViewModel : ViewModelBase
         return $"Putt {hole.HoleNumber}, {UiFormat.Meters(hole.FirstPuttDistanceMeters)} ({UiFormat.Sg(hole.StrokesGainedPutting)})";
     }
 
-    private static double YardsToMeters(double distanceYards) => distanceYards * MetersPerYard;
+    private static double YardsToMeters(double distanceYards) => DistanceConversions.YardsToMeters(distanceYards);
 }
 
 public sealed class HoleResultItemViewModel
 {
-    private const double MetersPerYard = 0.9144;
-
-    public HoleResultItemViewModel(HolePuttingData hole, RoundTrackingOptions trackingOptions)
+    public HoleResultItemViewModel(HoleResult hole, RoundTrackingOptions trackingOptions)
     {
         Title = trackingOptions.IsPuttingGame ? $"Putt {hole.HoleNumber}" : $"Hul {hole.HoleNumber}";
 
         var details = new List<string>();
         var sg = 0d;
-        if (trackingOptions.TrackPutting)
+        if (trackingOptions.TrackPutting && hole.Putting is not null)
         {
             var distance = trackingOptions.IsPuttingGame
-                ? UiFormat.Meters(hole.FirstPuttDistanceMeters)
-                : UiFormat.Meters(hole.FirstPuttDistanceMeters);
+                ? UiFormat.Meters(hole.Putting.FirstPuttDistanceMeters)
+                : UiFormat.Meters(hole.Putting.FirstPuttDistanceMeters);
 
-            details.Add($"{distance} - {hole.Putts} putts");
-            sg += hole.StrokesGainedPutting;
+            details.Add($"{distance} - {hole.Putting.Putts} putts");
+            sg += hole.Putting.StrokesGained;
         }
 
-        if (trackingOptions.TrackApproach)
+        if (trackingOptions.TrackApproach && hole.Approach is not null)
         {
-            details.Add(hole.ApproachStartDistanceYards > 0
-                ? $"Indspil {UiFormat.WholeMeters(YardsToMeters(hole.ApproachStartDistanceYards))} {FormatLie(hole.ApproachStartLie).ToLowerInvariant()}"
-                : $"{UiFormat.WholeMeters(hole.ApproachDistanceMeters)} - {hole.ApproachShots} indspil");
-            sg += hole.StrokesGainedApproach;
+            details.Add(hole.Approach.Shot is not null
+                ? $"Indspil {UiFormat.WholeMeters(YardsToMeters(hole.Approach.Shot.StartDistanceToPin))} {ShotLieLabels.Format(hole.Approach.Shot.StartLie).ToLowerInvariant()}"
+                : $"{UiFormat.WholeMeters(hole.Approach.DistanceMeters)} - {hole.Approach.Shots} indspil");
+            sg += hole.Approach.StrokesGained;
         }
 
-        if (trackingOptions.TrackAroundGreen)
+        if (trackingOptions.TrackAroundGreen && hole.AroundGreen is not null)
         {
-            details.Add($"Omkring green {UiFormat.WholeMeters(YardsToMeters(hole.AroundGreenStartDistanceYards))} {FormatLie(hole.AroundGreenStartLie).ToLowerInvariant()}");
-            sg += hole.StrokesGainedAroundGreen;
+            details.Add($"Omkring green {UiFormat.WholeMeters(YardsToMeters(hole.AroundGreen.StartDistanceYards))} {ShotLieLabels.Format(hole.AroundGreen.StartLie).ToLowerInvariant()}");
+            sg += hole.AroundGreen.StrokesGained;
         }
 
         Detail = string.Join(" | ", details);
@@ -258,21 +257,7 @@ public sealed class HoleResultItemViewModel
     public string Detail { get; }
     public string StrokesGainedText { get; }
 
-    private static string FormatLie(ShotLie lie)
-    {
-        return lie switch
-        {
-            ShotLie.FairwayCut => "Kortklippet",
-            ShotLie.Fairway => "Fairway",
-            ShotLie.Sand => "Sand",
-            ShotLie.Recovery => "Problemlie",
-            ShotLie.Green => "Green",
-            ShotLie.Holed => "I hul",
-            _ => "Rough"
-        };
-    }
-
-    private static double YardsToMeters(double distanceYards) => distanceYards * MetersPerYard;
+    private static double YardsToMeters(double distanceYards) => DistanceConversions.YardsToMeters(distanceYards);
 }
 
 public sealed class PuttingDistanceBucketItemViewModel

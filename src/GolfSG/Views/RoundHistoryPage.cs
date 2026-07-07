@@ -6,12 +6,11 @@ namespace GolfSG.Views;
 
 public sealed class RoundHistoryPage : ContentPage
 {
-    private static readonly Color PageBackground = Color.FromArgb("#F4F1E8");
-    private static readonly Color CardStroke = Color.FromArgb("#DCE4DD");
-    private static readonly Color PrimaryGreen = Color.FromArgb("#0F5132");
-    private static readonly Color DangerRed = Color.FromArgb("#9D2F2F");
-    private static readonly Color TextColor = Color.FromArgb("#202421");
-    private static readonly Color MutedTextColor = Color.FromArgb("#4E5851");
+    private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
+    private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
+    private static readonly Color PrimaryGreen = GolfTheme.Colors.PrimaryGreen;
+    private static readonly Color TextColor = GolfTheme.Colors.Text;
+    private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
 
     private readonly StartViewModel viewModel;
     private readonly IServiceProvider services;
@@ -46,15 +45,15 @@ public sealed class RoundHistoryPage : ContentPage
     {
         var warning = new Border
         {
-            BackgroundColor = Color.FromArgb("#FFF7E0"),
-            Stroke = Color.FromArgb("#D59A20"),
+            BackgroundColor = GolfTheme.Colors.WarningBackground,
+            Stroke = GolfTheme.Colors.WarningStroke,
             StrokeShape = new RoundRectangle { CornerRadius = 8 },
             Padding = 12,
             Margin = new Thickness(0, 0, 0, 12),
             Content = new Label
             {
                 FontSize = 14,
-                TextColor = Color.FromArgb("#5A3B00")
+                TextColor = GolfTheme.Colors.WarningText
             }
         };
         warning.SetBinding(IsVisibleProperty, nameof(StartViewModel.ShowRecoveredFromBackupWarning));
@@ -63,7 +62,7 @@ public sealed class RoundHistoryPage : ContentPage
         var rounds = new CollectionView
         {
             SelectionMode = SelectionMode.None,
-            ItemTemplate = RoundTemplate(OpenRoundAsync, DeleteRoundAsync),
+            ItemTemplate = RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync),
             Header = new VerticalStackLayout
             {
                 Spacing = 4,
@@ -142,9 +141,14 @@ public sealed class RoundHistoryPage : ContentPage
         }
     }
 
+    private async Task ShowRoundActionsAsync(RoundListItemViewModel item)
+    {
+        await Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false);
+    }
+
     private static DataTemplate RoundTemplate(
         Func<RoundListItemViewModel, Task> openRoundAsync,
-        Func<RoundListItemViewModel, Task> deleteRoundAsync)
+        Func<RoundListItemViewModel, Task> showRoundActionsAsync)
     {
         return new DataTemplate(() =>
         {
@@ -163,28 +167,7 @@ public sealed class RoundHistoryPage : ContentPage
             var detail = new Label { FontSize = 14, TextColor = MutedTextColor };
             detail.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DetailText));
 
-            var delete = new Button
-            {
-                Text = "Slet",
-                BackgroundColor = Colors.White,
-                BorderColor = DangerRed,
-                BorderWidth = 1,
-                TextColor = DangerRed,
-                CornerRadius = 8,
-                FontAttributes = FontAttributes.Bold,
-                FontSize = 12,
-                HeightRequest = 36,
-                Padding = new Thickness(10, 0)
-            };
-            delete.Clicked += async (sender, _) =>
-            {
-                if (sender is BindableObject { BindingContext: RoundListItemViewModel item })
-                {
-                    await deleteRoundAsync(item);
-                }
-            };
-
-            var card = new Border
+            var card = new LongPressBorder
             {
                 BackgroundColor = Colors.White,
                 Stroke = CardStroke,
@@ -206,8 +189,7 @@ public sealed class RoundHistoryPage : ContentPage
                             ColumnSpacing = 8,
                             Children = { date.Column(0), sg.Column(1) }
                         },
-                        detail,
-                        delete
+                        detail
                     }
                 }
             };
@@ -221,6 +203,20 @@ public sealed class RoundHistoryPage : ContentPage
                 }
             };
             card.GestureRecognizers.Add(tap);
+
+            card.LongPressed += async (_, _) =>
+            {
+                if (card.BindingContext is RoundListItemViewModel item)
+                {
+                    await showRoundActionsAsync(item);
+                }
+            };
+            card.PressedChanged += (_, isPressed) =>
+            {
+                card.BackgroundColor = isPressed ? GolfTheme.Colors.SoftPressedGreen : Colors.White;
+                card.Stroke = isPressed ? PrimaryGreen : CardStroke;
+                _ = card.ScaleToAsync(isPressed ? 0.985 : 1, 80, Easing.CubicOut);
+            };
 
             return card;
         });
