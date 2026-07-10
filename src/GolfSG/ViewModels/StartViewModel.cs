@@ -54,7 +54,7 @@ public sealed class StartViewModel : ViewModelBase
     }
 
     public string RecoveredFromBackupWarningText { get; } =
-        "Gemte runder blev gendannet fra backup. Tjek gerne historikken, før du fortsætter.";
+        "Gemte runder blev gendannet fra backup. Tjek gerne historikken, f\u00f8r du forts\u00e6tter.";
 
     public async Task LoadAsync()
     {

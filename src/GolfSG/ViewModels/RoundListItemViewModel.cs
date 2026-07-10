@@ -21,6 +21,12 @@ public sealed class RoundListItemViewModel
     public Round Round { get; }
     public string Id => Round.Id;
     public bool IsPuttingGame => trackingOptions.IsPuttingGame;
+    public bool IsBenchmark => IsPuttingGame &&
+        (string.Equals(Round.GameInfo?.Type, "PuttingBenchmark", StringComparison.Ordinal) ||
+            IsLegacyBenchmarkMode(trackingOptions.PuttingGameMode));
+    public string HistoryTypeText => IsBenchmark
+        ? "Benchmark"
+        : IsPuttingGame ? "Putting-spil" : "Runde";
     public string Date => IsPuttingGame
         ? $"{UiFormat.Date(Round.Date)} - {PuttingGameTitle}"
         : UiFormat.Date(Round.Date);
@@ -72,6 +78,14 @@ public sealed class RoundListItemViewModel
     }
 
     private string PuttingGameTitle => PuttingGame.GetTitle(Round.GameInfo, trackingOptions.PuttingGameMode);
+
+    private static bool IsLegacyBenchmarkMode(string? mode) => mode is
+        PuttingGame.ShortBenchmark or
+        PuttingGame.NormalBenchmark or
+        PuttingGame.ThoroughBenchmark or
+        PuttingGame.ShortLadderBenchmark or
+        PuttingGame.NormalLadderBenchmark or
+        PuttingGame.ThoroughLadderBenchmark;
 
     private static string FormatBenchmarkDetail(RoundGameInfo? gameInfo)
     {

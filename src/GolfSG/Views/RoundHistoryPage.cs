@@ -12,10 +12,10 @@ public sealed class RoundHistoryPage : ContentPage
     private static readonly Color TextColor = GolfTheme.Colors.Text;
     private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
 
-    private readonly StartViewModel viewModel;
+    private readonly RoundHistoryViewModel viewModel;
     private readonly IServiceProvider services;
 
-    public RoundHistoryPage(StartViewModel viewModel, IServiceProvider services)
+    public RoundHistoryPage(RoundHistoryViewModel viewModel, IServiceProvider services)
     {
         this.viewModel = viewModel;
         this.services = services;
@@ -56,8 +56,37 @@ public sealed class RoundHistoryPage : ContentPage
                 TextColor = GolfTheme.Colors.WarningText
             }
         };
-        warning.SetBinding(IsVisibleProperty, nameof(StartViewModel.ShowRecoveredFromBackupWarning));
-        ((Label)warning.Content).SetBinding(Label.TextProperty, nameof(StartViewModel.RecoveredFromBackupWarningText));
+        warning.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.ShowRecoveredFromBackupWarning));
+        ((Label)warning.Content).SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.RecoveredFromBackupWarningText));
+
+        var type = HistoryPicker("Type");
+        type.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistoryTypeOptions));
+        type.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistoryType), BindingMode.TwoWay);
+
+        var period = HistoryPicker("Periode");
+        period.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistoryPeriodOptions));
+        period.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistoryPeriod), BindingMode.TwoWay);
+
+        var sort = HistoryPicker("Sortering");
+        sort.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistorySortOptions));
+        sort.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistorySort), BindingMode.TwoWay);
+
+        var summary = new Label
+        {
+            FontSize = 13,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = MutedTextColor,
+            Margin = new Thickness(0, 0, 0, 10)
+        };
+        summary.SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.HistorySummaryText));
+
+        var empty = new Label
+        {
+            FontSize = 14,
+            TextColor = MutedTextColor,
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+        empty.SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.HistoryEmptyText));
 
         var rounds = new CollectionView
         {
@@ -81,19 +110,15 @@ public sealed class RoundHistoryPage : ContentPage
                         Text = "Gemte runder og putting-spil",
                         FontSize = 15,
                         TextColor = MutedTextColor,
-                        Margin = new Thickness(0, 0, 0, 14)
-                    }
+                        Margin = new Thickness(0, 0, 0, 10)
+                    },
+                    FilterPanel(type, period, sort),
+                    summary
                 }
             },
-            EmptyView = new Label
-            {
-                Text = "Ingen gemte runder endnu.",
-                FontSize = 14,
-                TextColor = MutedTextColor,
-                Margin = new Thickness(0, 8, 0, 0)
-            }
+            EmptyView = empty
         };
-        rounds.SetBinding(ItemsView.ItemsSourceProperty, nameof(StartViewModel.Rounds));
+        rounds.SetBinding(ItemsView.ItemsSourceProperty, nameof(RoundHistoryViewModel.Rounds));
 
         Content = rounds.Margin(new Thickness(16));
     }
@@ -146,6 +171,50 @@ public sealed class RoundHistoryPage : ContentPage
         await Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false);
     }
 
+    private static View FilterPanel(Picker type, Picker period, Picker sort)
+    {
+        return AppViews.Card(new VerticalStackLayout
+        {
+            Spacing = 10,
+            Children =
+            {
+                Field("Vis", type),
+                Field("Periode", period),
+                Field("Sortering", sort)
+            }
+        }, new Thickness(0, 4, 0, 10));
+    }
+
+    private static Picker HistoryPicker(string title)
+    {
+        return new Picker
+        {
+            Title = title,
+            TextColor = TextColor,
+            BackgroundColor = Colors.White,
+            HeightRequest = 44
+        };
+    }
+
+    private static View Field(string labelText, View input)
+    {
+        return new VerticalStackLayout
+        {
+            Spacing = 4,
+            Children =
+            {
+                new Label
+                {
+                    Text = labelText,
+                    FontSize = 12,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = MutedTextColor
+                },
+                input
+            }
+        };
+    }
+
     private static DataTemplate RoundTemplate(
         Func<RoundListItemViewModel, Task> openRoundAsync,
         Func<RoundListItemViewModel, Task> showRoundActionsAsync)
@@ -154,6 +223,15 @@ public sealed class RoundHistoryPage : ContentPage
         {
             var date = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold };
             date.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.Date));
+
+            var type = new Label
+            {
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = PrimaryGreen,
+                VerticalTextAlignment = TextAlignment.Center
+            };
+            type.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.HistoryTypeText));
 
             var sg = new Label
             {
@@ -184,10 +262,11 @@ public sealed class RoundHistoryPage : ContentPage
                             ColumnDefinitions =
                             {
                                 new ColumnDefinition(GridLength.Star),
+                                new ColumnDefinition(GridLength.Auto),
                                 new ColumnDefinition(GridLength.Auto)
                             },
                             ColumnSpacing = 8,
-                            Children = { date.Column(0), sg.Column(1) }
+                            Children = { date.Column(0), type.Column(1), sg.Column(2) }
                         },
                         detail
                     }

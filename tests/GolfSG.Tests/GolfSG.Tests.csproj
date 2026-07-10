@@ -33,6 +33,7 @@
     <Compile Include="..\..\src\GolfSG\ViewModels\HoleInputViewModel.cs" Link="App\ViewModels\HoleInputViewModel.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\PuttingGameViewModel.cs" Link="App\ViewModels\PuttingGameViewModel.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\RoundInputViewModel.cs" Link="App\ViewModels\RoundInputViewModel.cs" />
+    <Compile Include="..\..\src\GolfSG\ViewModels\RoundHistoryViewModel.cs" Link="App\ViewModels\RoundHistoryViewModel.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\RoundListItemViewModel.cs" Link="App\ViewModels\RoundListItemViewModel.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\StartViewModel.cs" Link="App\ViewModels\StartViewModel.cs" />
   </ItemGroup>
