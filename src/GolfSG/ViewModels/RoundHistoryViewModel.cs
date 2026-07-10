@@ -9,6 +9,10 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     private const string HistoryTypeRounds = "Runder";
     private const string HistoryTypePuttingGames = "Putting-spil";
     private const string HistoryTypeBenchmarks = "Benchmarks";
+    private const string HistoryCategoryTotal = "Total SG";
+    private const string HistoryCategoryPutting = "Putting";
+    private const string HistoryCategoryApproach = "Approach";
+    private const string HistoryCategoryAroundGreen = "Omkring green";
     private const string HistoryPeriodAll = "Alle datoer";
     private const string HistoryPeriodLast7Days = "Sidste 7 dage";
     private const string HistoryPeriodLast30Days = "Sidste 30 dage";
@@ -24,8 +28,10 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     private bool isBusy;
     private string errorMessage = string.Empty;
     private string selectedHistoryType = HistoryTypeAll;
+    private string selectedHistoryCategory = HistoryCategoryTotal;
     private string selectedHistoryPeriod = HistoryPeriodAll;
     private string selectedHistorySort = HistorySortNewestFirst;
+    private string historyComparisonText = string.Empty;
 
     public RoundHistoryViewModel(IRoundRepository repository)
     {
@@ -36,6 +42,9 @@ public sealed class RoundHistoryViewModel : ViewModelBase
 
     public IReadOnlyList<string> HistoryTypeOptions { get; } =
         [HistoryTypeAll, HistoryTypeRounds, HistoryTypePuttingGames, HistoryTypeBenchmarks];
+
+    public IReadOnlyList<string> HistoryCategoryOptions { get; } =
+        [HistoryCategoryTotal, HistoryCategoryPutting, HistoryCategoryApproach, HistoryCategoryAroundGreen];
 
     public IReadOnlyList<string> HistoryPeriodOptions { get; } =
         [HistoryPeriodAll, HistoryPeriodLast7Days, HistoryPeriodLast30Days, HistoryPeriodSeasonToDate];
@@ -49,6 +58,18 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref selectedHistoryType, value))
+            {
+                ApplyHistoryFilters();
+            }
+        }
+    }
+
+    public string SelectedHistoryCategory
+    {
+        get => selectedHistoryCategory;
+        set
+        {
+            if (SetProperty(ref selectedHistoryCategory, value))
             {
                 ApplyHistoryFilters();
             }
@@ -101,6 +122,20 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     public string HistoryEmptyText => TotalHistoryCount == 0
         ? "Ingen gemte runder endnu."
         : "Ingen historik matcher de valgte filtre.";
+
+    public string HistoryComparisonText
+    {
+        get => historyComparisonText;
+        private set
+        {
+            if (SetProperty(ref historyComparisonText, value))
+            {
+                OnPropertyChanged(nameof(HasHistoryComparison));
+            }
+        }
+    }
+
+    public bool HasHistoryComparison => !string.IsNullOrWhiteSpace(HistoryComparisonText);
 
     public bool IsBusy
     {
@@ -199,15 +234,24 @@ public sealed class RoundHistoryViewModel : ViewModelBase
 
     private void ApplyHistoryFilters()
     {
+        var category = SelectedSgCategory;
         var filtered = allRoundItems
             .Where(MatchesSelectedHistoryType)
-            .Where(MatchesSelectedHistoryPeriod);
+            .Where(item => item.TracksCategory(category))
+            .Where(MatchesSelectedHistoryPeriod)
+            .ToList();
 
-        var sorted = SortHistory(filtered).ToList();
+        var comparisonAverage = filtered.Count == 0
+            ? 0
+            : filtered.Average(item => item.GetSg(category));
+        UpdateHistoryComparison(filtered, category, comparisonAverage);
+
+        var sorted = SortHistory(filtered, category).ToList();
 
         Rounds.Clear();
         foreach (var round in sorted)
         {
+            round.SetHistoryDisplay(category, comparisonAverage, filtered.Count);
             Rounds.Add(round);
         }
 
@@ -238,7 +282,9 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         };
     }
 
-    private IEnumerable<RoundListItemViewModel> SortHistory(IEnumerable<RoundListItemViewModel> items)
+    private IEnumerable<RoundListItemViewModel> SortHistory(
+        IEnumerable<RoundListItemViewModel> items,
+        HistorySgCategory category)
     {
         return SelectedHistorySort switch
         {
@@ -246,16 +292,51 @@ public sealed class RoundHistoryViewModel : ViewModelBase
                 .OrderBy(item => item.Round.Date)
                 .ThenBy(item => item.Id, StringComparer.Ordinal),
             HistorySortBestSg => items
-                .OrderByDescending(item => item.TotalSg)
+                .OrderByDescending(item => item.GetSg(category))
                 .ThenByDescending(item => item.Round.Date)
                 .ThenByDescending(item => item.Id, StringComparer.Ordinal),
             HistorySortWorstSg => items
-                .OrderBy(item => item.TotalSg)
+                .OrderBy(item => item.GetSg(category))
                 .ThenByDescending(item => item.Round.Date)
                 .ThenByDescending(item => item.Id, StringComparer.Ordinal),
             _ => SortNewestFirst(items)
         };
     }
+
+    private void UpdateHistoryComparison(
+        IReadOnlyList<RoundListItemViewModel> items,
+        HistorySgCategory category,
+        double average)
+    {
+        if (items.Count < 2)
+        {
+            HistoryComparisonText = string.Empty;
+            return;
+        }
+
+        var best = items
+            .OrderByDescending(item => item.GetSg(category))
+            .ThenByDescending(item => item.Round.Date)
+            .ThenByDescending(item => item.Id, StringComparer.Ordinal)
+            .First();
+        var worst = items
+            .OrderBy(item => item.GetSg(category))
+            .ThenByDescending(item => item.Round.Date)
+            .ThenByDescending(item => item.Id, StringComparer.Ordinal)
+            .First();
+
+        HistoryComparisonText = $"{GetHistoryCategoryLabel(category)}: snit {UiFormat.Sg(average)} | " +
+            $"bedst {best.Date} {UiFormat.Sg(best.GetSg(category))} | " +
+            $"svagest {worst.Date} {UiFormat.Sg(worst.GetSg(category))}";
+    }
+
+    private HistorySgCategory SelectedSgCategory => SelectedHistoryCategory switch
+    {
+        HistoryCategoryPutting => HistorySgCategory.Putting,
+        HistoryCategoryApproach => HistorySgCategory.Approach,
+        HistoryCategoryAroundGreen => HistorySgCategory.AroundGreen,
+        _ => HistorySgCategory.Total
+    };
 
     private static IOrderedEnumerable<RoundListItemViewModel> SortNewestFirst(IEnumerable<RoundListItemViewModel> items) =>
         items
@@ -268,5 +349,18 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         OnPropertyChanged(nameof(FilteredHistoryCount));
         OnPropertyChanged(nameof(HistorySummaryText));
         OnPropertyChanged(nameof(HistoryEmptyText));
+        OnPropertyChanged(nameof(HistoryComparisonText));
+        OnPropertyChanged(nameof(HasHistoryComparison));
+    }
+
+    private static string GetHistoryCategoryLabel(HistorySgCategory category)
+    {
+        return category switch
+        {
+            HistorySgCategory.Putting => "SG putting",
+            HistorySgCategory.Approach => "SG approach",
+            HistorySgCategory.AroundGreen => "SG omkring green",
+            _ => "SG total"
+        };
     }
 }

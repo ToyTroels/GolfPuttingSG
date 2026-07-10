@@ -99,6 +99,74 @@ public sealed class RoundHistoryViewModelTests
     }
 
     [TestMethod]
+    public async Task HistoryCategoryFilterShowsOnlyTrackedCategoryAndSortsByIt()
+    {
+        var today = DateTime.Today;
+        var repository = new InMemoryRoundRepository(
+            CreateRound("putting-only", today.AddDays(-2), puttingSg: 4),
+            CreateRound(
+                "approach-weak",
+                today.AddDays(-1),
+                puttingSg: 3,
+                approachSg: -1,
+                trackingOptions: new RoundTrackingOptions(true, true)),
+            CreateRound(
+                "approach-best",
+                today,
+                puttingSg: -3,
+                approachSg: 2,
+                trackingOptions: new RoundTrackingOptions(true, true)));
+        var viewModel = new RoundHistoryViewModel(repository);
+        await viewModel.LoadAsync();
+
+        viewModel.SelectedHistoryCategory = "Approach";
+        viewModel.SelectedHistorySort = "Bedste SG";
+
+        CollectionAssert.AreEqual(
+            new[] { "approach-best", "approach-weak" },
+            viewModel.Rounds.Select(round => round.Id).ToArray());
+        Assert.AreEqual("+2,00", viewModel.Rounds[0].DisplaySgText);
+        Assert.AreEqual("SG approach", viewModel.Rounds[0].DisplaySgCaption);
+    }
+
+    [TestMethod]
+    public async Task HistoryComparisonUsesSelectedCategoryAverageBestAndWorst()
+    {
+        var today = DateTime.Today;
+        var repository = new InMemoryRoundRepository(
+            CreateRound(
+                "worst",
+                today.AddDays(-2),
+                approachSg: -1,
+                trackingOptions: new RoundTrackingOptions(true, true)),
+            CreateRound(
+                "middle",
+                today.AddDays(-1),
+                approachSg: 0.5,
+                trackingOptions: new RoundTrackingOptions(true, true)),
+            CreateRound(
+                "best",
+                today,
+                approachSg: 2,
+                trackingOptions: new RoundTrackingOptions(true, true)));
+        var viewModel = new RoundHistoryViewModel(repository);
+        await viewModel.LoadAsync();
+
+        viewModel.SelectedHistoryCategory = "Approach";
+
+        Assert.IsTrue(viewModel.HasHistoryComparison);
+        StringAssert.Contains(viewModel.HistoryComparisonText, "SG approach: snit +0,50");
+        StringAssert.Contains(viewModel.HistoryComparisonText, "bedst");
+        StringAssert.Contains(viewModel.HistoryComparisonText, "+2,00");
+        StringAssert.Contains(viewModel.HistoryComparisonText, "svagest");
+        StringAssert.Contains(viewModel.HistoryComparisonText, "-1,00");
+
+        var best = viewModel.Rounds.Single(round => round.Id == "best");
+        Assert.IsTrue(best.HasComparisonText);
+        StringAssert.Contains(best.ComparisonText, "+1,50");
+    }
+
+    [TestMethod]
     public async Task DeleteRoundUpdatesFilteredHistory()
     {
         var today = DateTime.Today;
@@ -126,11 +194,23 @@ public sealed class RoundHistoryViewModelTests
         string id,
         DateTime date,
         double puttingSg = 0,
+        double approachSg = 0,
+        double aroundGreenSg = 0,
         RoundTrackingOptions? trackingOptions = null,
         RoundGameInfo? gameInfo = null) => new(
         id,
         date,
-        [new HolePuttingData(1, 2, 2, 2 + puttingSg, puttingSg, 0, 0, 0, 0)],
+        [new HolePuttingData(
+            1,
+            2,
+            2,
+            2 + puttingSg,
+            puttingSg,
+            ApproachDistanceMeters: approachSg == 0 ? 0 : 100,
+            ApproachShots: approachSg == 0 ? 0 : 1,
+            StrokesGainedApproach: approachSg,
+            AroundGreenStartDistanceYards: aroundGreenSg == 0 ? 0 : 10,
+            StrokesGainedAroundGreen: aroundGreenSg)],
         trackingOptions ?? RoundTrackingOptions.PuttingOnly,
         ConfiguredHoleCount: 1,
         EndedEarly: false,

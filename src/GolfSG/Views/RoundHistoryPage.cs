@@ -35,8 +35,8 @@ public sealed class RoundHistoryPage : ContentPage
         catch (Exception)
         {
             await DisplayAlertAsync(
-                "Historik kunne ikke indlæses",
-                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "Historik kunne ikke indl\u00e6ses",
+                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
     }
@@ -62,6 +62,10 @@ public sealed class RoundHistoryPage : ContentPage
         var type = HistoryPicker("Type");
         type.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistoryTypeOptions));
         type.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistoryType), BindingMode.TwoWay);
+
+        var category = HistoryPicker("SG-kategori");
+        category.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistoryCategoryOptions));
+        category.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistoryCategory), BindingMode.TwoWay);
 
         var period = HistoryPicker("Periode");
         period.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistoryPeriodOptions));
@@ -112,8 +116,9 @@ public sealed class RoundHistoryPage : ContentPage
                         TextColor = MutedTextColor,
                         Margin = new Thickness(0, 0, 0, 10)
                     },
-                    FilterPanel(type, period, sort),
-                    summary
+                    FilterPanel(type, category, period, sort),
+                    summary,
+                    ComparisonPanel()
                 }
             },
             EmptyView = empty
@@ -134,8 +139,8 @@ public sealed class RoundHistoryPage : ContentPage
         catch (Exception)
         {
             await DisplayAlertAsync(
-                "Runde kunne ikke åbnes",
-                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "Runde kunne ikke \u00e5bnes",
+                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
     }
@@ -161,7 +166,7 @@ public sealed class RoundHistoryPage : ContentPage
         {
             await DisplayAlertAsync(
                 "Runde kunne ikke slettes",
-                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
     }
@@ -171,7 +176,7 @@ public sealed class RoundHistoryPage : ContentPage
         await Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false);
     }
 
-    private static View FilterPanel(Picker type, Picker period, Picker sort)
+    private static View FilterPanel(Picker type, Picker category, Picker period, Picker sort)
     {
         return AppViews.Card(new VerticalStackLayout
         {
@@ -179,10 +184,40 @@ public sealed class RoundHistoryPage : ContentPage
             Children =
             {
                 Field("Vis", type),
+                Field("SG", category),
                 Field("Periode", period),
                 Field("Sortering", sort)
             }
         }, new Thickness(0, 4, 0, 10));
+    }
+
+    private static View ComparisonPanel()
+    {
+        var text = new Label
+        {
+            FontSize = 13,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = TextColor
+        };
+        text.SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.HistoryComparisonText));
+
+        var panel = AppViews.Card(new VerticalStackLayout
+        {
+            Spacing = 4,
+            Children =
+            {
+                new Label
+                {
+                    Text = "Sammenligning",
+                    FontSize = 12,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = MutedTextColor
+                },
+                text
+            }
+        }, new Thickness(0, 0, 0, 10));
+        panel.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.HasHistoryComparison));
+        return panel;
     }
 
     private static Picker HistoryPicker(string title)
@@ -240,10 +275,34 @@ public sealed class RoundHistoryPage : ContentPage
                 TextColor = PrimaryGreen,
                 HorizontalTextAlignment = TextAlignment.End
             };
-            sg.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.TotalSgText));
+            sg.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DisplaySgText));
+
+            var sgCaption = new Label
+            {
+                FontSize = 11,
+                TextColor = MutedTextColor,
+                HorizontalTextAlignment = TextAlignment.End,
+                LineBreakMode = LineBreakMode.NoWrap
+            };
+            sgCaption.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DisplaySgCaption));
+
+            var sgStack = new VerticalStackLayout
+            {
+                Spacing = 0,
+                HorizontalOptions = LayoutOptions.End,
+                Children = { sg, sgCaption }
+            };
 
             var detail = new Label { FontSize = 14, TextColor = MutedTextColor };
             detail.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DetailText));
+
+            var comparison = new Label
+            {
+                FontSize = 12,
+                TextColor = MutedTextColor
+            };
+            comparison.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.ComparisonText));
+            comparison.SetBinding(IsVisibleProperty, nameof(RoundListItemViewModel.HasComparisonText));
 
             var card = new LongPressBorder
             {
@@ -266,9 +325,10 @@ public sealed class RoundHistoryPage : ContentPage
                                 new ColumnDefinition(GridLength.Auto)
                             },
                             ColumnSpacing = 8,
-                            Children = { date.Column(0), type.Column(1), sg.Column(2) }
+                            Children = { date.Column(0), type.Column(1), sgStack.Column(2) }
                         },
-                        detail
+                        detail,
+                        comparison
                     }
                 }
             };

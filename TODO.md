@@ -11,7 +11,7 @@
 - [ ] Upgrade round results from static notes into actionable coaching, including top gained/lost holes, category contribution, and next-practice recommendations.
 - [ ] Autosave active rounds and putting games, show a resume action on the start page, and require explicit abandon/delete for in-progress work.
 - [x] Improve history with filters for round/game/benchmark type, date period, and best/worst SG sorting.
-- [ ] Add SG-category-specific history filtering/sorting and round comparison views.
+- [x] Add SG-category-specific history filtering/sorting and round comparison views.
 - [ ] Add personal baseline options such as PGA Tour, scratch, handicap ranges, and the player's own recent average.
 - [ ] Expand putting practice into a feedback loop with recommended drills, repeat-weak-distance sessions, goals, personal records, and streaks.
 - [ ] Complete distance-unit personalization so putting and practice can be entered/displayed in meters or feet consistently.
