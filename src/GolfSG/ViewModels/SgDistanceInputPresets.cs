@@ -1,0 +1,140 @@
+using GolfSG.Core;
+
+namespace GolfSG.ViewModels;
+
+public static class SgDistanceInputPresets
+{
+    public static IReadOnlyList<double> PuttingMeters { get; } =
+        StrokesGainedCalculator.PuttingReference
+            .Select(point => point.DistanceMeters)
+            .ToArray();
+
+    public static IReadOnlyList<double> ApproachMeters { get; } =
+    [
+        Yard(30),
+        Yard(40),
+        Yard(50),
+        Yard(60),
+        Yard(75),
+        Yard(100),
+        Yard(125),
+        Yard(150),
+        Yard(175),
+        Yard(200),
+        Yard(225),
+        Yard(250)
+    ];
+
+    public static IReadOnlyList<double> AroundGreenMeters { get; } =
+    [
+        Yard(3),
+        Yard(5),
+        Yard(10),
+        Yard(15),
+        Yard(20),
+        Yard(25),
+        Yard(30),
+        Yard(35),
+        Yard(40),
+        Yard(45),
+        Yard(50)
+    ];
+
+    public static IReadOnlyList<double> OffGreenFinishMeters { get; } =
+        AroundGreenMeters
+            .Concat(ApproachMeters)
+            .DistinctBy(distance => Math.Round(distance, 3))
+            .OrderBy(distance => distance)
+            .ToArray();
+
+    public static IReadOnlyList<double> FinishMeters { get; } =
+        PuttingMeters
+            .Concat(OffGreenFinishMeters)
+            .DistinctBy(distance => Math.Round(distance, 3))
+            .OrderBy(distance => distance)
+            .ToArray();
+
+    public static double Next(double currentValue, IReadOnlyList<double> intervals, double maximum)
+    {
+        ArgumentNullException.ThrowIfNull(intervals);
+
+        if (intervals.Count == 0)
+        {
+            return Math.Clamp(currentValue, 0, maximum);
+        }
+
+        var current = Math.Clamp(currentValue, 0, maximum);
+        foreach (var interval in intervals.Where(interval => interval <= maximum))
+        {
+            if (interval > current + 0.001)
+            {
+                return interval;
+            }
+        }
+
+        return intervals.Where(interval => interval <= maximum).DefaultIfEmpty(maximum).Last();
+    }
+
+    public static double Previous(double currentValue, IReadOnlyList<double> intervals)
+    {
+        ArgumentNullException.ThrowIfNull(intervals);
+
+        if (currentValue <= 0 || intervals.Count == 0)
+        {
+            return 0;
+        }
+
+        for (var index = intervals.Count - 1; index >= 0; index--)
+        {
+            var interval = intervals[index];
+            if (interval < currentValue - 0.001)
+            {
+                return interval;
+            }
+        }
+
+        return 0;
+    }
+
+    public static double Nearest(double currentValue, IReadOnlyList<double> intervals, double maximum)
+    {
+        ArgumentNullException.ThrowIfNull(intervals);
+
+        if (currentValue <= 0 || intervals.Count == 0)
+        {
+            return 0;
+        }
+
+        var current = Math.Clamp(currentValue, 0, maximum);
+        return intervals
+            .Where(interval => interval <= maximum)
+            .DefaultIfEmpty(current)
+            .MinBy(interval => Math.Abs(interval - current));
+    }
+
+    public static IReadOnlyList<DistanceQuickPick> ToQuickPicks(
+        IReadOnlyList<double> intervals,
+        double maximum,
+        int decimals)
+    {
+        ArgumentNullException.ThrowIfNull(intervals);
+
+        return intervals
+            .Where(distance => distance <= maximum)
+            .Select(distance => new DistanceQuickPick(
+                FormatLabel(distance, decimals),
+                distance))
+            .ToArray();
+    }
+
+    private static string FormatLabel(double distanceMeters, int decimals)
+    {
+        return decimals == 0
+            ? UiFormat.WholeMeters(distanceMeters)
+            : UiFormat.Meters(distanceMeters);
+    }
+
+    private static double Yard(double yards) => Math.Round(DistanceConversions.YardsToMeters(yards));
+}
+
+public sealed record DistanceQuickPick(string Text, double Meters);

@@ -140,8 +140,10 @@ public sealed class HoleInputViewModel : ViewModelBase
                     ClearCarriedAroundGreenPuttingDistanceIfManuallyChanged();
                 }
 
+                NotifyPuttingDistanceCarryForwardChanged();
                 OnPropertyChanged(nameof(FirstPuttDistanceMeters));
                 OnPropertyChanged(nameof(FirstPuttDistanceDisplayText));
+                OnPropertyChanged(nameof(CanAdvancePuttingStep));
                 Recalculate();
             }
         }
@@ -162,6 +164,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         {
             if (SetProperty(ref putts, Math.Clamp(value, 0, 5)))
             {
+                OnPropertyChanged(nameof(CanAdvancePuttingStep));
                 Recalculate();
             }
         }
@@ -242,6 +245,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(ApproachStartDistanceYards));
                 OnPropertyChanged(nameof(ApproachStartDistanceDisplayText));
+                OnPropertyChanged(nameof(CanAdvanceApproachStep));
                 Recalculate();
             }
         }
@@ -265,6 +269,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(ApproachEndDistance));
                 OnPropertyChanged(nameof(ApproachEndDistanceDisplayText));
+                OnPropertyChanged(nameof(CanAdvanceApproachStep));
                 ApplyApproachCarryForward();
                 Recalculate();
             }
@@ -274,7 +279,9 @@ public sealed class HoleInputViewModel : ViewModelBase
     public double ApproachEndDistance
     {
         get => ParseDistance(ApproachEndDistanceText);
-        set => ApproachEndDistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxFinishDistanceMeters), 0);
+        set => ApproachEndDistanceText = FormatSliderDistance(
+            Math.Clamp(value, 0, MaxFinishDistanceMeters),
+            GetApproachFinishDistanceDecimals());
     }
 
     public string ApproachEndDistanceDisplayText => FormatApproachEndDistance();
@@ -324,6 +331,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 ApproachHoled = ParseLie(value) == ShotLie.Holed;
                 OnPropertyChanged(nameof(IsApproachFinishDistanceVisible));
                 OnPropertyChanged(nameof(ApproachEndDistanceUnitText));
+                OnPropertyChanged(nameof(CanAdvanceApproachStep));
                 OnFlowVisibilityChanged();
                 ApplyApproachCarryForward();
                 Recalculate();
@@ -350,6 +358,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 }
 
                 OnPropertyChanged(nameof(IsApproachFinishDistanceVisible));
+                OnPropertyChanged(nameof(CanAdvanceApproachStep));
                 OnFlowVisibilityChanged();
                 ApplyApproachCarryForward();
                 Recalculate();
@@ -371,6 +380,12 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public bool IsApproachFinishDistanceVisible => !ApproachHoled;
 
+    public bool IsApproachEndOnGreen => IsApproachFinishDistanceVisible &&
+        ParseLie(ApproachEndLieText) == ShotLie.Green;
+
+    public bool IsApproachEndOffGreen => IsApproachFinishDistanceVisible &&
+        ParseLie(ApproachEndLieText) is not ShotLie.Green and not ShotLie.Holed;
+
     public string ApproachEndDistanceUnitText => "m";
 
     public bool IsApproachInputVisible => TrackApproach;
@@ -378,6 +393,36 @@ public sealed class HoleInputViewModel : ViewModelBase
     public bool IsAroundGreenInputVisible => TrackAroundGreen && !ApproachFinishedOnGreenOrHoled;
 
     public bool IsPuttingInputVisible => TrackPutting && !ApproachFinishedHoled && !AroundGreenFinishedHoled;
+
+    public bool HasCarriedPuttingDistance => carriedPuttingDistanceFromApproachMeters is not null ||
+        carriedPuttingDistanceFromAroundGreenMeters is not null;
+
+    public bool IsPuttingDistanceInputVisible => IsPuttingInputVisible && !HasCarriedPuttingDistance;
+
+    public string CarriedPuttingDistanceText => HasCarriedPuttingDistance
+        ? $"F\u00f8rste putt: {FormatPuttDistance()} (overf\u00f8rt fra {CarriedPuttingDistanceSourceText})"
+        : string.Empty;
+
+    private string CarriedPuttingDistanceSourceText => carriedPuttingDistanceFromAroundGreenMeters is not null
+        ? "omkring green"
+        : "indspil";
+
+    public bool CanAdvanceApproachStep => IsApproachInputVisible &&
+        ParseDistance(ApproachStartDistanceText) > 0 &&
+        (ApproachHoled ||
+            ParseLie(ApproachEndLieText) == ShotLie.Holed ||
+            ParseDistance(ApproachEndDistanceText) > 0);
+
+    public bool CanAdvanceAroundGreenStep => IsAroundGreenInputVisible &&
+        ParseDistance(AroundGreenStartDistanceText) > 0 &&
+        (AroundGreenHoled ||
+            ParseLie(AroundGreenEndLieText) == ShotLie.Holed ||
+            (ParseLie(AroundGreenEndLieText) == ShotLie.Green &&
+                ParseDistance(AroundGreenEndDistanceText) > 0));
+
+    public bool CanAdvancePuttingStep => IsPuttingInputVisible &&
+        ParseDistance(DistanceText) > 0 &&
+        Putts > 0;
 
     public string AroundGreenStartDistanceText
     {
@@ -395,6 +440,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 OnPropertyChanged(nameof(AroundGreenStartDistanceYards));
                 OnPropertyChanged(nameof(AroundGreenStartDistanceDisplayText));
                 OnPropertyChanged(nameof(CanAddAnotherAroundGreenShot));
+                OnPropertyChanged(nameof(CanAdvanceAroundGreenStep));
                 Recalculate();
             }
         }
@@ -419,6 +465,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 OnPropertyChanged(nameof(AroundGreenEndDistance));
                 OnPropertyChanged(nameof(AroundGreenEndDistanceDisplayText));
                 OnPropertyChanged(nameof(CanAddAnotherAroundGreenShot));
+                OnPropertyChanged(nameof(CanAdvanceAroundGreenStep));
                 ApplyAroundGreenCarryForward();
                 Recalculate();
             }
@@ -461,6 +508,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsAroundGreenFinishDistanceVisible));
                 OnPropertyChanged(nameof(AroundGreenEndDistanceUnitText));
                 OnPropertyChanged(nameof(CanAddAnotherAroundGreenShot));
+                OnPropertyChanged(nameof(CanAdvanceAroundGreenStep));
                 OnFlowVisibilityChanged();
                 ApplyAroundGreenCarryForward();
                 Recalculate();
@@ -489,6 +537,7 @@ public sealed class HoleInputViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsAroundGreenFinishDistanceVisible));
                 OnPropertyChanged(nameof(AroundGreenEndDistanceUnitText));
                 OnPropertyChanged(nameof(CanAddAnotherAroundGreenShot));
+                OnPropertyChanged(nameof(CanAdvanceAroundGreenStep));
                 OnFlowVisibilityChanged();
                 ApplyAroundGreenCarryForward();
                 Recalculate();
@@ -510,6 +559,12 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public bool IsAroundGreenFinishDistanceVisible => !AroundGreenHoled;
 
+    public bool IsAroundGreenEndOnGreen => IsAroundGreenFinishDistanceVisible &&
+        ParseLie(AroundGreenEndLieText) == ShotLie.Green;
+
+    public bool IsAroundGreenEndOffGreen => IsAroundGreenFinishDistanceVisible &&
+        ParseLie(AroundGreenEndLieText) is not ShotLie.Green and not ShotLie.Holed;
+
     public string AroundGreenEndDistanceUnitText => "m";
 
     public string AroundGreenShotTitle => completedAroundGreenShots.Count == 0
@@ -522,6 +577,8 @@ public sealed class HoleInputViewModel : ViewModelBase
             .ToList();
 
     public bool HasCompletedAroundGreenShots => completedAroundGreenShots.Count > 0;
+
+    public bool CanUndoLastAroundGreenShot => completedAroundGreenShots.Count > 0;
 
     public bool CanAddAnotherAroundGreenShot => IsAroundGreenInputVisible &&
         ParseDistance(AroundGreenStartDistanceText) > 0 &&
@@ -638,6 +695,19 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public void SetPutts(int value) => Putts = value;
 
+    public void EditCarriedPuttingDistance()
+    {
+        if (!HasCarriedPuttingDistance)
+        {
+            return;
+        }
+
+        carriedPuttingDistanceFromApproachMeters = null;
+        carriedPuttingDistanceFromAroundGreenMeters = null;
+        hasManualPuttingDistanceOverride = true;
+        NotifyPuttingDistanceCarryForwardChanged();
+    }
+
     public void IncreaseFirstPuttDistance() => FirstPuttDistanceMeters += FirstPuttDistanceStepMeters;
 
     public void DecreaseFirstPuttDistance() => FirstPuttDistanceMeters -= FirstPuttDistanceStepMeters;
@@ -699,18 +769,58 @@ public sealed class HoleInputViewModel : ViewModelBase
 
         var shot = BuildAroundGreenShot(completedAroundGreenShots.Count + 1);
         completedAroundGreenShots.Add(shot);
+        LoadNextAroundGreenShotFromPreviousFinish(shot);
+        carriedPuttingDistanceFromAroundGreenMeters = null;
+        NotifyPuttingDistanceCarryForwardChanged();
+        NotifyAroundGreenShotStateChanged();
+        Recalculate();
+    }
 
+    public void UndoLastAroundGreenShot()
+    {
+        if (!CanUndoLastAroundGreenShot)
+        {
+            return;
+        }
+
+        var shot = completedAroundGreenShots[^1];
+        completedAroundGreenShots.RemoveAt(completedAroundGreenShots.Count - 1);
+        LoadAroundGreenShotForEditing(shot);
+        carriedPuttingDistanceFromAroundGreenMeters = null;
+        NotifyPuttingDistanceCarryForwardChanged();
+        NotifyAroundGreenShotStateChanged();
+        ApplyAroundGreenCarryForward();
+        Recalculate();
+    }
+
+    private void LoadNextAroundGreenShotFromPreviousFinish(GolfShot shot)
+    {
         aroundGreenStartDistanceText = FormatStoredDistance(ToMeters(shot.EndDistanceToPin, shot.EndDistanceUnit), 0);
         aroundGreenStartLieText = FormatAroundGreenStartLie(shot.EndLie);
         aroundGreenEndDistanceText = string.Empty;
         aroundGreenEndLieText = "Green";
         aroundGreenPenaltyStrokes = 0;
         aroundGreenHoled = false;
-        carriedPuttingDistanceFromAroundGreenMeters = null;
+    }
 
+    private void LoadAroundGreenShotForEditing(GolfShot shot)
+    {
+        aroundGreenStartDistanceText = FormatStoredDistance(ToMeters(shot.StartDistanceToPin, shot.StartDistanceUnit), 0);
+        aroundGreenStartLieText = FormatAroundGreenStartLie(shot.StartLie);
+        aroundGreenEndDistanceText = shot.Holed || shot.EndLie == ShotLie.Holed
+            ? string.Empty
+            : FormatStoredDistance(ToMeters(shot.EndDistanceToPin, shot.EndDistanceUnit), 1);
+        aroundGreenEndLieText = FormatLie(shot.EndLie);
+        aroundGreenPenaltyStrokes = shot.PenaltyStrokes;
+        aroundGreenHoled = shot.Holed;
+    }
+
+    private void NotifyAroundGreenShotStateChanged()
+    {
         OnPropertyChanged(nameof(AroundGreenShotTitle));
         OnPropertyChanged(nameof(CompletedAroundGreenShotSummaries));
         OnPropertyChanged(nameof(HasCompletedAroundGreenShots));
+        OnPropertyChanged(nameof(CanUndoLastAroundGreenShot));
         OnPropertyChanged(nameof(AroundGreenStartDistanceText));
         OnPropertyChanged(nameof(AroundGreenStartDistanceYards));
         OnPropertyChanged(nameof(AroundGreenStartDistanceDisplayText));
@@ -722,8 +832,8 @@ public sealed class HoleInputViewModel : ViewModelBase
         OnPropertyChanged(nameof(AroundGreenPenaltyStrokes));
         OnPropertyChanged(nameof(AroundGreenHoled));
         OnPropertyChanged(nameof(IsAroundGreenFinishDistanceVisible));
+        OnPropertyChanged(nameof(AroundGreenEndDistanceUnitText));
         OnFlowVisibilityChanged();
-        Recalculate();
     }
 
     public void SetTotalHoles(int count) => TotalHoles = count;
@@ -758,7 +868,11 @@ public sealed class HoleInputViewModel : ViewModelBase
         distanceText = hole.FirstPuttDistanceMeters > 0 ? FormatStoredDistance(hole.FirstPuttDistanceMeters, 1) : string.Empty;
         approachDistanceText = hole.ApproachDistanceMeters > 0 ? FormatStoredDistance(hole.ApproachDistanceMeters, 1) : string.Empty;
         approachStartDistanceText = hole.ApproachStartDistanceYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachStartDistanceYards), 0) : string.Empty;
-        approachEndDistanceText = hole.ApproachEndDistance > 0 ? FormatStoredDistance(ToMeters(hole.ApproachEndDistance, hole.ApproachEndDistanceUnit), 0) : string.Empty;
+        approachEndDistanceText = hole.ApproachEndDistance > 0
+            ? FormatStoredDistance(
+                ToMeters(hole.ApproachEndDistance, hole.ApproachEndDistanceUnit),
+                hole.ApproachEndLie == ShotLie.Green ? 1 : 0)
+            : string.Empty;
         approachEndDistanceToGreenEdgeText = hole.ApproachEndDistanceToGreenEdgeYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachEndDistanceToGreenEdgeYards), 0) : string.Empty;
         approachStartLieText = FormatLie(hole.ApproachStartLie);
         approachEndLieText = FormatLie(hole.ApproachEndLie);
@@ -798,6 +912,8 @@ public sealed class HoleInputViewModel : ViewModelBase
         carriedPuttingDistanceFromAroundGreenMeters = null;
         carriedAroundGreenStartDistanceFromApproachMeters = null;
         carriedAroundGreenStartLieFromApproach = null;
+        hasManualPuttingDistanceOverride = false;
+        NotifyPuttingDistanceCarryForwardChanged();
         OnPropertyChanged(nameof(DistanceText));
         OnPropertyChanged(nameof(ApproachDistanceText));
         OnPropertyChanged(nameof(ApproachStartDistanceText));
@@ -884,6 +1000,14 @@ public sealed class HoleInputViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsApproachInputVisible));
         OnPropertyChanged(nameof(IsAroundGreenInputVisible));
         OnPropertyChanged(nameof(IsPuttingInputVisible));
+        NotifyPuttingDistanceCarryForwardChanged();
+        OnPropertyChanged(nameof(CanAdvanceApproachStep));
+        OnPropertyChanged(nameof(CanAdvanceAroundGreenStep));
+        OnPropertyChanged(nameof(CanAdvancePuttingStep));
+        OnPropertyChanged(nameof(IsApproachEndOnGreen));
+        OnPropertyChanged(nameof(IsApproachEndOffGreen));
+        OnPropertyChanged(nameof(IsAroundGreenEndOnGreen));
+        OnPropertyChanged(nameof(IsAroundGreenEndOffGreen));
         OnPropertyChanged(nameof(CanAddAnotherAroundGreenShot));
     }
 
@@ -913,7 +1037,14 @@ public sealed class HoleInputViewModel : ViewModelBase
         }
 
         var distance = ParseDistance(ApproachEndDistanceText);
-        return distance > 0 ? UiFormat.WholeMeters(distance) : "-";
+        if (distance <= 0)
+        {
+            return "-";
+        }
+
+        return ParseLie(ApproachEndLieText) == ShotLie.Green
+            ? UiFormat.Meters(distance)
+            : UiFormat.WholeMeters(distance);
     }
 
     private string FormatApproachEndDistanceToGreenEdge()
@@ -936,8 +1067,6 @@ public sealed class HoleInputViewModel : ViewModelBase
             ApproachPenaltyStrokes,
             ApproachHoled));
     }
-
-    private double GetApproachFinishStep() => ApproachDistanceStepMeters;
 
     private string FormatAroundGreenStartDistance()
     {
@@ -987,13 +1116,6 @@ public sealed class HoleInputViewModel : ViewModelBase
             AroundGreenHoled));
     }
 
-    private double GetAroundGreenFinishStep()
-    {
-        return ParseLie(AroundGreenEndLieText) == ShotLie.Green
-            ? GreenFinishDistanceStepMeters
-            : AroundGreenDistanceStepMeters;
-    }
-
     private bool ApproachFinishedHoled => TrackApproach &&
         (ApproachHoled || ParseLie(ApproachEndLieText) == ShotLie.Holed);
 
@@ -1014,6 +1136,11 @@ public sealed class HoleInputViewModel : ViewModelBase
             hasManualPuttingDistanceOverride,
             MaxFirstPuttDistanceMeters));
 
+        if (result.PuttingSource != HoleCarryForwardPuttingSource.AroundGreen)
+        {
+            ClearCarriedPuttingDistance(HoleCarryForwardPuttingSource.AroundGreen);
+        }
+
         ApplyCarryForwardResult(result);
     }
 
@@ -1033,6 +1160,11 @@ public sealed class HoleInputViewModel : ViewModelBase
             carriedAroundGreenStartLieFromApproach,
             MaxFirstPuttDistanceMeters,
             MaxAroundGreenDistanceMeters));
+
+        if (result.PuttingSource != HoleCarryForwardPuttingSource.Approach)
+        {
+            ClearCarriedPuttingDistance(HoleCarryForwardPuttingSource.Approach);
+        }
 
         ApplyCarryForwardResult(result);
     }
@@ -1072,6 +1204,8 @@ public sealed class HoleInputViewModel : ViewModelBase
                 carriedAroundGreenStartLieFromApproach = result.AroundGreenStartLieText;
             }
         });
+
+        NotifyPuttingDistanceCarryForwardChanged();
     }
 
     private void ApplyApproachCarryForwardValue(Action apply)
@@ -1084,6 +1218,34 @@ public sealed class HoleInputViewModel : ViewModelBase
         finally
         {
             isApplyingApproachCarryForward = false;
+        }
+    }
+
+    private void NotifyPuttingDistanceCarryForwardChanged()
+    {
+        OnPropertyChanged(nameof(HasCarriedPuttingDistance));
+        OnPropertyChanged(nameof(IsPuttingDistanceInputVisible));
+        OnPropertyChanged(nameof(CarriedPuttingDistanceText));
+    }
+
+    private void ClearCarriedPuttingDistance(HoleCarryForwardPuttingSource source)
+    {
+        var changed = false;
+        if (source == HoleCarryForwardPuttingSource.Approach && carriedPuttingDistanceFromApproachMeters is not null)
+        {
+            carriedPuttingDistanceFromApproachMeters = null;
+            changed = true;
+        }
+
+        if (source == HoleCarryForwardPuttingSource.AroundGreen && carriedPuttingDistanceFromAroundGreenMeters is not null)
+        {
+            carriedPuttingDistanceFromAroundGreenMeters = null;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            NotifyPuttingDistanceCarryForwardChanged();
         }
     }
 
@@ -1132,6 +1294,25 @@ public sealed class HoleInputViewModel : ViewModelBase
     private static ShotLie ParseLie(string text) => ShotLieLabels.Parse(text);
 
     private static string FormatLie(ShotLie lie) => ShotLieLabels.Format(lie);
+
+    private double GetApproachFinishStep()
+    {
+        return ParseLie(ApproachEndLieText) == ShotLie.Green
+            ? GreenFinishDistanceStepMeters
+            : ApproachDistanceStepMeters;
+    }
+
+    private int GetApproachFinishDistanceDecimals()
+    {
+        return ParseLie(ApproachEndLieText) == ShotLie.Green ? 1 : 0;
+    }
+
+    private double GetAroundGreenFinishStep()
+    {
+        return ParseLie(AroundGreenEndLieText) == ShotLie.Green
+            ? GreenFinishDistanceStepMeters
+            : AroundGreenDistanceStepMeters;
+    }
 
     private static double ToMeters(double distance, DistanceUnit unit) => DistanceConversions.ToMeters(distance, unit);
 

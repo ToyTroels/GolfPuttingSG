@@ -26,6 +26,7 @@
     <Compile Include="..\..\src\GolfSG\ViewModels\EvaluationViewModel.cs" Link="App\ViewModels\EvaluationViewModel.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\BenchmarkHistoryViewModel.cs" Link="App\ViewModels\BenchmarkHistoryViewModel.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\DistanceInputParser.cs" Link="App\ViewModels\DistanceInputParser.cs" />
+    <Compile Include="..\..\src\GolfSG\ViewModels\SgDistanceInputPresets.cs" Link="App\ViewModels\SgDistanceInputPresets.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\HoleCarryForwardService.cs" Link="App\ViewModels\HoleCarryForwardService.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\ShotInputMapper.cs" Link="App\ViewModels\ShotInputMapper.cs" />
     <Compile Include="..\..\src\GolfSG\ViewModels\ShotLieLabels.cs" Link="App\ViewModels\ShotLieLabels.cs" />
