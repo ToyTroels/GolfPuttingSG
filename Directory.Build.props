@@ -2,12 +2,12 @@
   <PropertyGroup>
     <BuildInParallel>false</BuildInParallel>
 
-    <!-- Release versioning -->
+    <!-- Release versioning. Use scripts\Set-AppVersion.ps1 to update these. -->
     <VersionPrefix>0.1.0</VersionPrefix>
+    <ApplicationBuildNumber>1</ApplicationBuildNumber>
     <Version>$(VersionPrefix)</Version>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
-    <FileVersion>$(VersionPrefix).1</FileVersion>
-    <InformationalVersion>$(VersionPrefix)</InformationalVersion>
-    <ApplicationBuildNumber>1</ApplicationBuildNumber>
+    <FileVersion>$(VersionPrefix).$(ApplicationBuildNumber)</FileVersion>
+    <InformationalVersion>$(VersionPrefix)+build.$(ApplicationBuildNumber)</InformationalVersion>
   </PropertyGroup>
 </Project>

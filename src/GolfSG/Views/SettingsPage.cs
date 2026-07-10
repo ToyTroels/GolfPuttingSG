@@ -1,5 +1,6 @@
 using GolfSG.Core;
 using GolfSG.Services;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Shapes;
 
 namespace GolfSG.Views;
@@ -91,6 +92,15 @@ public sealed class SettingsPage : ContentPage
                         () => new StorageDiagnosticsPage(repository)),
                     new Label
                     {
+                        Text = "App",
+                        FontSize = 18,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = TextColor,
+                        Margin = new Thickness(0, 8, 0, 0)
+                    },
+                    VersionInfoItem(),
+                    new Label
+                    {
                         Text = "Beta",
                         FontSize = 18,
                         FontAttributes = FontAttributes.Bold,
@@ -160,6 +170,44 @@ public sealed class SettingsPage : ContentPage
         card.GestureRecognizers.Add(tap);
 
         return card;
+    }
+
+    private static View VersionInfoItem()
+    {
+        var version = string.IsNullOrWhiteSpace(AppInfo.Current.VersionString)
+            ? "ukendt"
+            : AppInfo.Current.VersionString;
+        var build = string.IsNullOrWhiteSpace(AppInfo.Current.BuildString)
+            ? "ukendt"
+            : AppInfo.Current.BuildString;
+
+        return new Border
+        {
+            BackgroundColor = Colors.White,
+            Stroke = CardStroke,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 14,
+            Content = new VerticalStackLayout
+            {
+                Spacing = 4,
+                Children =
+                {
+                    new Label
+                    {
+                        Text = "Installeret version",
+                        FontSize = 17,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = TextColor
+                    },
+                    new Label
+                    {
+                        Text = $"Version {version} (build {build})",
+                        FontSize = 13,
+                        TextColor = MutedTextColor
+                    }
+                }
+            }
+        };
     }
 
     private View BetaFeaturesItem()

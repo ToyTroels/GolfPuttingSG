@@ -45,6 +45,43 @@ dotnet test tests\GolfSG.Tests\GolfSG.Tests.csproj
 dotnet build src\GolfSG\GolfSG.csproj -f net10.0-windows10.0.19041.0
 ```
 
+## Versionsstyring
+
+App-versionen styres centralt i `Directory.Build.props`.
+
+- `VersionPrefix` er den synlige version, fx `0.1.0`.
+- `ApplicationBuildNumber` er buildnummeret, som skal stige ved nye installerbare builds.
+- MAUI-appen bruger de samme værdier til `ApplicationDisplayVersion` og `ApplicationVersion`.
+- Indstillinger-siden viser den installerede version og build.
+
+Vis den aktuelle version:
+
+```powershell
+.\scripts\Set-AppVersion.ps1 -Show
+```
+
+Bump versionen før en release. Scriptet hæver automatisk buildnummeret med 1:
+
+```powershell
+.\scripts\Set-AppVersion.ps1 -Bump Patch
+.\scripts\Set-AppVersion.ps1 -Bump Minor
+.\scripts\Set-AppVersion.ps1 -Bump Major
+.\scripts\Set-AppVersion.ps1 -Bump Build
+```
+
+Sæt en bestemt version og build:
+
+```powershell
+.\scripts\Set-AppVersion.ps1 -Version 1.0.0 -BuildNumber 20
+```
+
+Anbefalet release-flow:
+
+1. Kør et version-bump med scriptet.
+2. Kør tests.
+3. Byg eller publish appen.
+4. Commit ændringen i `Directory.Build.props`.
+
 ## Udgiv Android APK til OneDrive
 
 Når appen skal udgives som en lokal Android APK, brug denne kommando fra repoets rod:
