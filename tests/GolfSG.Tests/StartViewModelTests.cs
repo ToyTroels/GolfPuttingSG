@@ -40,6 +40,75 @@ public sealed class StartViewModelTests
     }
 
     [TestMethod]
+    public async Task LoadBuildsStartInsightsFromRecentRounds()
+    {
+        var repository = new InMemoryRoundRepository(
+            CreateRound("putting", new DateTime(2026, 6, 1), puttingSg: -1),
+            CreateRound(
+                "approach",
+                new DateTime(2026, 6, 2),
+                puttingSg: 1,
+                approachSg: 2,
+                trackingOptions: new RoundTrackingOptions(true, true)),
+            CreateRound(
+                "all",
+                new DateTime(2026, 6, 3),
+                puttingSg: 2,
+                approachSg: -1,
+                aroundGreenSg: 1,
+                trackingOptions: new RoundTrackingOptions(true, true, true)));
+        var viewModel = new StartViewModel(repository);
+
+        await viewModel.LoadAsync();
+
+        Assert.IsTrue(viewModel.HasInsights);
+        Assert.AreEqual("Baseret p\u00e5 seneste 3 runder/spil.", viewModel.InsightSummaryText);
+        Assert.AreEqual("+1,33", viewModel.FormInsightValue);
+        Assert.AreEqual("Gns. total SG", viewModel.FormInsightDetail);
+        Assert.AreEqual("Omkring green", viewModel.StrengthInsightValue);
+        Assert.AreEqual("+1,00 pr. registrering", viewModel.StrengthInsightDetail);
+        Assert.AreEqual("Approach", viewModel.FocusInsightValue);
+        Assert.AreEqual("+0,50 pr. registrering", viewModel.FocusInsightDetail);
+    }
+
+    [TestMethod]
+    public async Task LoadBuildsTrendFromLatestThreeAgainstPreviousThree()
+    {
+        var repository = new InMemoryRoundRepository(
+            CreateRound("old-1", new DateTime(2026, 6, 1), puttingSg: 0),
+            CreateRound("old-2", new DateTime(2026, 6, 2), puttingSg: 0),
+            CreateRound("old-3", new DateTime(2026, 6, 3), puttingSg: 0),
+            CreateRound("new-1", new DateTime(2026, 6, 4), puttingSg: 1),
+            CreateRound("new-2", new DateTime(2026, 6, 5), puttingSg: 1),
+            CreateRound("new-3", new DateTime(2026, 6, 6), puttingSg: 1));
+        var viewModel = new StartViewModel(repository);
+
+        await viewModel.LoadAsync();
+
+        Assert.AreEqual("+1,00", viewModel.TrendInsightValue);
+        Assert.AreEqual("Seneste 3 vs forrige 3", viewModel.TrendInsightDetail);
+    }
+
+    [TestMethod]
+    public async Task DeleteRoundRefreshesStartInsights()
+    {
+        var repository = new InMemoryRoundRepository(
+            CreateRound("old", new DateTime(2026, 6, 1), puttingSg: -2),
+            CreateRound("latest", new DateTime(2026, 6, 2), puttingSg: 2));
+        var viewModel = new StartViewModel(repository);
+        await viewModel.LoadAsync();
+        Assert.AreEqual("+0,00", viewModel.FormInsightValue);
+        var latest = viewModel.Rounds.First();
+
+        var deleted = await viewModel.DeleteRoundAsync(latest);
+
+        Assert.IsTrue(deleted);
+        CollectionAssert.AreEqual(new[] { "old" }, viewModel.RecentRounds.Select(round => round.Id).ToArray());
+        Assert.AreEqual("-2,00", viewModel.FormInsightValue);
+        Assert.AreEqual("Baseret p\u00e5 seneste runde/spil.", viewModel.InsightSummaryText);
+    }
+
+    [TestMethod]
     public async Task LoadFailureSetsErrorWithoutThrowing()
     {
         var viewModel = new StartViewModel(new FailingRoundRepository(loadFails: true));
@@ -71,16 +140,34 @@ public sealed class StartViewModelTests
         Assert.HasCount(1, viewModel.RecentRounds);
     }
 
-    private static Round CreateRound(string id, DateTime date) => new(
+    private static Round CreateRound(
+        string id,
+        DateTime date,
+        double puttingSg = 0,
+        double approachSg = 0,
+        double aroundGreenSg = 0,
+        RoundTrackingOptions? trackingOptions = null) => new(
         id,
         date,
-        [new HolePuttingData(1, 2, 2, 0, 0, 0, 0, 0, 0)],
-        RoundTrackingOptions.PuttingOnly,
+        [new HolePuttingData(
+            1,
+            2,
+            2,
+            2,
+            puttingSg,
+            ApproachDistanceMeters: approachSg == 0 ? 0 : 100,
+            ApproachShots: approachSg == 0 ? 0 : 1,
+            StrokesGainedApproach: approachSg,
+            AroundGreenStartDistanceYards: aroundGreenSg == 0 ? 0 : 10,
+            StrokesGainedAroundGreen: aroundGreenSg)],
+        trackingOptions ?? RoundTrackingOptions.PuttingOnly,
         ConfiguredHoleCount: 1,
         EndedEarly: false);
 
     private sealed class InMemoryRoundRepository(params Round[] rounds) : IRoundRepository
     {
+        private readonly List<Round> rounds = [.. rounds];
+
         public string ActiveStoragePath => string.Empty;
 
         public bool WasLastReadRecoveredFromBackup => false;
@@ -101,7 +188,11 @@ public sealed class StartViewModelTests
 
         public Task SaveRoundAsync(Round round) => Task.CompletedTask;
 
-        public Task DeleteRoundAsync(string roundId) => Task.CompletedTask;
+        public Task DeleteRoundAsync(string roundId)
+        {
+            rounds.RemoveAll(round => string.Equals(round.Id, roundId, StringComparison.Ordinal));
+            return Task.CompletedTask;
+        }
 
         public Task ExportRoundsAsync(string destinationPath) => Task.CompletedTask;
 

@@ -6,7 +6,8 @@
 - [x] Collapse carried putting distances into a compact putting-step summary with an option to edit the distance manually.
 - [x] Let putt quick-action buttons complete the guided putting step in one tap.
 - [x] Add a visible undo action for completed around-green shots during multi-shot entry.
-- [ ] Promote `SG evaluering beta` into a first-class Insights dashboard on the start page.
+- [x] Add a first-class Insights dashboard on the start page using recent history.
+- [ ] Fold remaining `SG evaluering beta` period/category drilldown into the start-page insights experience.
 - [ ] Add trend charts for total SG, category SG, putting SG by distance band, benchmark scores, 3-putt rate, and make percentage.
 - [ ] Upgrade round results from static notes into actionable coaching, including top gained/lost holes, category contribution, and next-practice recommendations.
 - [ ] Autosave active rounds and putting games, show a resume action on the start page, and require explicit abandon/delete for in-progress work.

@@ -43,8 +43,8 @@ public sealed class StartPage : ContentPage
         catch (Exception)
         {
             await DisplayAlertAsync(
-                "Historik kunne ikke indlæses",
-                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "Historik kunne ikke indl\u00e6ses",
+                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
     }
@@ -104,6 +104,9 @@ public sealed class StartPage : ContentPage
         error.SetBinding(IsVisibleProperty, nameof(StartViewModel.HasError));
         ((Label)error.Content).SetBinding(Label.TextProperty, nameof(StartViewModel.ErrorMessage));
 
+        var insights = InsightDashboard();
+        insights.SetBinding(IsVisibleProperty, nameof(StartViewModel.HasInsights));
+
         var rounds = new CollectionView
         {
             SelectionMode = SelectionMode.None,
@@ -127,6 +130,7 @@ public sealed class StartPage : ContentPage
                         Spacing = 10,
                         Children = { newRoundButton, puttingGameButton, historyButton, evaluationButton }
                     }.Margin(new Thickness(0, 16, 0, 18)),
+                    insights,
                     new Label
                     {
                         Text = "Seneste runder og spil",
@@ -160,8 +164,8 @@ public sealed class StartPage : ContentPage
         catch (Exception)
         {
             await DisplayAlertAsync(
-                "Runde kunne ikke åbnes",
-                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "Runde kunne ikke \u00e5bnes",
+                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
     }
@@ -187,7 +191,7 @@ public sealed class StartPage : ContentPage
         {
             await DisplayAlertAsync(
                 "Runde kunne ikke slettes",
-                "Prøv igen, eller tjek lagring under Indstillinger.",
+                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
     }
@@ -195,6 +199,102 @@ public sealed class StartPage : ContentPage
     private async Task ShowRoundActionsAsync(RoundListItemViewModel item)
     {
         await Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false);
+    }
+
+    private static View InsightDashboard()
+    {
+        var summary = new Label
+        {
+            FontSize = 13,
+            TextColor = GolfTheme.Colors.MutedText
+        };
+        summary.SetBinding(Label.TextProperty, nameof(StartViewModel.InsightSummaryText));
+
+        return AppViews.Card(new VerticalStackLayout
+        {
+            Spacing = 10,
+            Children =
+            {
+                new VerticalStackLayout
+                {
+                    Spacing = 2,
+                    Children =
+                    {
+                        new Label
+                        {
+                            Text = "Indblik",
+                            FontSize = 18,
+                            FontAttributes = FontAttributes.Bold,
+                            TextColor = GolfTheme.Colors.Text
+                        },
+                        summary
+                    }
+                },
+                InsightMetricGrid()
+            }
+        }, new Thickness(0, 0, 0, 18));
+    }
+
+    private static View InsightMetricGrid()
+    {
+        return new Grid
+        {
+            ColumnSpacing = 12,
+            RowSpacing = 10,
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star)
+            },
+            RowDefinitions =
+            {
+                new RowDefinition(GridLength.Auto),
+                new RowDefinition(GridLength.Auto)
+            },
+            Children =
+            {
+                InsightMetric("Form", nameof(StartViewModel.FormInsightValue), nameof(StartViewModel.FormInsightDetail)).Row(0).Column(0),
+                InsightMetric("Udvikling", nameof(StartViewModel.TrendInsightValue), nameof(StartViewModel.TrendInsightDetail)).Row(0).Column(1),
+                InsightMetric("Styrke", nameof(StartViewModel.StrengthInsightValue), nameof(StartViewModel.StrengthInsightDetail)).Row(1).Column(0),
+                InsightMetric("Fokus", nameof(StartViewModel.FocusInsightValue), nameof(StartViewModel.FocusInsightDetail)).Row(1).Column(1)
+            }
+        };
+    }
+
+    private static View InsightMetric(string title, string valueBindingPath, string detailBindingPath)
+    {
+        var value = new Label
+        {
+            FontSize = 18,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = GolfTheme.Colors.PrimaryGreen,
+            LineBreakMode = LineBreakMode.WordWrap
+        };
+        value.SetBinding(Label.TextProperty, valueBindingPath);
+
+        var detail = new Label
+        {
+            FontSize = 12,
+            TextColor = GolfTheme.Colors.MutedText,
+            LineBreakMode = LineBreakMode.WordWrap
+        };
+        detail.SetBinding(Label.TextProperty, detailBindingPath);
+
+        return new VerticalStackLayout
+        {
+            Spacing = 2,
+            Children =
+            {
+                new Label
+                {
+                    Text = title,
+                    FontSize = 12,
+                    TextColor = GolfTheme.Colors.MutedText
+                },
+                value,
+                detail
+            }
+        };
     }
 
     private static DataTemplate RoundTemplate(
