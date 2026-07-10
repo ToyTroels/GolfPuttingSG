@@ -1,5 +1,23 @@
 # TODO
 
+## User-perspective improvement backlog
+
+- [x] Make guided hole entry the default for new installs so on-course input starts in the faster flow.
+- [x] Collapse carried putting distances into a compact putting-step summary with an option to edit the distance manually.
+- [x] Let putt quick-action buttons complete the guided putting step in one tap.
+- [x] Add a visible undo action for completed around-green shots during multi-shot entry.
+- [ ] Promote `SG evaluering beta` into a first-class Insights dashboard on the start page.
+- [ ] Add trend charts for total SG, category SG, putting SG by distance band, benchmark scores, 3-putt rate, and make percentage.
+- [ ] Upgrade round results from static notes into actionable coaching, including top gained/lost holes, category contribution, and next-practice recommendations.
+- [ ] Autosave active rounds and putting games, show a resume action on the start page, and require explicit abandon/delete for in-progress work.
+- [x] Improve history with filters for round/game/benchmark type, date period, and best/worst SG sorting.
+- [ ] Add SG-category-specific history filtering/sorting and round comparison views.
+- [ ] Add personal baseline options such as PGA Tour, scratch, handicap ranges, and the player's own recent average.
+- [ ] Expand putting practice into a feedback loop with recommended drills, repeat-weak-distance sessions, goals, personal records, and streaks.
+- [ ] Complete distance-unit personalization so putting and practice can be entered/displayed in meters or feet consistently.
+- [ ] Add an accessibility and polish pass with semantic labels, larger touch targets where needed, visible alternatives to hidden gestures, and consistent Danish/English terminology.
+- [ ] Add share/export-friendly round and practice summaries for coaching conversations or personal records.
+
 ## Rename project to GolfSG
 
 - [x] Rename solution, project folders, project files, namespaces, MAUI metadata, project references, platform identifiers, and README references to GolfSG.
@@ -42,6 +60,7 @@
 - [ ] Add a round history model that stores round date, course name if available, hole inputs, calculated SG values, and completion status.
 - [ ] Save a round when the player finishes or explicitly chooses to save it.
 - [ ] Load saved rounds on app start so they can be shown in previous rounds and used by statistics/evaluations.
+- [ ] Show the round date in history entries so saved rounds can be identified by when they were played.
 - [ ] Support editing or deleting a saved round without corrupting other saved rounds.
 - [ ] Handle save/load failures with a clear user-facing state and avoid losing the active round.
 - [ ] Add tests for round serialization, loading multiple saved rounds, editing, deleting, and malformed saved data.
@@ -74,6 +93,14 @@
 - [x] Consider storing a schema/version wrapper around saved rounds so future persistence changes can migrate safely.
 - [x] Add an optional manual export/import flow for `rounds.json` so users can recover history across installs, devices, or app renames.
 - [x] Investigate whether any save flow can overwrite history with a single round after app restart, failed deserialization, or app-data path changes.
+
+## Prevent duplicate navigation and repeated actions
+
+- [ ] Add shared double-tap protection for navigation buttons so fast repeated taps cannot push the same page multiple times.
+- [ ] Apply the guard to start-page actions, round list items, hole cards, next/previous hole buttons, edit buttons, save/finish buttons, settings buttons, and putting-game submit actions.
+- [ ] Disable or show busy state on buttons while navigation, save, delete, import/export, or submit actions are in progress.
+- [ ] Prefer a reusable `AsyncCommand`/`AsyncActionButton` or navigation gate instead of page-by-page boolean flags.
+- [ ] Add view-model or UI-flow tests where practical for repeated save/submit/navigation taps.
 
 ## Made percentage by first-putt distance
 
@@ -122,7 +149,9 @@
 
 - [ ] Add `SemiRough` as a distinct `ShotLie` value instead of grouping every non-fairway lie into `Rough`.
 - [ ] Add semi-rough labels/parsing to shot input, summaries, carry-forward logic, and reference views.
-- [ ] Decide whether semi-rough should use its own SG baseline data or initially map to the existing rough baseline until better data is available.
+- [ ] Initially calculate semi-rough using the existing `Rough` SG baseline for approach shots, while preserving `SemiRough` as the stored/displayed lie.
+- [ ] Initially calculate semi-rough around the green using the existing `Rough` SG baseline, while preserving `SemiRough` as the stored/displayed lie.
+- [ ] Keep the baseline mapping isolated so semi-rough can get its own expected-strokes table later without changing saved round data.
 - [ ] Keep saved round compatibility in mind so older rounds without semi-rough still load correctly.
 - [ ] Add tests for label round-tripping, shot input mapping, SG baseline lookup, saved round loading, and reference table display.
 
