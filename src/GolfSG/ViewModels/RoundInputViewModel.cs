@@ -21,6 +21,7 @@ public sealed class RoundInputViewModel : ViewModelBase
     private bool trackAroundGreen;
     private bool hasStarted;
     private bool isBusy;
+    private bool isApplyingTracking;
     private string errorMessage = string.Empty;
 
     public RoundInputViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
@@ -305,8 +306,16 @@ public sealed class RoundInputViewModel : ViewModelBase
     {
         var hole = new HoleInputViewModel(holeNumber, distanceUnitSettings);
         hole.SetTracking(new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen));
-        hole.PropertyChanged += (_, _) => RefreshSummary();
+        hole.PropertyChanged += OnHolePropertyChanged;
         Holes.Add(hole);
+    }
+
+    private void OnHolePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (!isApplyingTracking)
+        {
+            RefreshSummary();
+        }
     }
 
     private void RefreshSummary()
@@ -328,10 +337,18 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     private void ApplyTrackingToHoles()
     {
-        var options = new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen);
-        foreach (var hole in Holes)
+        isApplyingTracking = true;
+        try
         {
-            hole.SetTracking(options);
+            var options = new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen);
+            foreach (var hole in Holes)
+            {
+                hole.SetTracking(options);
+            }
+        }
+        finally
+        {
+            isApplyingTracking = false;
         }
     }
 

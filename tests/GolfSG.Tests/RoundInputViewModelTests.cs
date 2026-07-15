@@ -8,6 +8,31 @@ namespace GolfSG.Tests;
 public sealed class RoundInputViewModelTests
 {
     [TestMethod]
+    public void TrackingTogglesBatchRoundSummaryNotifications()
+    {
+        var viewModel = new RoundInputViewModel(new SuccessfulRoundRepository());
+        var totalSgNotifications = 0;
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(RoundInputViewModel.TotalSgText))
+            {
+                totalSgNotifications++;
+            }
+        };
+
+        viewModel.TrackApproach = true;
+
+        Assert.IsTrue(viewModel.Holes.All(hole => hole.TrackApproach));
+        Assert.AreEqual(2, totalSgNotifications);
+
+        totalSgNotifications = 0;
+        viewModel.TrackAroundGreen = true;
+
+        Assert.IsTrue(viewModel.Holes.All(hole => hole.TrackAroundGreen));
+        Assert.AreEqual(2, totalSgNotifications);
+    }
+
+    [TestMethod]
     public async Task SaveFailureSetsErrorAndReturnsEmptyRoundId()
     {
         var viewModel = new RoundInputViewModel(new FailingRoundRepository());
@@ -59,6 +84,10 @@ public sealed class RoundInputViewModelTests
             SaveStarted.SetResult();
             await AllowSave.Task;
         }
+    }
+
+    private sealed class SuccessfulRoundRepository : EmptyRoundRepository
+    {
     }
 
     private abstract class EmptyRoundRepository : IRoundRepository
