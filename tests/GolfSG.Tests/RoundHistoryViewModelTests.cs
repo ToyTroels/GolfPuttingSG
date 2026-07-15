@@ -130,6 +130,49 @@ public sealed class RoundHistoryViewModelTests
     }
 
     [TestMethod]
+    public async Task HistoryCategoryFilterCanSwitchToPutting()
+    {
+        var today = DateTime.Today;
+        var repository = new InMemoryRoundRepository(
+            CreateRound("putting-best", today.AddDays(-2), puttingSg: 2),
+            CreateRound("putting-worst", today.AddDays(-1), puttingSg: -1),
+            CreateRound(
+                "approach-only",
+                today,
+                puttingSg: 5,
+                approachSg: 1,
+                trackingOptions: new RoundTrackingOptions(false, true)));
+        var viewModel = new RoundHistoryViewModel(repository);
+        await viewModel.LoadAsync();
+
+        viewModel.SelectedHistoryCategory = "Putting";
+        viewModel.SelectedHistorySort = "Bedste SG";
+
+        CollectionAssert.AreEqual(
+            new[] { "putting-best", "putting-worst" },
+            viewModel.Rounds.Select(round => round.Id).ToArray());
+        Assert.AreEqual("+2,00", viewModel.Rounds[0].DisplaySgText);
+        Assert.AreEqual("SG putting", viewModel.Rounds[0].DisplaySgCaption);
+    }
+
+    [TestMethod]
+    public async Task HistoryFiltersIgnoreInvalidPickerValues()
+    {
+        var today = DateTime.Today;
+        var repository = new InMemoryRoundRepository(CreateRound("round", today));
+        var viewModel = new RoundHistoryViewModel(repository);
+        await viewModel.LoadAsync();
+
+        viewModel.SelectedHistoryCategory = "Putting";
+        viewModel.SelectedHistoryCategory = null!;
+        viewModel.SelectedHistorySort = "Ikke en sortering";
+
+        Assert.AreEqual("Putting", viewModel.SelectedHistoryCategory);
+        Assert.AreEqual("Nyeste f\u00f8rst", viewModel.SelectedHistorySort);
+        Assert.HasCount(1, viewModel.Rounds);
+    }
+
+    [TestMethod]
     public async Task HistoryComparisonUsesSelectedCategoryAverageBestAndWorst()
     {
         var today = DateTime.Today;

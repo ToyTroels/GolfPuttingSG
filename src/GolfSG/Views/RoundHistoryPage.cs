@@ -20,7 +20,7 @@ public sealed class RoundHistoryPage : ContentPage
         this.viewModel = viewModel;
         this.services = services;
         BindingContext = viewModel;
-        Title = "Historik";
+        Title = "Historik beta";
         BackgroundColor = PageBackground;
         BuildLayout();
     }
@@ -91,12 +91,18 @@ public sealed class RoundHistoryPage : ContentPage
             Margin = new Thickness(0, 8, 0, 0)
         };
         empty.SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.HistoryEmptyText));
+        empty.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.IsHistoryEmpty));
 
-        var rounds = new CollectionView
+        var rounds = new VerticalStackLayout
         {
-            SelectionMode = SelectionMode.None,
-            ItemTemplate = RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync),
-            Header = new VerticalStackLayout
+            Spacing = 0
+        };
+        BindableLayout.SetItemTemplate(rounds, RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync));
+        rounds.SetBinding(BindableLayout.ItemsSourceProperty, nameof(RoundHistoryViewModel.Rounds));
+
+        Content = new ScrollView
+        {
+            Content = new VerticalStackLayout
             {
                 Spacing = 4,
                 Children =
@@ -104,7 +110,7 @@ public sealed class RoundHistoryPage : ContentPage
                     warning,
                     new Label
                     {
-                        Text = "Historik",
+                        Text = "Historik beta",
                         FontSize = 30,
                         FontAttributes = FontAttributes.Bold,
                         TextColor = TextColor
@@ -118,14 +124,12 @@ public sealed class RoundHistoryPage : ContentPage
                     },
                     FilterPanel(type, category, period, sort),
                     summary,
-                    ComparisonPanel()
+                    ComparisonPanel(),
+                    empty,
+                    rounds
                 }
-            },
-            EmptyView = empty
-        };
-        rounds.SetBinding(ItemsView.ItemsSourceProperty, nameof(RoundHistoryViewModel.Rounds));
-
-        Content = rounds.Margin(new Thickness(16));
+            }
+        }.Margin(new Thickness(16));
     }
 
     private async Task OpenRoundAsync(RoundListItemViewModel item)

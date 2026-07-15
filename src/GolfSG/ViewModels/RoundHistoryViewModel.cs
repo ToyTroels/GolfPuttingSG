@@ -23,6 +23,7 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     private const string HistorySortWorstSg = "V\u00e6rste SG";
 
     private readonly IRoundRepository repository;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
     private readonly List<RoundListItemViewModel> allRoundItems = [];
     private bool showRecoveredFromBackupWarning;
     private bool isBusy;
@@ -33,9 +34,10 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     private string selectedHistorySort = HistorySortNewestFirst;
     private string historyComparisonText = string.Empty;
 
-    public RoundHistoryViewModel(IRoundRepository repository)
+    public RoundHistoryViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         this.repository = repository;
+        this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
     public ObservableCollection<RoundListItemViewModel> Rounds { get; } = [];
@@ -57,6 +59,11 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         get => selectedHistoryType;
         set
         {
+            if (!IsHistoryOption(value, HistoryTypeOptions))
+            {
+                return;
+            }
+
             if (SetProperty(ref selectedHistoryType, value))
             {
                 ApplyHistoryFilters();
@@ -69,6 +76,11 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         get => selectedHistoryCategory;
         set
         {
+            if (!IsHistoryOption(value, HistoryCategoryOptions))
+            {
+                return;
+            }
+
             if (SetProperty(ref selectedHistoryCategory, value))
             {
                 ApplyHistoryFilters();
@@ -81,6 +93,11 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         get => selectedHistoryPeriod;
         set
         {
+            if (!IsHistoryOption(value, HistoryPeriodOptions))
+            {
+                return;
+            }
+
             if (SetProperty(ref selectedHistoryPeriod, value))
             {
                 ApplyHistoryFilters();
@@ -93,6 +110,11 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         get => selectedHistorySort;
         set
         {
+            if (!IsHistoryOption(value, HistorySortOptions))
+            {
+                return;
+            }
+
             if (SetProperty(ref selectedHistorySort, value))
             {
                 ApplyHistoryFilters();
@@ -103,6 +125,8 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     public int TotalHistoryCount => allRoundItems.Count;
 
     public int FilteredHistoryCount => Rounds.Count;
+
+    public bool IsHistoryEmpty => FilteredHistoryCount == 0;
 
     public string HistorySummaryText
     {
@@ -188,7 +212,7 @@ public sealed class RoundHistoryViewModel : ViewModelBase
             var rounds = await repository.GetRoundsAsync();
             ShowRecoveredFromBackupWarning = repository.WasLastReadRecoveredFromBackup;
             var loadedItems = rounds
-                .Select(round => new RoundListItemViewModel(round))
+                .Select(round => new RoundListItemViewModel(round, distanceUnitSettings))
                 .ToList();
 
             allRoundItems.Clear();
@@ -347,6 +371,7 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(TotalHistoryCount));
         OnPropertyChanged(nameof(FilteredHistoryCount));
+        OnPropertyChanged(nameof(IsHistoryEmpty));
         OnPropertyChanged(nameof(HistorySummaryText));
         OnPropertyChanged(nameof(HistoryEmptyText));
         OnPropertyChanged(nameof(HistoryComparisonText));
@@ -362,5 +387,11 @@ public sealed class RoundHistoryViewModel : ViewModelBase
             HistorySgCategory.AroundGreen => "SG omkring green",
             _ => "SG total"
         };
+    }
+
+    private static bool IsHistoryOption(string? value, IReadOnlyList<string> options)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+            options.Any(option => string.Equals(option, value, StringComparison.Ordinal));
     }
 }

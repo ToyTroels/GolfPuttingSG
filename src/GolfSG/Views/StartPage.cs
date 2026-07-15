@@ -9,6 +9,7 @@ public sealed class StartPage : ContentPage
 {
     private readonly StartViewModel viewModel;
     private readonly IServiceProvider services;
+    private Button? historyButton;
     private Button? evaluationButton;
 
     public StartPage(StartViewModel viewModel, IServiceProvider services)
@@ -36,6 +37,11 @@ public sealed class StartPage : ContentPage
             evaluationButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         }
 
+        if (historyButton is not null)
+        {
+            historyButton.IsVisible = FeatureSettings.EnableBetaFeatures;
+        }
+
         try
         {
             await viewModel.LoadAsync();
@@ -61,8 +67,9 @@ public sealed class StartPage : ContentPage
         puttingGameButton.Clicked += async (_, _) =>
             await Navigation.PushAsync(services.GetRequiredService<PuttingGamesPage>());
 
-        var historyButton = AppViews.SecondaryButton("Historik");
+        var historyButton = this.historyButton = AppViews.SecondaryButton("Historik beta");
         historyButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
+        historyButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         historyButton.Clicked += async (_, _) =>
             await Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>());
 
@@ -110,7 +117,7 @@ public sealed class StartPage : ContentPage
         var rounds = new CollectionView
         {
             SelectionMode = SelectionMode.None,
-            ItemTemplate = RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync),
+            ItemTemplate = RoundTemplate(OpenRoundAsync, EditRoundAsync, ShowRoundActionsAsync),
             Header = new VerticalStackLayout
             {
                 Spacing = 0,
@@ -165,6 +172,29 @@ public sealed class StartPage : ContentPage
         {
             await DisplayAlertAsync(
                 "Runde kunne ikke \u00e5bnes",
+                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
+                "OK");
+        }
+    }
+
+    private async Task EditRoundAsync(RoundListItemViewModel item)
+    {
+        if (item.IsPuttingGame)
+        {
+            await OpenRoundAsync(item);
+            return;
+        }
+
+        try
+        {
+            var page = services.GetRequiredService<RoundInputPage>();
+            await page.LoadAsync(item.Id);
+            await Navigation.PushAsync(page);
+        }
+        catch (Exception)
+        {
+            await DisplayAlertAsync(
+                "Runde kunne ikke redigeres",
                 "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
@@ -299,11 +329,12 @@ public sealed class StartPage : ContentPage
 
     private static DataTemplate RoundTemplate(
         Func<RoundListItemViewModel, Task> openRoundAsync,
+        Func<RoundListItemViewModel, Task> editRoundAsync,
         Func<RoundListItemViewModel, Task> showRoundActionsAsync)
     {
         return new DataTemplate(() =>
         {
-            var date = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold };
+            var date = new Label { FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = GolfTheme.Colors.Text };
             date.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.Date));
 
             var sg = new Label
@@ -317,6 +348,40 @@ public sealed class StartPage : ContentPage
 
             var detail = new Label { FontSize = 14, TextColor = GolfTheme.Colors.MutedText };
             detail.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DetailText));
+
+            var detailsButton = RoundCardActionButton("Se detaljer", isPrimary: true);
+            detailsButton.Clicked += async (_, _) =>
+            {
+                if (detailsButton.BindingContext is RoundListItemViewModel item)
+                {
+                    await openRoundAsync(item);
+                }
+            };
+
+            var editButton = RoundCardActionButton("Rediger", isPrimary: false);
+            editButton.SetBinding(VisualElement.IsVisibleProperty, new Binding(nameof(RoundListItemViewModel.IsPuttingGame), converter: new InvertedBoolConverter()));
+            editButton.Clicked += async (_, _) =>
+            {
+                if (editButton.BindingContext is RoundListItemViewModel item)
+                {
+                    await editRoundAsync(item);
+                }
+            };
+
+            var actions = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Star)
+                },
+                ColumnSpacing = 8,
+                Children =
+                {
+                    detailsButton.Column(0),
+                    editButton.Column(1)
+                }
+            };
 
             var card = new LongPressBorder
             {
@@ -341,7 +406,8 @@ public sealed class StartPage : ContentPage
                             ColumnSpacing = 8,
                             Children = { date.Column(0), sg.Column(1) }
                         },
-                        detail
+                        detail,
+                        actions
                     }
                 }
             };
@@ -374,5 +440,22 @@ public sealed class StartPage : ContentPage
 
             return card;
         });
+    }
+
+    private static Button RoundCardActionButton(string text, bool isPrimary)
+    {
+        return new Button
+        {
+            Text = text,
+            HeightRequest = 40,
+            CornerRadius = 8,
+            BackgroundColor = isPrimary ? GolfTheme.Colors.PrimaryGreen : Colors.White,
+            BorderColor = GolfTheme.Colors.PrimaryGreen,
+            BorderWidth = 1,
+            TextColor = isPrimary ? Colors.White : GolfTheme.Colors.PrimaryGreen,
+            FontAttributes = FontAttributes.Bold,
+            FontSize = 13,
+            Padding = new Thickness(8, 0)
+        };
     }
 }
