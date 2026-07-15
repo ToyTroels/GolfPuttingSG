@@ -2,6 +2,9 @@
 
 ## User-perspective improvement backlog
 
+- [ ] Fix new-round setup so selecting approach and around-the-green tracking is immediate and does not crash the app.
+- [ ] Modernize the benchmark game UI so 1-, 2-, and 3-putt actions can be tapped on screen like the regular putting game.
+- [ ] Let benchmark players review entered putts in an overview and edit previous benchmark putt results before saving.
 - [x] Make guided hole entry the default for new installs so on-course input starts in the faster flow.
 - [x] Collapse carried putting distances into a compact putting-step summary with an option to edit the distance manually.
 - [x] Let putt quick-action buttons complete the guided putting step in one tap.
@@ -13,6 +16,9 @@
 - [ ] Autosave active rounds and putting games, show a resume action on the start page, and require explicit abandon/delete for in-progress work.
 - [x] Improve history with filters for round/game/benchmark type, date period, and best/worst SG sorting.
 - [x] Add SG-category-specific history filtering/sorting and round comparison views.
+- [ ] Fix the history tab so previously saved rounds are visible and not hidden by filters, loading errors, or round/game type grouping.
+- [ ] Fix history row date styling so the date text is visible against the row background.
+- [x] Let players open old rounds from the start screen to view detailed results and edit the saved round.
 - [ ] Add personal baseline options such as PGA Tour, scratch, handicap ranges, and the player's own recent average.
 - [ ] Expand putting practice into a feedback loop with recommended drills, repeat-weak-distance sessions, goals, personal records, and streaks.
 - [ ] Complete distance-unit personalization so putting and practice can be entered/displayed in meters or feet consistently.
@@ -124,20 +130,21 @@
 
 ## Improve round putting distance input
 
-- [ ] Redesign the first-putt distance input in round entry so decimal distances are easy to enter, review, and adjust on mobile.
-- [ ] Consider quick-pick chips or a stepper/slider for common putting distances, while still allowing precise manual input.
-- [ ] Make decimal comma and decimal point input behave consistently across device cultures.
-- [ ] Keep the entered value, display text, saved value, and edit-loaded value aligned.
-- [ ] Add view-model tests for decimal input, culture-specific separators, manual edits, and saved-round edit reloads.
+- [x] Let players navigate back and adjust exact distances with the slider without snapping back to predetermined reference distances.
+- [x] Redesign the first-putt distance input in round entry so decimal distances are easy to enter, review, and adjust on mobile.
+- [x] Consider quick-pick chips or a stepper/slider for common putting distances, while still allowing precise manual input.
+- [x] Make decimal comma and decimal point input behave consistently across device cultures.
+- [x] Keep the entered value, display text, saved value, and edit-loaded value aligned.
+- [x] Add view-model tests for decimal input, culture-specific separators, manual edits, and saved-round edit reloads.
 
 ## Improve approach distance input
 
-- [ ] Allow approach start, end, and green-edge distances to accept decimal values instead of whole numbers only.
-- [ ] Make decimal comma and decimal point input behave consistently across device cultures.
-- [ ] Use mobile-friendly input controls for approach distances, such as numeric keyboard, quick-adjust buttons, or common-distance presets while still allowing precise manual input.
-- [ ] Keep entered decimal values, display formatting, saved values, edit reloads, and SG calculations aligned.
-- [ ] Add validation that catches invalid or negative distances without clearing the player's in-progress input.
-- [ ] Add tests for decimal approach input parsing, culture-specific separators, save/load round-tripping, and SG calculation with decimal distances.
+- [x] Allow approach start, end, and green-edge distances to accept decimal values instead of whole numbers only.
+- [x] Make decimal comma and decimal point input behave consistently across device cultures.
+- [x] Use mobile-friendly input controls for approach distances, such as numeric keyboard, quick-adjust buttons, or common-distance presets while still allowing precise manual input.
+- [x] Keep entered decimal values, display formatting, saved values, edit reloads, and SG calculations aligned.
+- [x] Add validation that catches invalid or negative distances without clearing the player's in-progress input.
+- [x] Add tests for decimal approach input parsing, culture-specific separators, save/load round-tripping, and SG calculation with decimal distances.
 
 ## Reference tables by lie
 
