@@ -49,10 +49,10 @@ dotnet build src\GolfSG\GolfSG.csproj -f net10.0-windows10.0.19041.0
 
 App-versionen styres centralt i `Directory.Build.props`.
 
-- `VersionPrefix` er den synlige version, fx `0.1.0`.
+- `VersionPrefix` er den numeriske version, fx `0.1.0`.
+- `VersionSuffix` er release-kanalen, fx `alpha`. Aktuelt er appen `0.1.0-alpha`.
 - `ApplicationBuildNumber` er buildnummeret, som skal stige ved nye installerbare builds.
-- MAUI-appen bruger de samme værdier til `ApplicationDisplayVersion` og `ApplicationVersion`.
-- Indstillinger-siden viser den installerede version og build.
+- Platformenes interne app-version holdes numerisk via `ApplicationDisplayVersion`, mens Indstillinger-siden viser release-labelen med suffix.
 
 Vis den aktuelle version:
 
@@ -60,7 +60,7 @@ Vis den aktuelle version:
 .\scripts\Set-AppVersion.ps1 -Show
 ```
 
-Bump versionen før en release. Scriptet hæver automatisk buildnummeret med 1:
+Bump versionen før en release. Scriptet hæver automatisk buildnummeret med 1 og beholder suffixet:
 
 ```powershell
 .\scripts\Set-AppVersion.ps1 -Bump Patch
@@ -69,10 +69,17 @@ Bump versionen før en release. Scriptet hæver automatisk buildnummeret med 1:
 .\scripts\Set-AppVersion.ps1 -Bump Build
 ```
 
+Skift release-kanal:
+
+```powershell
+.\scripts\Set-AppVersion.ps1 -Suffix alpha
+.\scripts\Set-AppVersion.ps1 -ClearSuffix
+```
+
 Sæt en bestemt version og build:
 
 ```powershell
-.\scripts\Set-AppVersion.ps1 -Version 1.0.0 -BuildNumber 20
+.\scripts\Set-AppVersion.ps1 -Version 1.0.0 -BuildNumber 20 -ClearSuffix
 ```
 
 Anbefalet release-flow:
@@ -81,7 +88,6 @@ Anbefalet release-flow:
 2. Kør tests.
 3. Byg eller publish appen.
 4. Commit ændringen i `Directory.Build.props`.
-
 ## Udgiv Android APK til OneDrive
 
 Når appen skal udgives som en lokal Android APK, brug denne kommando fra repoets rod:

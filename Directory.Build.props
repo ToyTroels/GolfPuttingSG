@@ -4,10 +4,13 @@
 
     <!-- Release versioning. Use scripts\Set-AppVersion.ps1 to update these. -->
     <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix>alpha</VersionSuffix>
     <ApplicationBuildNumber>1</ApplicationBuildNumber>
     <Version>$(VersionPrefix)</Version>
+    <Version Condition="'$(VersionSuffix)' != ''">$(VersionPrefix)-$(VersionSuffix)</Version>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
     <FileVersion>$(VersionPrefix).$(ApplicationBuildNumber)</FileVersion>
     <InformationalVersion>$(VersionPrefix)+build.$(ApplicationBuildNumber)</InformationalVersion>
+    <InformationalVersion Condition="'$(VersionSuffix)' != ''">$(VersionPrefix)-$(VersionSuffix)+build.$(ApplicationBuildNumber)</InformationalVersion>
   </PropertyGroup>
 </Project>
