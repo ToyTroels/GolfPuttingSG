@@ -20,7 +20,7 @@ public static class ShotInputMapper
             EndDistanceToPin = input.Holed ? 0 : ToShotDistance(input.EndDistanceMeters, input.EndLie),
             EndDistanceUnit = input.EndLie == ShotLie.Green ? DistanceUnit.Feet : DistanceUnit.Yards,
             EndLie = input.EndLie,
-            EndDistanceToGreenEdgeYards = 0,
+            EndDistanceToGreenEdgeYards = DistanceConversions.MetersToYards(input.EndDistanceToGreenEdgeMeters),
             PenaltyStrokes = input.PenaltyStrokes,
             Holed = input.Holed || input.EndLie == ShotLie.Holed
         };
@@ -61,7 +61,8 @@ public sealed record ApproachShotInput(
     double EndDistanceMeters,
     ShotLie EndLie,
     int PenaltyStrokes,
-    bool Holed);
+    bool Holed,
+    double EndDistanceToGreenEdgeMeters = 0);
 
 public sealed record AroundGreenShotInput(
     int HoleNumber,

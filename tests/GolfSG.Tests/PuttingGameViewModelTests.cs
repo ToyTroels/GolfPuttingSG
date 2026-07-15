@@ -70,6 +70,27 @@ public sealed class PuttingGameViewModelTests
     }
 
     [TestMethod]
+    public async Task CustomGameUsesFeetInputButSavesMeters()
+    {
+        var repository = new InMemoryRoundRepository();
+        var settings = new FixedDistanceUnitSettings(PuttingDistanceUnitPreference.Feet);
+        var viewModel = new PuttingGameViewModel(repository, settings)
+        {
+            HoleCountText = "1",
+            MinimumDistanceMetersText = "6",
+            MaximumDistanceMetersText = "6"
+        };
+
+        Assert.IsTrue(viewModel.StartConfiguredGame());
+        Assert.AreEqual("6,0 ft", viewModel.CurrentDistanceText);
+
+        await viewModel.SubmitAsync();
+
+        Assert.HasCount(1, repository.Rounds);
+        Assert.AreEqual(DistanceConversions.FeetToMeters(6), repository.Rounds[0].Holes[0].FirstPuttDistanceMeters, 0.001);
+    }
+
+    [TestMethod]
     public async Task LadderBenchmarkSavesPresetMetadata()
     {
         var repository = new InMemoryRoundRepository();
@@ -122,6 +143,26 @@ public sealed class PuttingGameViewModelTests
         StringAssert.Contains(item.DetailText, "1,0 m-6,0 m");
         StringAssert.Contains(item.DetailText, "1,0 m trin");
         StringAssert.Contains(item.DetailText, "5 pr. afstand");
+    }
+
+    [TestMethod]
+    public void LadderBenchmarkHistorySummaryShowsFeetWhenPreferred()
+    {
+        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalLadderBenchmark);
+        var round = new Round(
+            "ladder-feet",
+            new DateTime(2026, 6, 1),
+            [PuttingGame.BuildPutt(1, definition.DistancesMeters[0], 2)],
+            new RoundTrackingOptions(true, false, false, true, PuttingGame.NormalLadderBenchmark),
+            1,
+            false,
+            PuttingGame.CreateRoundGameInfo(definition));
+        var settings = new FixedDistanceUnitSettings(PuttingDistanceUnitPreference.Feet);
+
+        var item = new RoundListItemViewModel(round, settings);
+
+        StringAssert.Contains(item.DetailText, "3,3 ft-19,7 ft");
+        StringAssert.Contains(item.DetailText, "3,3 ft trin");
     }
 
     [TestMethod]

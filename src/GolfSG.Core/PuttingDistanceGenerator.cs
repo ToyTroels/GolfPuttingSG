@@ -38,7 +38,7 @@ internal static class PuttingDistanceGenerator
 
         if (holeCount == 1 || Math.Abs(maximumDistanceMeters - minimumDistanceMeters) < 0.001)
         {
-            return [RoundToNearestTenth((minimumDistanceMeters + maximumDistanceMeters) / 2)];
+            return [(minimumDistanceMeters + maximumDistanceMeters) / 2];
         }
 
         var binCount = Math.Min(Math.Max(holeCount, 5), 21);

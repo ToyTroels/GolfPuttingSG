@@ -8,12 +8,14 @@ namespace GolfSG.ViewModels;
 public sealed class BenchmarkHistoryViewModel : ViewModelBase
 {
     private readonly IRoundRepository repository;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
     private bool isBusy;
     private string errorMessage = string.Empty;
 
-    public BenchmarkHistoryViewModel(IRoundRepository repository)
+    public BenchmarkHistoryViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         this.repository = repository;
+        this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
     public ObservableCollection<BenchmarkHistoryItemViewModel> Benchmarks { get; } = [];
@@ -58,7 +60,7 @@ public sealed class BenchmarkHistoryViewModel : ViewModelBase
             Benchmarks.Clear();
             foreach (var summary in summaries)
             {
-                Benchmarks.Add(new BenchmarkHistoryItemViewModel(summary));
+                Benchmarks.Add(new BenchmarkHistoryItemViewModel(summary, distanceUnitSettings.PuttingDistanceUnit));
             }
 
             OnPropertyChanged(nameof(HasBenchmarks));
@@ -76,7 +78,9 @@ public sealed class BenchmarkHistoryViewModel : ViewModelBase
 
 public sealed class BenchmarkHistoryItemViewModel
 {
-    public BenchmarkHistoryItemViewModel(BenchmarkHistorySummary summary)
+    public BenchmarkHistoryItemViewModel(
+        BenchmarkHistorySummary summary,
+        PuttingDistanceUnitPreference puttingDistanceUnit = PuttingDistanceUnitPreference.Meters)
     {
         Title = summary.DisplayName;
         TypeText = FormatType(summary);
@@ -86,7 +90,7 @@ public sealed class BenchmarkHistoryItemViewModel
         AverageLastThreeText = UiFormat.Sg(summary.AverageLastThreeScore);
         ImprovementText = UiFormat.Sg(summary.ImprovementFromFirstToLatest);
         LatestDateText = UiFormat.Date(summary.LatestAttempt.Date);
-        DetailText = FormatDetail(summary);
+        DetailText = FormatDetail(summary, puttingDistanceUnit);
     }
 
     public string Title { get; }
@@ -114,7 +118,7 @@ public sealed class BenchmarkHistoryItemViewModel
         _ => "Benchmark"
     };
 
-    private static string FormatDetail(BenchmarkHistorySummary summary)
+    private static string FormatDetail(BenchmarkHistorySummary summary, PuttingDistanceUnitPreference puttingDistanceUnit)
     {
         if (summary.BenchmarkType != PuttingBenchmarkType.Ladder ||
             summary.StartDistanceMeters is null ||
@@ -126,11 +130,11 @@ public sealed class BenchmarkHistoryItemViewModel
 
         var stepText = summary.DistanceStepMeters is null
             ? summary.DistanceStepDescription
-            : $"{UiFormat.Meters(summary.DistanceStepMeters.Value)} trin";
+            : $"{UiFormat.PuttingDistance(summary.DistanceStepMeters.Value, puttingDistanceUnit)} trin";
 
         var parts = new List<string>
         {
-            $"{UiFormat.Meters(summary.StartDistanceMeters.Value)}-{UiFormat.Meters(summary.EndDistanceMeters.Value)}"
+            $"{UiFormat.PuttingDistance(summary.StartDistanceMeters.Value, puttingDistanceUnit)}-{UiFormat.PuttingDistance(summary.EndDistanceMeters.Value, puttingDistanceUnit)}"
         };
         if (!string.IsNullOrWhiteSpace(stepText))
         {

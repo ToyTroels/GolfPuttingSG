@@ -17,6 +17,14 @@ public sealed class InputMappingHelperTests
     }
 
     [TestMethod]
+    public void DistanceInputParserTreatsInvalidAndNegativeDraftsAsZero()
+    {
+        Assert.AreEqual(0, DistanceInputParser.ParseOrZero("not a number"));
+        Assert.AreEqual(0, DistanceInputParser.ParseOrZero("-2,5"));
+        Assert.AreEqual(0, DistanceInputParser.ParseOrZero(null));
+    }
+
+    [TestMethod]
     public void ShotLieLabelsRoundTripDanishLabels()
     {
         Assert.AreEqual(ShotLie.FairwayCut, ShotLieLabels.Parse("Kortklippet"));

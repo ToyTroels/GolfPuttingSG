@@ -32,6 +32,22 @@ public sealed class BenchmarkHistoryViewModelTests
     }
 
     [TestMethod]
+    public async Task LoadUsesPreferredFeetForLadderDistances()
+    {
+        var definition = PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalLadderBenchmark);
+        var settings = new FixedDistanceUnitSettings(PuttingDistanceUnitPreference.Feet);
+        var viewModel = new BenchmarkHistoryViewModel(
+            new InMemoryRoundRepository(CreateBenchmarkRound("feet", new DateTime(2026, 7, 1), definition, 1.0)),
+            settings);
+
+        await viewModel.LoadAsync();
+
+        Assert.HasCount(1, viewModel.Benchmarks);
+        StringAssert.Contains(viewModel.Benchmarks[0].DetailText, "3,3 ft-19,7 ft");
+        StringAssert.Contains(viewModel.Benchmarks[0].DetailText, "3,3 ft trin");
+    }
+
+    [TestMethod]
     public async Task LoadWithNoBenchmarksShowsEmptyState()
     {
         var viewModel = new BenchmarkHistoryViewModel(new InMemoryRoundRepository());

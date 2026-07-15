@@ -9,6 +9,7 @@ public sealed class StartViewModel : ViewModelBase
     private const int TrendGroupSize = 3;
 
     private readonly IRoundRepository repository;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
     private bool showRecoveredFromBackupWarning;
     private bool hasInsights;
     private bool isBusy;
@@ -23,9 +24,10 @@ public sealed class StartViewModel : ViewModelBase
     private string focusInsightValue = "Mere data";
     private string focusInsightDetail = "Track flere SG-kategorier";
 
-    public StartViewModel(IRoundRepository repository)
+    public StartViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         this.repository = repository;
+        this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
     public ObservableCollection<RoundListItemViewModel> Rounds { get; } = [];
@@ -145,7 +147,7 @@ public sealed class StartViewModel : ViewModelBase
             var sortedRounds = rounds
                 .OrderByDescending(round => round.Date)
                 .ThenByDescending(round => round.Id, StringComparer.Ordinal)
-                .Select(round => new RoundListItemViewModel(round))
+                .Select(round => new RoundListItemViewModel(round, distanceUnitSettings))
                 .ToList();
 
             ReplaceRoundLists(sortedRounds);

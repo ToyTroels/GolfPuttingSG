@@ -1,4 +1,6 @@
 using System.Globalization;
+using GolfSG.Core;
+using GolfSG.Services;
 using GolfSG.Core.Models;
 using GolfSG.ViewModels;
 
@@ -47,7 +49,7 @@ public sealed class HoleInputViewModelTests
     }
 
     [TestMethod]
-    public void ApproachEndDistanceOffGreenUsesWholeMeters()
+    public void ApproachEndDistanceOffGreenPreservesDecimalMeters()
     {
         var viewModel = new HoleInputViewModel(1);
         viewModel.SetTracking(new RoundTrackingOptions(
@@ -58,8 +60,8 @@ public sealed class HoleInputViewModelTests
 
         viewModel.ApproachEndDistance = 2.6;
 
-        Assert.AreEqual("3", viewModel.ApproachEndDistanceText);
-        Assert.AreEqual("3 m", viewModel.ApproachEndDistanceDisplayText);
+        Assert.AreEqual("2.6", viewModel.ApproachEndDistanceText);
+        Assert.AreEqual("2,6 m", viewModel.ApproachEndDistanceDisplayText);
     }
 
     [TestMethod]
@@ -78,18 +80,103 @@ public sealed class HoleInputViewModelTests
     }
 
     [TestMethod]
-    public void ApproachStartDistanceStepperUsesWholeMeterIncrements()
+    public void PuttingDistanceSliderValuePreservesExactDistance()
+    {
+        var viewModel = new HoleInputViewModel(1);
+
+        viewModel.FirstPuttDistanceMeters = 2.6;
+
+        Assert.AreEqual(2.6, viewModel.FirstPuttDistanceMeters, 0.001);
+        Assert.AreEqual("2.6", viewModel.DistanceText);
+        Assert.AreEqual("2,6 m", viewModel.FirstPuttDistanceDisplayText);
+    }
+
+    [TestMethod]
+    public void PuttingDistanceCanBeEnteredAndDisplayedInFeet()
+    {
+        var settings = new FixedDistanceUnitSettings(PuttingDistanceUnitPreference.Feet);
+        var viewModel = new HoleInputViewModel(1, settings)
+        {
+            DistanceText = "6"
+        };
+
+        Assert.AreEqual(DistanceConversions.FeetToMeters(6), viewModel.FirstPuttDistanceMeters, 0.001);
+        Assert.AreEqual("6,0 ft", viewModel.FirstPuttDistanceDisplayText);
+
+        var hole = viewModel.ToHole();
+
+        Assert.AreEqual(DistanceConversions.FeetToMeters(6), hole.FirstPuttDistanceMeters, 0.001);
+    }
+
+    [TestMethod]
+    public void ApproachFinishOnGreenUsesFeetInputWhenPreferred()
+    {
+        var settings = new FixedDistanceUnitSettings(PuttingDistanceUnitPreference.Feet);
+        var viewModel = new HoleInputViewModel(1, settings);
+        viewModel.SetTracking(new RoundTrackingOptions(
+            TrackPutting: true,
+            TrackApproach: true,
+            TrackAroundGreen: false));
+        viewModel.SelectApproachEndLie("Green");
+        viewModel.ApproachStartDistanceText = "100";
+        viewModel.ApproachEndDistanceText = "6";
+
+        Assert.AreEqual(DistanceConversions.FeetToMeters(6), viewModel.ApproachEndDistance, 0.001);
+        Assert.AreEqual("6,0 ft", viewModel.ApproachEndDistanceDisplayText);
+
+        var hole = viewModel.ToHole();
+
+        Assert.AreEqual(6, hole.ApproachEndDistance, 0.001);
+        Assert.AreEqual(DistanceUnit.Feet, hole.ApproachEndDistanceUnit);
+    }
+
+    [TestMethod]
+    public void ApproachStartDistanceStepperUsesFineIncrements()
     {
         var viewModel = new HoleInputViewModel(1);
 
         viewModel.IncreaseApproachStartDistance();
 
-        Assert.AreEqual(1, viewModel.ApproachStartDistanceYards, 0.001);
+        Assert.AreEqual(0.1, viewModel.ApproachStartDistanceYards, 0.001);
 
         viewModel.ApproachStartDistanceYards = 80;
         viewModel.IncreaseApproachStartDistance();
 
-        Assert.AreEqual(81, viewModel.ApproachStartDistanceYards, 0.001);
+        Assert.AreEqual(80.1, viewModel.ApproachStartDistanceYards, 0.001);
+    }
+
+    [TestMethod]
+    public void ApproachStartSliderValuePreservesDecimalDistance()
+    {
+        var viewModel = new HoleInputViewModel(1);
+
+        viewModel.ApproachStartDistanceYards = 137.4;
+
+        Assert.AreEqual(137.4, viewModel.ApproachStartDistanceYards, 0.001);
+        Assert.AreEqual("137.4", viewModel.ApproachStartDistanceText);
+        Assert.AreEqual("137,4 m", viewModel.ApproachStartDistanceDisplayText);
+    }
+
+    [TestMethod]
+    public void MobileDecimalDraftsRemainVisibleWhileOnlyValidValuesAreUsed()
+    {
+        var viewModel = new HoleInputViewModel(1);
+
+        viewModel.DistanceText = "2,6";
+        Assert.AreEqual("2,6", viewModel.DistanceText);
+        Assert.AreEqual(2.6, viewModel.FirstPuttDistanceMeters, 0.001);
+
+        viewModel.ApproachStartDistanceText = "137,";
+        Assert.AreEqual("137,", viewModel.ApproachStartDistanceText);
+        Assert.AreEqual(137, viewModel.ApproachStartDistanceYards, 0.001);
+
+        viewModel.ApproachStartDistanceText = "-12,5";
+        Assert.AreEqual("-12,5", viewModel.ApproachStartDistanceText);
+        Assert.AreEqual(0, viewModel.ApproachStartDistanceYards, 0.001);
+
+        viewModel.ApproachStartDistanceText = "invalid";
+        Assert.AreEqual("invalid", viewModel.ApproachStartDistanceText);
+        Assert.AreEqual(0, viewModel.ApproachStartDistanceYards, 0.001);
     }
 
     [TestMethod]
@@ -269,6 +356,33 @@ public sealed class HoleInputViewModelTests
         Assert.AreEqual(DistanceUnit.Feet, hole.ApproachEndDistanceUnit);
         Assert.AreEqual(ShotLie.Green, hole.ApproachEndLie);
         Assert.AreEqual(1, hole.ApproachPenaltyStrokes);
+    }
+
+    [TestMethod]
+    [DoNotParallelize]
+    public void DecimalApproachDistancesSurviveCalculationAndReload()
+    {
+        var viewModel = new HoleInputViewModel(1);
+        viewModel.SetTracking(new RoundTrackingOptions(
+            TrackPutting: false,
+            TrackApproach: true,
+            TrackAroundGreen: false));
+        viewModel.ApproachStartDistanceText = "137,4";
+        viewModel.SelectApproachEndLie("Rough");
+        viewModel.ApproachEndDistanceText = "12.6";
+        viewModel.ApproachEndDistanceToGreenEdgeText = "3,7";
+
+        var hole = viewModel.ToHole();
+        var reloaded = new HoleInputViewModel(1);
+        reloaded.Load(hole);
+
+        Assert.AreEqual(137.4, DistanceConversions.YardsToMeters(hole.ApproachStartDistanceYards), 0.001);
+        Assert.AreEqual(12.6, DistanceConversions.YardsToMeters(hole.ApproachEndDistance), 0.001);
+        Assert.AreEqual(3.7, DistanceConversions.YardsToMeters(hole.ApproachEndDistanceToGreenEdgeYards), 0.001);
+        Assert.IsTrue(double.IsFinite(hole.StrokesGainedApproach));
+        Assert.AreEqual("137.4", reloaded.ApproachStartDistanceText);
+        Assert.AreEqual("12.6", reloaded.ApproachEndDistanceText);
+        Assert.AreEqual("3.7", reloaded.ApproachEndDistanceToGreenEdgeText);
     }
 
     [TestMethod]

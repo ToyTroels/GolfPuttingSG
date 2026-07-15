@@ -1,3 +1,4 @@
+using System.Reflection;
 using GolfSG.Core;
 using GolfSG.Services;
 using Microsoft.Maui.ApplicationModel;
@@ -13,10 +14,12 @@ public sealed class SettingsPage : ContentPage
     private static readonly Color TextColor = GolfTheme.Colors.Text;
     private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
     private readonly IRoundRepository repository;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
 
-    public SettingsPage(IRoundRepository repository)
+    public SettingsPage(IRoundRepository repository, IDistanceUnitSettings distanceUnitSettings)
     {
         this.repository = repository;
+        this.distanceUnitSettings = distanceUnitSettings;
         Title = "Indstillinger";
         BackgroundColor = PageBackground;
         BuildLayout();
@@ -48,6 +51,7 @@ public sealed class SettingsPage : ContentPage
                         Margin = new Thickness(0, 8, 0, 0)
                     },
                     GuidedHoleEntryItem(),
+                    DistanceUnitItem(),
                     new Label
                     {
                         Text = "SG referenceværdier",
@@ -172,11 +176,57 @@ public sealed class SettingsPage : ContentPage
         return card;
     }
 
+    private View DistanceUnitItem()
+    {
+        var picker = new Picker
+        {
+            Title = "Putting-afstande",
+            TextColor = TextColor,
+            BackgroundColor = Colors.White,
+            HeightRequest = 48,
+            ItemsSource = new[] { "Meter", "Fod" },
+            SelectedIndex = distanceUnitSettings.PuttingDistanceUnit == PuttingDistanceUnitPreference.Feet ? 1 : 0
+        };
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            distanceUnitSettings.PuttingDistanceUnit = picker.SelectedIndex == 1
+                ? PuttingDistanceUnitPreference.Feet
+                : PuttingDistanceUnitPreference.Meters;
+        };
+
+        return new Border
+        {
+            BackgroundColor = Colors.White,
+            Stroke = CardStroke,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 14,
+            Content = new VerticalStackLayout
+            {
+                Spacing = 8,
+                Children =
+                {
+                    new Label
+                    {
+                        Text = "Putting-afstande",
+                        FontSize = 17,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = TextColor
+                    },
+                    new Label
+                    {
+                        Text = "Bruges til første putt, green-finish, putting-spil, benchmarks og resultater.",
+                        FontSize = 13,
+                        TextColor = MutedTextColor
+                    },
+                    picker
+                }
+            }
+        };
+    }
+
     private static View VersionInfoItem()
     {
-        var version = string.IsNullOrWhiteSpace(AppInfo.Current.VersionString)
-            ? "ukendt"
-            : AppInfo.Current.VersionString;
+        var version = GetReleaseVersionLabel();
         var build = string.IsNullOrWhiteSpace(AppInfo.Current.BuildString)
             ? "ukendt"
             : AppInfo.Current.BuildString;
@@ -210,6 +260,24 @@ public sealed class SettingsPage : ContentPage
         };
     }
 
+    private static string GetReleaseVersionLabel()
+    {
+        var informationalVersion = typeof(SettingsPage).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        var version = string.IsNullOrWhiteSpace(informationalVersion)
+            ? AppInfo.Current.VersionString
+            : informationalVersion;
+
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            return "ukendt";
+        }
+
+        var metadataIndex = version.IndexOf('+', StringComparison.Ordinal);
+        return metadataIndex >= 0 ? version[..metadataIndex] : version;
+    }
     private View BetaFeaturesItem()
     {
         var checkbox = new CheckBox

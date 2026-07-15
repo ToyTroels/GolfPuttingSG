@@ -6,20 +6,14 @@ public static class DistanceInputParser
 {
     private static readonly CultureInfo InvariantCulture = CultureInfo.InvariantCulture;
 
-    public static string NormalizeDecimalSeparator(string text) => text.Replace(',', '.');
+    public static string NormalizeDecimalSeparator(string? text) => (text ?? string.Empty).Replace(',', '.');
 
-    public static double ParseOrZero(string text)
+    public static double ParseOrZero(string? text)
     {
-        return double.TryParse(
-            text,
-            NumberStyles.Number,
-            InvariantCulture,
-            out var value)
-            ? value
-            : 0;
+        return TryParse(text, out var value) && value >= 0 ? value : 0;
     }
 
-    public static bool TryParse(string text, out double distance)
+    public static bool TryParse(string? text, out double distance)
     {
         return double.TryParse(
             NormalizeDecimalSeparator(text),

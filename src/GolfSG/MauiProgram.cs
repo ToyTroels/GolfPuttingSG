@@ -24,6 +24,7 @@ public static class MauiProgram
 #endif
 
         builder.Services.AddSingleton<IRoundRepository, FileRoundRepository>();
+        builder.Services.AddSingleton<IDistanceUnitSettings, PreferenceDistanceUnitSettings>();
         builder.Services.AddSingleton<IStrokesGainedPuttingService, StrokesGainedPuttingService>();
         builder.Services.AddSingleton<IStrokesGainedAroundGreenService, StrokesGainedAroundGreenService>();
         builder.Services.AddSingleton<IStrokesGainedApproachService, StrokesGainedApproachService>();

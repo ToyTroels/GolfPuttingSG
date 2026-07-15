@@ -1,5 +1,6 @@
 using GolfSG.Core;
 using GolfSG.Core.Models;
+using GolfSG.Services;
 
 namespace GolfSG.ViewModels;
 
@@ -14,14 +15,16 @@ public enum HistorySgCategory
 public sealed class RoundListItemViewModel : ViewModelBase
 {
     private readonly RoundSummary summary;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
     private readonly RoundTrackingOptions trackingOptions;
     private HistorySgCategory historyCategory = HistorySgCategory.Total;
     private double historyComparisonAverage;
     private int historyComparisonCount;
 
-    public RoundListItemViewModel(Round round)
+    public RoundListItemViewModel(Round round, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         Round = round;
+        this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
         summary = StrokesGainedCalculator.CalculateRoundSummary(round);
         trackingOptions = round.TrackingOptions ?? RoundTrackingOptions.PuttingOnly;
         PuttingSg = trackingOptions.TrackPutting ? summary.TotalStrokesGainedPutting : 0;
@@ -153,7 +156,7 @@ public sealed class RoundListItemViewModel : ViewModelBase
         PuttingGame.NormalLadderBenchmark or
         PuttingGame.ThoroughLadderBenchmark;
 
-    private static string FormatBenchmarkDetail(RoundGameInfo? gameInfo)
+    private string FormatBenchmarkDetail(RoundGameInfo? gameInfo)
     {
         if (gameInfo?.BenchmarkType != PuttingBenchmarkType.Ladder ||
             gameInfo.StartDistanceMeters is null ||
@@ -165,11 +168,11 @@ public sealed class RoundListItemViewModel : ViewModelBase
 
         var stepText = gameInfo.DistanceStepMeters is null
             ? gameInfo.DistanceStepDescription
-            : $"{UiFormat.Meters(gameInfo.DistanceStepMeters.Value)} trin";
+            : $"{UiFormat.PuttingDistance(gameInfo.DistanceStepMeters.Value, PuttingDistanceUnit)} trin";
 
         var parts = new List<string>
         {
-            $"{UiFormat.Meters(gameInfo.StartDistanceMeters.Value)}-{UiFormat.Meters(gameInfo.EndDistanceMeters.Value)}"
+            $"{UiFormat.PuttingDistance(gameInfo.StartDistanceMeters.Value, PuttingDistanceUnit)}-{UiFormat.PuttingDistance(gameInfo.EndDistanceMeters.Value, PuttingDistanceUnit)}"
         };
         if (!string.IsNullOrWhiteSpace(stepText))
         {
@@ -179,6 +182,8 @@ public sealed class RoundListItemViewModel : ViewModelBase
         parts.Add($"{gameInfo.PuttsPerDistance} pr. afstand");
         return string.Join(", ", parts);
     }
+
+    private PuttingDistanceUnitPreference PuttingDistanceUnit => distanceUnitSettings.PuttingDistanceUnit;
 
     private static string GetHistoryCategoryLabel(HistorySgCategory category)
     {

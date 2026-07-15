@@ -7,6 +7,7 @@ namespace GolfSG.ViewModels;
 public sealed class PuttingGameViewModel : ViewModelBase
 {
     private readonly IRoundRepository repository;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
     private readonly List<HolePuttingData> completedPutts = [];
     private readonly string roundId = Guid.NewGuid().ToString("N");
     private IReadOnlyList<double> customDistancesMeters = [];
@@ -29,9 +30,12 @@ public sealed class PuttingGameViewModel : ViewModelBase
     private bool isBusy;
     private string errorMessage = string.Empty;
 
-    public PuttingGameViewModel(IRoundRepository repository)
+    public PuttingGameViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         this.repository = repository;
+        this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
+        minimumDistanceMetersText = FormatPuttingInputDistance(PuttingGame.DefaultMinimumDistanceMeters, 0);
+        maximumDistanceMetersText = FormatPuttingInputDistance(PuttingGame.DefaultMaximumDistanceMeters, 0);
     }
 
     public string GameTitle => currentGameDefinition.DisplayName;
@@ -110,6 +114,12 @@ public sealed class PuttingGameViewModel : ViewModelBase
         get => maximumDistanceMetersText;
         set => SetProperty(ref maximumDistanceMetersText, value);
     }
+
+    public string DistanceUnitText => UiFormat.PuttingDistanceUnitText(PuttingDistanceUnit);
+
+    public string MinimumDistanceLabel => $"Minimumsafstand ({DistanceUnitText})";
+
+    public string MaximumDistanceLabel => $"Maksimumsafstand ({DistanceUnitText})";
 
     public string SetupErrorText
     {
@@ -195,7 +205,7 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
     public string CurrentDistanceText => IsComplete
         ? "-"
-        : UiFormat.Meters(CurrentDistanceMeters);
+        : UiFormat.PuttingDistance(CurrentDistanceMeters, PuttingDistanceUnit);
 
     public string PuttsUsedText => PuttsUsed.ToString();
 
@@ -311,13 +321,13 @@ public sealed class PuttingGameViewModel : ViewModelBase
             return false;
         }
 
-        if (!TryParseDistance(MinimumDistanceMetersText, out var minimumDistanceMeters) || minimumDistanceMeters <= 0)
+        if (!TryParsePuttingDistance(MinimumDistanceMetersText, out var minimumDistanceMeters) || minimumDistanceMeters <= 0)
         {
             SetupErrorText = "Indtast en minimumsafstand større end 0.";
             return false;
         }
 
-        if (!TryParseDistance(MaximumDistanceMetersText, out var maximumDistanceMeters) ||
+        if (!TryParsePuttingDistance(MaximumDistanceMetersText, out var maximumDistanceMeters) ||
             maximumDistanceMeters < minimumDistanceMeters)
         {
             SetupErrorText = "Indtast en maksimumsafstand der mindst er minimumsafstanden.";
@@ -450,6 +460,9 @@ public sealed class PuttingGameViewModel : ViewModelBase
         OnPropertyChanged(nameof(HoleCountText));
         OnPropertyChanged(nameof(MinimumDistanceMetersText));
         OnPropertyChanged(nameof(MaximumDistanceMetersText));
+        OnPropertyChanged(nameof(DistanceUnitText));
+        OnPropertyChanged(nameof(MinimumDistanceLabel));
+        OnPropertyChanged(nameof(MaximumDistanceLabel));
         OnPropertyChanged(nameof(SetupErrorText));
         OnPropertyChanged(nameof(HasSetupError));
         OnPropertyChanged(nameof(TrainingDistanceDistributionOptions));
@@ -494,9 +507,9 @@ public sealed class PuttingGameViewModel : ViewModelBase
         return $"Putt {putt.HoleNumber}, {FormatDistance(Distances[putt.HoleNumber - 1])} ({UiFormat.Sg(putt.StrokesGainedPutting)})";
     }
 
-    private string FormatDistance(double distance) => UseCustomDistances
-        ? UiFormat.Meters(distance)
-        : UiFormat.Meters(FeetToMeters(distance));
+    private string FormatDistance(double distance) => UiFormat.PuttingDistance(
+        UseCustomDistances ? distance : FeetToMeters(distance),
+        PuttingDistanceUnit);
 
     private void StartBenchmark(string benchmark)
     {
@@ -526,10 +539,10 @@ public sealed class PuttingGameViewModel : ViewModelBase
         _ => benchmark
     };
 
-    private static string FormatLadderBenchmark(PuttingGameDefinition definition)
+    private string FormatLadderBenchmark(PuttingGameDefinition definition)
     {
-        var start = UiFormat.Meters(definition.StartDistanceMeters ?? definition.MinimumDistanceMeters ?? 0);
-        var end = UiFormat.Meters(definition.EndDistanceMeters ?? definition.MaximumDistanceMeters ?? 0);
+        var start = UiFormat.PuttingDistance(definition.StartDistanceMeters ?? definition.MinimumDistanceMeters ?? 0, PuttingDistanceUnit);
+        var end = UiFormat.PuttingDistance(definition.EndDistanceMeters ?? definition.MaximumDistanceMeters ?? 0, PuttingDistanceUnit);
         return $"{FormatBenchmarkLength(definition.BenchmarkLength)} ladder - {start}-{end} - {definition.AttemptCount} putts";
     }
 
@@ -541,10 +554,24 @@ public sealed class PuttingGameViewModel : ViewModelBase
         _ => "Ladder"
     };
 
+    private PuttingDistanceUnitPreference PuttingDistanceUnit => distanceUnitSettings.PuttingDistanceUnit;
+
     private static double FeetToMeters(double distanceFeet) => DistanceConversions.FeetToMeters(distanceFeet);
 
-    private static bool TryParseDistance(string text, out double distanceMeters) =>
-        DistanceInputParser.TryParse(text, out distanceMeters);
+    private bool TryParsePuttingDistance(string text, out double distanceMeters)
+    {
+        if (!DistanceInputParser.TryParse(text, out var preferredDistance))
+        {
+            distanceMeters = 0;
+            return false;
+        }
+
+        distanceMeters = UiFormat.FromPreferredPuttingDistance(preferredDistance, PuttingDistanceUnit);
+        return true;
+    }
+
+    private string FormatPuttingInputDistance(double distanceMeters, int decimals) =>
+        DistanceInputParser.FormatSlider(UiFormat.ToPreferredPuttingDistance(distanceMeters, PuttingDistanceUnit), decimals);
 
     private void BeginCustomDistanceGame()
     {

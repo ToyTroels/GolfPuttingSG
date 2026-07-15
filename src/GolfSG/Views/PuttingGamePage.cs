@@ -189,8 +189,8 @@ public sealed class PuttingGamePage : ContentPage
                     TextColor = TextColor
                 },
                 Field("Putts", holeCount),
-                Field("Minimumsafstand (m)", minimumDistance),
-                Field("Maksimumsafstand (m)", maximumDistance),
+                BoundField(nameof(PuttingGameViewModel.MinimumDistanceLabel), minimumDistance),
+                BoundField(nameof(PuttingGameViewModel.MaximumDistanceLabel), maximumDistance),
                 Field("Afstandsfordeling", distanceDistribution),
                 error,
                 start
@@ -543,21 +543,35 @@ public sealed class PuttingGamePage : ContentPage
 
     private static View Field(string labelText, View input)
     {
+        return Field(FieldLabel(labelText), input);
+    }
+
+    private static View BoundField(string labelBindingPath, View input)
+    {
+        var label = FieldLabel(string.Empty);
+        label.SetBinding(Label.TextProperty, labelBindingPath);
+        return Field(label, input);
+    }
+
+    private static View Field(Label label, View input)
+    {
         return new VerticalStackLayout
         {
             Spacing = 4,
             Children =
             {
-                new Label
-                {
-                    Text = labelText,
-                    TextColor = MutedTextColor,
-                    FontAttributes = FontAttributes.Bold
-                },
+                label,
                 input
             }
         };
     }
+
+    private static Label FieldLabel(string text) => new()
+    {
+        Text = text,
+        TextColor = MutedTextColor,
+        FontAttributes = FontAttributes.Bold
+    };
 
     private static Border Card(View content)
     {

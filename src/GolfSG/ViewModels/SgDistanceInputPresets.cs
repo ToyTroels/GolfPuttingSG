@@ -1,4 +1,5 @@
 using GolfSG.Core;
+using GolfSG.Services;
 
 namespace GolfSG.ViewModels;
 
@@ -115,20 +116,31 @@ public static class SgDistanceInputPresets
     public static IReadOnlyList<DistanceQuickPick> ToQuickPicks(
         IReadOnlyList<double> intervals,
         double maximum,
-        int decimals)
+        int decimals,
+        PuttingDistanceUnitPreference? puttingDistanceUnit = null)
     {
         ArgumentNullException.ThrowIfNull(intervals);
 
         return intervals
             .Where(distance => distance <= maximum)
             .Select(distance => new DistanceQuickPick(
-                FormatLabel(distance, decimals),
+                FormatLabel(distance, decimals, puttingDistanceUnit),
                 distance))
             .ToArray();
     }
 
-    private static string FormatLabel(double distanceMeters, int decimals)
+    private static string FormatLabel(
+        double distanceMeters,
+        int decimals,
+        PuttingDistanceUnitPreference? puttingDistanceUnit)
     {
+        if (puttingDistanceUnit is { } unit)
+        {
+            return decimals == 0
+                ? UiFormat.WholePuttingDistance(distanceMeters, unit)
+                : UiFormat.PuttingDistance(distanceMeters, unit);
+        }
+
         return decimals == 0
             ? UiFormat.WholeMeters(distanceMeters)
             : UiFormat.Meters(distanceMeters);

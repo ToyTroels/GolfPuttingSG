@@ -1,5 +1,6 @@
 using GolfSG.Core;
 using GolfSG.Core.Models;
+using GolfSG.Services;
 
 namespace GolfSG.ViewModels;
 
@@ -10,7 +11,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     private const double MaxAroundGreenDistanceMeters = 50;
     private const double MaxFinishDistanceMeters = 250;
     private const double FirstPuttDistanceStepMeters = 0.1;
-    private const double ApproachDistanceStepMeters = 1;
+    private const double ApproachDistanceStepMeters = 0.1;
     private const double AroundGreenDistanceStepMeters = 1;
     private const double GreenFinishDistanceStepMeters = 0.1;
 
@@ -45,6 +46,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     private bool approachHoled;
     private bool trackAroundGreen;
     private bool aroundGreenHoled;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
     private readonly List<GolfShot> completedAroundGreenShots = [];
     private double? carriedPuttingDistanceFromApproachMeters;
     private double? carriedPuttingDistanceFromAroundGreenMeters;
@@ -53,9 +55,10 @@ public sealed class HoleInputViewModel : ViewModelBase
     private bool isApplyingApproachCarryForward;
     private bool hasManualPuttingDistanceOverride;
 
-    public HoleInputViewModel(int holeNumber)
+    public HoleInputViewModel(int holeNumber, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         HoleNumber = holeNumber;
+        this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
     public int HoleNumber { get; }
@@ -130,12 +133,11 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => distanceText;
         set
         {
-            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
-            if (SetProperty(ref distanceText, normalized))
+            if (SetProperty(ref distanceText, value ?? string.Empty))
             {
                 if (!isApplyingApproachCarryForward)
                 {
-                    hasManualPuttingDistanceOverride = !string.IsNullOrWhiteSpace(normalized);
+                    hasManualPuttingDistanceOverride = !string.IsNullOrWhiteSpace(distanceText);
                     ClearCarriedPuttingDistanceIfManuallyChanged();
                     ClearCarriedAroundGreenPuttingDistanceIfManuallyChanged();
                 }
@@ -151,11 +153,15 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public double FirstPuttDistanceMeters
     {
-        get => ParseDistance(DistanceText);
-        set => DistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxFirstPuttDistanceMeters), 1);
+        get => ParsePuttingDistance(DistanceText);
+        set => DistanceText = FormatPuttingInputDistance(Math.Clamp(value, 0, MaxFirstPuttDistanceMeters), 1);
     }
 
     public string FirstPuttDistanceDisplayText => FormatPuttDistance();
+
+    public string PuttingDistanceUnitText => UiFormat.PuttingDistanceUnitText(PuttingDistanceUnit);
+
+    public PuttingDistanceUnitPreference PuttingDistanceUnitPreference => PuttingDistanceUnit;
 
     public int Putts
     {
@@ -175,8 +181,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => approachDistanceText;
         set
         {
-            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
-            if (SetProperty(ref approachDistanceText, normalized))
+            if (SetProperty(ref approachDistanceText, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(ApproachDistanceMeters));
                 OnPropertyChanged(nameof(ApproachDistanceDisplayText));
@@ -188,7 +193,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     public double ApproachDistanceMeters
     {
         get => ParseDistance(ApproachDistanceText);
-        set => ApproachDistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxApproachDistanceMeters), 0);
+        set => ApproachDistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxApproachDistanceMeters), 1);
     }
 
     public string ApproachDistanceDisplayText => FormatApproachDistance();
@@ -240,8 +245,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => approachStartDistanceText;
         set
         {
-            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
-            if (SetProperty(ref approachStartDistanceText, normalized))
+            if (SetProperty(ref approachStartDistanceText, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(ApproachStartDistanceYards));
                 OnPropertyChanged(nameof(ApproachStartDistanceDisplayText));
@@ -254,7 +258,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     public double ApproachStartDistanceYards
     {
         get => ParseDistance(ApproachStartDistanceText);
-        set => ApproachStartDistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxApproachDistanceMeters), 0);
+        set => ApproachStartDistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxApproachDistanceMeters), 1);
     }
 
     public string ApproachStartDistanceDisplayText => FormatApproachStartDistance();
@@ -264,8 +268,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => approachEndDistanceText;
         set
         {
-            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
-            if (SetProperty(ref approachEndDistanceText, normalized))
+            if (SetProperty(ref approachEndDistanceText, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(ApproachEndDistance));
                 OnPropertyChanged(nameof(ApproachEndDistanceDisplayText));
@@ -278,9 +281,10 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public double ApproachEndDistance
     {
-        get => ParseDistance(ApproachEndDistanceText);
-        set => ApproachEndDistanceText = FormatSliderDistance(
+        get => ParseFinishDistance(ApproachEndDistanceText, ParseLie(ApproachEndLieText));
+        set => ApproachEndDistanceText = FormatFinishInputDistance(
             Math.Clamp(value, 0, MaxFinishDistanceMeters),
+            ParseLie(ApproachEndLieText),
             GetApproachFinishDistanceDecimals());
     }
 
@@ -291,8 +295,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         get => approachEndDistanceToGreenEdgeText;
         set
         {
-            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
-            if (SetProperty(ref approachEndDistanceToGreenEdgeText, normalized))
+            if (SetProperty(ref approachEndDistanceToGreenEdgeText, value ?? string.Empty))
             {
                 OnPropertyChanged(nameof(ApproachEndDistanceToGreenEdgeYards));
                 OnPropertyChanged(nameof(ApproachEndDistanceToGreenEdgeDisplayText));
@@ -304,7 +307,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     public double ApproachEndDistanceToGreenEdgeYards
     {
         get => ParseDistance(ApproachEndDistanceToGreenEdgeText);
-        set => ApproachEndDistanceToGreenEdgeText = FormatSliderDistance(Math.Clamp(value, 0, MaxApproachDistanceMeters), 0);
+        set => ApproachEndDistanceToGreenEdgeText = FormatSliderDistance(Math.Clamp(value, 0, MaxApproachDistanceMeters), 1);
     }
 
     public string ApproachEndDistanceToGreenEdgeDisplayText => FormatApproachEndDistanceToGreenEdge();
@@ -386,7 +389,9 @@ public sealed class HoleInputViewModel : ViewModelBase
     public bool IsApproachEndOffGreen => IsApproachFinishDistanceVisible &&
         ParseLie(ApproachEndLieText) is not ShotLie.Green and not ShotLie.Holed;
 
-    public string ApproachEndDistanceUnitText => "m";
+    public string ApproachEndDistanceUnitText => ParseLie(ApproachEndLieText) == ShotLie.Green
+        ? PuttingDistanceUnitText
+        : "m";
 
     public bool IsApproachInputVisible => TrackApproach;
 
@@ -411,17 +416,17 @@ public sealed class HoleInputViewModel : ViewModelBase
         ParseDistance(ApproachStartDistanceText) > 0 &&
         (ApproachHoled ||
             ParseLie(ApproachEndLieText) == ShotLie.Holed ||
-            ParseDistance(ApproachEndDistanceText) > 0);
+            ParseFinishDistance(ApproachEndDistanceText, ParseLie(ApproachEndLieText)) > 0);
 
     public bool CanAdvanceAroundGreenStep => IsAroundGreenInputVisible &&
         ParseDistance(AroundGreenStartDistanceText) > 0 &&
         (AroundGreenHoled ||
             ParseLie(AroundGreenEndLieText) == ShotLie.Holed ||
             (ParseLie(AroundGreenEndLieText) == ShotLie.Green &&
-                ParseDistance(AroundGreenEndDistanceText) > 0));
+                ParseFinishDistance(AroundGreenEndDistanceText, ParseLie(AroundGreenEndLieText)) > 0));
 
     public bool CanAdvancePuttingStep => IsPuttingInputVisible &&
-        ParseDistance(DistanceText) > 0 &&
+        ParsePuttingDistance(DistanceText) > 0 &&
         Putts > 0;
 
     public string AroundGreenStartDistanceText
@@ -474,8 +479,8 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public double AroundGreenEndDistance
     {
-        get => ParseDistance(AroundGreenEndDistanceText);
-        set => AroundGreenEndDistanceText = FormatSliderDistance(Math.Clamp(value, 0, MaxFinishDistanceMeters), 1);
+        get => ParseFinishDistance(AroundGreenEndDistanceText, ParseLie(AroundGreenEndLieText));
+        set => AroundGreenEndDistanceText = FormatFinishInputDistance(Math.Clamp(value, 0, MaxFinishDistanceMeters), ParseLie(AroundGreenEndLieText), 1);
     }
 
     public string AroundGreenEndDistanceDisplayText => FormatAroundGreenEndDistance();
@@ -565,7 +570,9 @@ public sealed class HoleInputViewModel : ViewModelBase
     public bool IsAroundGreenEndOffGreen => IsAroundGreenFinishDistanceVisible &&
         ParseLie(AroundGreenEndLieText) is not ShotLie.Green and not ShotLie.Holed;
 
-    public string AroundGreenEndDistanceUnitText => "m";
+    public string AroundGreenEndDistanceUnitText => ParseLie(AroundGreenEndLieText) == ShotLie.Green
+        ? PuttingDistanceUnitText
+        : "m";
 
     public string AroundGreenShotTitle => completedAroundGreenShots.Count == 0
         ? "Omkring green"
@@ -573,7 +580,7 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public IReadOnlyList<AroundGreenShotSummaryViewModel> CompletedAroundGreenShotSummaries =>
         completedAroundGreenShots
-            .Select((shot, index) => AroundGreenShotSummaryViewModel.FromShot(shot, index + 1))
+            .Select((shot, index) => AroundGreenShotSummaryViewModel.FromShot(shot, index + 1, PuttingDistanceUnit))
             .ToList();
 
     public bool HasCompletedAroundGreenShots => completedAroundGreenShots.Count > 0;
@@ -854,7 +861,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     {
         return StrokesGainedCalculator.BuildHole(
             HoleNumber,
-            IsPuttingInputVisible ? ParseDistance(DistanceText) : 0,
+            IsPuttingInputVisible ? ParsePuttingDistance(DistanceText) : 0,
             IsPuttingInputVisible ? Putts : 0,
             0,
             0,
@@ -865,15 +872,16 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     public void Load(HolePuttingData hole)
     {
-        distanceText = hole.FirstPuttDistanceMeters > 0 ? FormatStoredDistance(hole.FirstPuttDistanceMeters, 1) : string.Empty;
+        distanceText = hole.FirstPuttDistanceMeters > 0 ? FormatPuttingInputDistance(hole.FirstPuttDistanceMeters, 1) : string.Empty;
         approachDistanceText = hole.ApproachDistanceMeters > 0 ? FormatStoredDistance(hole.ApproachDistanceMeters, 1) : string.Empty;
-        approachStartDistanceText = hole.ApproachStartDistanceYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachStartDistanceYards), 0) : string.Empty;
+        approachStartDistanceText = hole.ApproachStartDistanceYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachStartDistanceYards), 1) : string.Empty;
         approachEndDistanceText = hole.ApproachEndDistance > 0
-            ? FormatStoredDistance(
+            ? FormatFinishInputDistance(
                 ToMeters(hole.ApproachEndDistance, hole.ApproachEndDistanceUnit),
-                hole.ApproachEndLie == ShotLie.Green ? 1 : 0)
+                hole.ApproachEndLie,
+                1)
             : string.Empty;
-        approachEndDistanceToGreenEdgeText = hole.ApproachEndDistanceToGreenEdgeYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachEndDistanceToGreenEdgeYards), 0) : string.Empty;
+        approachEndDistanceToGreenEdgeText = hole.ApproachEndDistanceToGreenEdgeYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachEndDistanceToGreenEdgeYards), 1) : string.Empty;
         approachStartLieText = FormatLie(hole.ApproachStartLie);
         approachEndLieText = FormatLie(hole.ApproachEndLie);
         approachPenaltyStrokes = hole.ApproachPenaltyStrokes;
@@ -882,7 +890,7 @@ public sealed class HoleInputViewModel : ViewModelBase
         approachIsTeeShot = hole.ApproachIsTeeShot;
         aroundGreenStartDistanceText = hole.AroundGreenStartDistanceYards > 0 ? FormatStoredDistance(YardsToMeters(hole.AroundGreenStartDistanceYards), 0) : string.Empty;
         aroundGreenStartLieText = FormatLie(hole.AroundGreenStartLie);
-        aroundGreenEndDistanceText = hole.AroundGreenEndDistance > 0 ? FormatStoredDistance(ToMeters(hole.AroundGreenEndDistance, hole.AroundGreenEndDistanceUnit), 1) : string.Empty;
+        aroundGreenEndDistanceText = hole.AroundGreenEndDistance > 0 ? FormatFinishInputDistance(ToMeters(hole.AroundGreenEndDistance, hole.AroundGreenEndDistanceUnit), hole.AroundGreenEndLie, 1) : string.Empty;
         aroundGreenEndLieText = FormatLie(hole.AroundGreenEndLie);
         aroundGreenPenaltyStrokes = hole.AroundGreenPenaltyStrokes;
         aroundGreenHoled = hole.AroundGreenHoled;
@@ -893,7 +901,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             var currentShot = hole.AroundGreenShots[^1];
             aroundGreenStartDistanceText = FormatStoredDistance(ToMeters(currentShot.StartDistanceToPin, currentShot.StartDistanceUnit), 0);
             aroundGreenStartLieText = FormatLie(currentShot.StartLie);
-            aroundGreenEndDistanceText = currentShot.EndDistanceToPin > 0 ? FormatStoredDistance(ToMeters(currentShot.EndDistanceToPin, currentShot.EndDistanceUnit), 1) : string.Empty;
+            aroundGreenEndDistanceText = currentShot.EndDistanceToPin > 0 ? FormatFinishInputDistance(ToMeters(currentShot.EndDistanceToPin, currentShot.EndDistanceUnit), currentShot.EndLie, 1) : string.Empty;
             aroundGreenEndLieText = FormatLie(currentShot.EndLie);
             aroundGreenPenaltyStrokes = currentShot.PenaltyStrokes;
             aroundGreenHoled = currentShot.Holed;
@@ -1013,20 +1021,20 @@ public sealed class HoleInputViewModel : ViewModelBase
 
     private string FormatPuttDistance()
     {
-        var distance = ParseDistance(DistanceText);
-        return distance > 0 ? UiFormat.Meters(distance) : "-";
+        var distance = ParsePuttingDistance(DistanceText);
+        return distance > 0 ? UiFormat.PuttingDistance(distance, PuttingDistanceUnit) : "-";
     }
 
     private string FormatApproachDistance()
     {
         var distance = ParseDistance(ApproachDistanceText);
-        return distance > 0 ? UiFormat.WholeMeters(distance) : "-";
+        return distance > 0 ? UiFormat.Meters(distance) : "-";
     }
 
     private string FormatApproachStartDistance()
     {
         var distance = ParseDistance(ApproachStartDistanceText);
-        return distance > 0 ? UiFormat.WholeMeters(distance) : "-";
+        return distance > 0 ? UiFormat.Meters(distance) : "-";
     }
 
     private string FormatApproachEndDistance()
@@ -1036,21 +1044,21 @@ public sealed class HoleInputViewModel : ViewModelBase
             return "I hul";
         }
 
-        var distance = ParseDistance(ApproachEndDistanceText);
+        var distance = ParseFinishDistance(ApproachEndDistanceText, ParseLie(ApproachEndLieText));
         if (distance <= 0)
         {
             return "-";
         }
 
         return ParseLie(ApproachEndLieText) == ShotLie.Green
-            ? UiFormat.Meters(distance)
-            : UiFormat.WholeMeters(distance);
+            ? UiFormat.PuttingDistance(distance, PuttingDistanceUnit)
+            : UiFormat.Meters(distance);
     }
 
     private string FormatApproachEndDistanceToGreenEdge()
     {
         var distance = ParseDistance(ApproachEndDistanceToGreenEdgeText);
-        return distance > 0 ? UiFormat.WholeMeters(distance) : "-";
+        return distance > 0 ? UiFormat.Meters(distance) : "-";
     }
 
     private GolfShot BuildApproachShot()
@@ -1062,10 +1070,11 @@ public sealed class HoleInputViewModel : ViewModelBase
             ApproachIsTeeShot,
             ParseDistance(ApproachStartDistanceText),
             ParseLie(ApproachStartLieText),
-            ParseDistance(ApproachEndDistanceText),
+            ParseFinishDistance(ApproachEndDistanceText, endLie),
             endLie,
             ApproachPenaltyStrokes,
-            ApproachHoled));
+            ApproachHoled,
+            ParseDistance(ApproachEndDistanceToGreenEdgeText)));
     }
 
     private string FormatAroundGreenStartDistance()
@@ -1081,8 +1090,16 @@ public sealed class HoleInputViewModel : ViewModelBase
             return "I hul";
         }
 
-        var distance = ParseDistance(AroundGreenEndDistanceText);
-        return distance > 0 ? UiFormat.Meters(distance) : "-";
+        var endLie = ParseLie(AroundGreenEndLieText);
+        var distance = ParseFinishDistance(AroundGreenEndDistanceText, endLie);
+        if (distance <= 0)
+        {
+            return "-";
+        }
+
+        return endLie == ShotLie.Green
+            ? UiFormat.PuttingDistance(distance, PuttingDistanceUnit)
+            : UiFormat.Meters(distance);
     }
 
     private IReadOnlyList<GolfShot> BuildAroundGreenShots()
@@ -1110,7 +1127,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             shotNumber,
             ParseDistance(AroundGreenStartDistanceText),
             ParseLie(AroundGreenStartLieText),
-            ParseDistance(AroundGreenEndDistanceText),
+            ParseFinishDistance(AroundGreenEndDistanceText, endLie),
             endLie,
             AroundGreenPenaltyStrokes,
             AroundGreenHoled));
@@ -1131,7 +1148,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             TrackAroundGreen,
             TrackPutting,
             AroundGreenFinishedHoled,
-            ParseDistance(AroundGreenEndDistanceText),
+            ParseFinishDistance(AroundGreenEndDistanceText, ParseLie(AroundGreenEndLieText)),
             ParseLie(AroundGreenEndLieText),
             hasManualPuttingDistanceOverride,
             MaxFirstPuttDistanceMeters));
@@ -1151,7 +1168,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             TrackPutting,
             TrackAroundGreen,
             ApproachFinishedHoled,
-            ParseDistance(ApproachEndDistanceText),
+            ParseFinishDistance(ApproachEndDistanceText, ParseLie(ApproachEndLieText)),
             ParseLie(ApproachEndLieText),
             hasManualPuttingDistanceOverride,
             ParseDistance(AroundGreenStartDistanceText),
@@ -1183,11 +1200,11 @@ public sealed class HoleInputViewModel : ViewModelBase
                 FirstPuttDistanceMeters = result.PuttingDistanceMeters.Value;
                 if (result.PuttingSource == HoleCarryForwardPuttingSource.Approach)
                 {
-                    carriedPuttingDistanceFromApproachMeters = ParseDistance(DistanceText);
+                    carriedPuttingDistanceFromApproachMeters = ParsePuttingDistance(DistanceText);
                 }
                 else if (result.PuttingSource == HoleCarryForwardPuttingSource.AroundGreen)
                 {
-                    carriedPuttingDistanceFromAroundGreenMeters = ParseDistance(DistanceText);
+                    carriedPuttingDistanceFromAroundGreenMeters = ParsePuttingDistance(DistanceText);
                     carriedPuttingDistanceFromApproachMeters = null;
                 }
             }
@@ -1252,7 +1269,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     private void ClearCarriedPuttingDistanceIfManuallyChanged()
     {
         if (HoleCarryForwardService.ShouldClearCarriedDistance(
-            ParseDistance(DistanceText),
+            ParsePuttingDistance(DistanceText),
             carriedPuttingDistanceFromApproachMeters))
         {
             carriedPuttingDistanceFromApproachMeters = null;
@@ -1262,7 +1279,7 @@ public sealed class HoleInputViewModel : ViewModelBase
     private void ClearCarriedAroundGreenPuttingDistanceIfManuallyChanged()
     {
         if (HoleCarryForwardService.ShouldClearCarriedDistance(
-            ParseDistance(DistanceText),
+            ParsePuttingDistance(DistanceText),
             carriedPuttingDistanceFromAroundGreenMeters))
         {
             carriedPuttingDistanceFromAroundGreenMeters = null;
@@ -1302,10 +1319,7 @@ public sealed class HoleInputViewModel : ViewModelBase
             : ApproachDistanceStepMeters;
     }
 
-    private int GetApproachFinishDistanceDecimals()
-    {
-        return ParseLie(ApproachEndLieText) == ShotLie.Green ? 1 : 0;
-    }
+    private static int GetApproachFinishDistanceDecimals() => 1;
 
     private double GetAroundGreenFinishStep()
     {
@@ -1317,6 +1331,22 @@ public sealed class HoleInputViewModel : ViewModelBase
     private static double ToMeters(double distance, DistanceUnit unit) => DistanceConversions.ToMeters(distance, unit);
 
     private static double YardsToMeters(double distanceYards) => DistanceConversions.YardsToMeters(distanceYards);
+
+    private PuttingDistanceUnitPreference PuttingDistanceUnit => distanceUnitSettings.PuttingDistanceUnit;
+
+    private double ParsePuttingDistance(string text) =>
+        UiFormat.FromPreferredPuttingDistance(ParseDistance(text), PuttingDistanceUnit);
+
+    private double ParseFinishDistance(string text, ShotLie lie) => lie == ShotLie.Green
+        ? ParsePuttingDistance(text)
+        : ParseDistance(text);
+
+    private string FormatPuttingInputDistance(double distanceMeters, int decimals) =>
+        DistanceInputParser.FormatSlider(UiFormat.ToPreferredPuttingDistance(distanceMeters, PuttingDistanceUnit), decimals);
+
+    private string FormatFinishInputDistance(double distanceMeters, ShotLie lie, int decimals) => lie == ShotLie.Green
+        ? FormatPuttingInputDistance(distanceMeters, decimals)
+        : FormatSliderDistance(distanceMeters, decimals);
 
     private static double ParseDistance(string text) => DistanceInputParser.ParseOrZero(text);
 
@@ -1331,12 +1361,19 @@ public sealed record AroundGreenShotSummaryViewModel(
     string EndText,
     string PenaltyText)
 {
-    public static AroundGreenShotSummaryViewModel FromShot(GolfShot shot, int shotNumber)
+    public static AroundGreenShotSummaryViewModel FromShot(
+        GolfShot shot,
+        int shotNumber,
+        PuttingDistanceUnitPreference puttingDistanceUnit)
     {
         var start = $"{UiFormat.WholeMeters(ToMeters(shot.StartDistanceToPin, shot.StartDistanceUnit))} {ShotLieLabels.Format(shot.StartLie).ToLowerInvariant()}";
+        var endDistanceMeters = ToMeters(shot.EndDistanceToPin, shot.EndDistanceUnit);
+        var endDistance = shot.EndLie == ShotLie.Green
+            ? UiFormat.PuttingDistance(endDistanceMeters, puttingDistanceUnit)
+            : UiFormat.Meters(endDistanceMeters);
         var end = shot.Holed || shot.EndLie == ShotLie.Holed
             ? "I hul"
-            : $"{UiFormat.Meters(ToMeters(shot.EndDistanceToPin, shot.EndDistanceUnit))} {ShotLieLabels.Format(shot.EndLie).ToLowerInvariant()}";
+            : $"{endDistance} {ShotLieLabels.Format(shot.EndLie).ToLowerInvariant()}";
         var penalties = shot.PenaltyStrokes == 1
             ? "1 strafslag"
             : $"{shot.PenaltyStrokes} strafslag";

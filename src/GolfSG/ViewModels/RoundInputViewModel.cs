@@ -11,6 +11,7 @@ public sealed class RoundInputViewModel : ViewModelBase
     private const int MaximumHoleCount = 36;
 
     private readonly IRoundRepository repository;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
     private string roundId = Guid.NewGuid().ToString("N");
     private DateTime date = DateTime.Now;
     private RoundSummary summary = StrokesGainedCalculator.CalculateRoundSummary(Round.Empty());
@@ -22,9 +23,10 @@ public sealed class RoundInputViewModel : ViewModelBase
     private bool isBusy;
     private string errorMessage = string.Empty;
 
-    public RoundInputViewModel(IRoundRepository repository)
+    public RoundInputViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         this.repository = repository;
+        this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
         Holes = [];
         SetHoleCount(18);
     }
@@ -301,7 +303,7 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     private void AddHole(int holeNumber)
     {
-        var hole = new HoleInputViewModel(holeNumber);
+        var hole = new HoleInputViewModel(holeNumber, distanceUnitSettings);
         hole.SetTracking(new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen));
         hole.PropertyChanged += (_, _) => RefreshSummary();
         Holes.Add(hole);

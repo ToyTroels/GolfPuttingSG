@@ -8,13 +8,15 @@ namespace GolfSG.ViewModels;
 public sealed class RoundResultViewModel : ViewModelBase
 {
     private readonly IRoundRepository repository;
+    private readonly IDistanceUnitSettings distanceUnitSettings;
     private Round? round;
     private RoundSummary? summary;
     private RoundTrackingOptions trackingOptions = RoundTrackingOptions.PuttingOnly;
 
-    public RoundResultViewModel(IRoundRepository repository)
+    public RoundResultViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         this.repository = repository;
+        this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
     public ObservableCollection<HoleResultItemViewModel> HoleResults { get; } = [];
@@ -40,7 +42,7 @@ public sealed class RoundResultViewModel : ViewModelBase
     public string TotalPuttingSgText => summary is null ? UiFormat.Sg(0) : UiFormat.Sg(summary.TotalStrokesGainedPutting);
     public string TotalApproachSgText => summary is null ? UiFormat.Sg(0) : UiFormat.Sg(summary.TotalStrokesGainedApproach);
     public string TotalAroundGreenSgText => summary is null ? UiFormat.Sg(0) : UiFormat.Sg(summary.TotalStrokesGainedAroundGreen);
-    public string AverageDistanceText => summary is null ? UiFormat.Meters(0) : UiFormat.Meters(summary.AverageFirstPuttDistance);
+    public string AverageDistanceText => summary is null ? UiFormat.PuttingDistance(0, PuttingDistanceUnit) : UiFormat.PuttingDistance(summary.AverageFirstPuttDistance, PuttingDistanceUnit);
     public string AverageApproachDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(summary.AverageApproachDistance);
     public string AverageAroundGreenDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(YardsToMeters(summary.AverageAroundGreenDistance));
     public string TotalPuttsText => summary?.TotalPutts.ToString() ?? "0";
@@ -76,13 +78,13 @@ public sealed class RoundResultViewModel : ViewModelBase
         HoleResults.Clear();
         foreach (var hole in round.Holes.Where(round.IsTrackedHoleCompleted))
         {
-            HoleResults.Add(new HoleResultItemViewModel(HoleResultMapper.ToResult(hole), trackingOptions));
+            HoleResults.Add(new HoleResultItemViewModel(HoleResultMapper.ToResult(hole), trackingOptions, PuttingDistanceUnit));
         }
 
         PuttingDistanceBuckets.Clear();
         foreach (var bucket in summary.PuttingDistanceBuckets)
         {
-            PuttingDistanceBuckets.Add(new PuttingDistanceBucketItemViewModel(bucket));
+            PuttingDistanceBuckets.Add(new PuttingDistanceBucketItemViewModel(bucket, PuttingDistanceUnit));
         }
 
         Analysis.Clear();
@@ -211,15 +213,20 @@ public sealed class RoundResultViewModel : ViewModelBase
             return $"Hul {hole.HoleNumber} ({UiFormat.Sg(hole.StrokesGainedPutting)})";
         }
 
-        return $"Putt {hole.HoleNumber}, {UiFormat.Meters(hole.FirstPuttDistanceMeters)} ({UiFormat.Sg(hole.StrokesGainedPutting)})";
+        return $"Putt {hole.HoleNumber}, {UiFormat.PuttingDistance(hole.FirstPuttDistanceMeters, PuttingDistanceUnit)} ({UiFormat.Sg(hole.StrokesGainedPutting)})";
     }
+
+    private PuttingDistanceUnitPreference PuttingDistanceUnit => distanceUnitSettings.PuttingDistanceUnit;
 
     private static double YardsToMeters(double distanceYards) => DistanceConversions.YardsToMeters(distanceYards);
 }
 
 public sealed class HoleResultItemViewModel
 {
-    public HoleResultItemViewModel(HoleResult hole, RoundTrackingOptions trackingOptions)
+    public HoleResultItemViewModel(
+        HoleResult hole,
+        RoundTrackingOptions trackingOptions,
+        PuttingDistanceUnitPreference puttingDistanceUnit = PuttingDistanceUnitPreference.Meters)
     {
         Title = trackingOptions.IsPuttingGame ? $"Putt {hole.HoleNumber}" : $"Hul {hole.HoleNumber}";
 
@@ -227,9 +234,7 @@ public sealed class HoleResultItemViewModel
         var sg = 0d;
         if (trackingOptions.TrackPutting && hole.Putting is not null)
         {
-            var distance = trackingOptions.IsPuttingGame
-                ? UiFormat.Meters(hole.Putting.FirstPuttDistanceMeters)
-                : UiFormat.Meters(hole.Putting.FirstPuttDistanceMeters);
+            var distance = UiFormat.PuttingDistance(hole.Putting.FirstPuttDistanceMeters, puttingDistanceUnit);
 
             details.Add($"{distance} - {hole.Putting.Putts} putts");
             sg += hole.Putting.StrokesGained;
@@ -262,9 +267,11 @@ public sealed class HoleResultItemViewModel
 
 public sealed class PuttingDistanceBucketItemViewModel
 {
-    public PuttingDistanceBucketItemViewModel(PuttingDistanceBucketSummary bucket)
+    public PuttingDistanceBucketItemViewModel(
+        PuttingDistanceBucketSummary bucket,
+        PuttingDistanceUnitPreference puttingDistanceUnit = PuttingDistanceUnitPreference.Meters)
     {
-        Name = FormatRange(bucket);
+        Name = FormatRange(bucket, puttingDistanceUnit);
         RangeText = "F\u00F8rste putt-afstand";
         DetailText = $"{bucket.Attempts} f\u00F8rste putts | {bucket.TotalPutts} putts";
         StrokesGainedText = UiFormat.Sg(bucket.TotalStrokesGained);
@@ -275,21 +282,21 @@ public sealed class PuttingDistanceBucketItemViewModel
     public string DetailText { get; }
     public string StrokesGainedText { get; }
 
-    private static string FormatRange(PuttingDistanceBucketSummary bucket)
+    private static string FormatRange(PuttingDistanceBucketSummary bucket, PuttingDistanceUnitPreference puttingDistanceUnit)
     {
         if (bucket.MinimumDistanceMeters is null && bucket.MaximumDistanceMeters is not null)
         {
-            return $"< {UiFormat.Meters(bucket.MaximumDistanceMeters.Value)}";
+            return $"< {UiFormat.PuttingDistance(bucket.MaximumDistanceMeters.Value, puttingDistanceUnit)}";
         }
 
         if (bucket.MinimumDistanceMeters is not null && bucket.MaximumDistanceMeters is not null)
         {
-            return $"{UiFormat.Meters(bucket.MinimumDistanceMeters.Value)} - {UiFormat.Meters(bucket.MaximumDistanceMeters.Value)}";
+            return $"{UiFormat.PuttingDistance(bucket.MinimumDistanceMeters.Value, puttingDistanceUnit)} - {UiFormat.PuttingDistance(bucket.MaximumDistanceMeters.Value, puttingDistanceUnit)}";
         }
 
         if (bucket.MinimumDistanceMeters is not null)
         {
-            return $"> {UiFormat.Meters(bucket.MinimumDistanceMeters.Value)}";
+            return $"> {UiFormat.PuttingDistance(bucket.MinimumDistanceMeters.Value, puttingDistanceUnit)}";
         }
 
         return string.Empty;
