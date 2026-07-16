@@ -1,3 +1,4 @@
+using GolfSG.Application.Putting;
 using GolfSG.Core;
 using GolfSG.Core.Models;
 using GolfSG.Services;
@@ -6,14 +7,8 @@ namespace GolfSG.ViewModels;
 
 public sealed class PuttingGameViewModel : ViewModelBase
 {
-    private readonly IRoundRepository repository;
+    private readonly IPuttingGameSessionService sessionService;
     private readonly IDistanceUnitSettings distanceUnitSettings;
-    private readonly List<HolePuttingData> completedPutts = [];
-    private readonly string roundId = Guid.NewGuid().ToString("N");
-    private IReadOnlyList<double> customDistancesMeters = [];
-    private string mode = PuttingGame.LadderMode;
-    private PuttingGameDefinition currentGameDefinition = PuttingGame.GetDefinition(PuttingGame.LadderMode);
-    private int currentIndex;
     private int puttsUsed = 2;
     private bool isSetup = true;
     private bool isComplete;
@@ -31,14 +26,21 @@ public sealed class PuttingGameViewModel : ViewModelBase
     private string errorMessage = string.Empty;
 
     public PuttingGameViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
+        : this(new PuttingGameSessionService(repository), distanceUnitSettings)
     {
-        this.repository = repository;
+    }
+
+    public PuttingGameViewModel(
+        IPuttingGameSessionService sessionService,
+        IDistanceUnitSettings? distanceUnitSettings = null)
+    {
+        this.sessionService = sessionService;
         this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
         minimumDistanceMetersText = FormatPuttingInputDistance(PuttingGame.DefaultMinimumDistanceMeters, 0);
         maximumDistanceMetersText = FormatPuttingInputDistance(PuttingGame.DefaultMaximumDistanceMeters, 0);
     }
 
-    public string GameTitle => currentGameDefinition.DisplayName;
+    public string GameTitle => sessionService.Definition.DisplayName;
 
     public bool IsBusy
     {
@@ -201,7 +203,7 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
     public string ProgressText => IsComplete
         ? $"{GameTitle} færdig"
-        : $"Putt {currentIndex + 1} af {Distances.Count}";
+        : $"Putt {sessionService.CurrentIndex + 1} af {Distances.Count}";
 
     public string CurrentDistanceText => IsComplete
         ? "-"
@@ -217,23 +219,23 @@ public sealed class PuttingGameViewModel : ViewModelBase
         ? "-"
         : UiFormat.Sg(CurrentExpectedPutts - PuttsUsed);
 
-    public string TotalPuttsText => completedPutts.Sum(putt => putt.Putts).ToString();
+    public string TotalPuttsText => sessionService.CompletedPutts.Sum(putt => putt.Putts).ToString();
 
-    public string RunningSgText => UiFormat.Sg(completedPutts.Sum(putt => putt.StrokesGainedPutting));
+    public string RunningSgText => UiFormat.Sg(sessionService.CompletedPutts.Sum(putt => putt.StrokesGainedPutting));
 
     public double ProgressFraction => Distances.Count == 0
         ? 0
-        : (double)Math.Min(currentIndex, Distances.Count) / Distances.Count;
+        : (double)Math.Min(sessionService.CurrentIndex, Distances.Count) / Distances.Count;
 
     public string ProgressCountText => Distances.Count == 0
         ? "0/0"
-        : $"{Math.Min(currentIndex + 1, Distances.Count)}/{Distances.Count}";
+        : $"{Math.Min(sessionService.CurrentIndex + 1, Distances.Count)}/{Distances.Count}";
 
     public string RemainingCountText
     {
         get
         {
-            var remainingCount = Math.Max(Distances.Count - currentIndex, 0);
+            var remainingCount = Math.Max(Distances.Count - sessionService.CurrentIndex, 0);
             return remainingCount == 1
                 ? "1 tilbage"
                 : $"{remainingCount} tilbage";
@@ -244,7 +246,7 @@ public sealed class PuttingGameViewModel : ViewModelBase
     {
         get
         {
-            var remaining = Distances.Skip(currentIndex + 1).Take(4).Select(FormatDistance).ToList();
+            var remaining = Distances.Skip(sessionService.CurrentIndex + 1).Take(4).Select(FormatDistance).ToList();
             return remaining.Count == 0
                 ? "Sidste putt"
                 : $"N\u00e6ste: {string.Join(", ", remaining)}";
@@ -255,14 +257,14 @@ public sealed class PuttingGameViewModel : ViewModelBase
     {
         get
         {
-            var remaining = Distances.Skip(currentIndex).ToList();
+            var remaining = Distances.Skip(sessionService.CurrentIndex).ToList();
             return remaining.Count == 0
                 ? "Ingen afstande tilbage"
                 : $"{remaining.Count} tilbage: {string.Join(", ", remaining.Select(FormatDistance))}";
         }
     }
 
-    public bool HasRemainingDistanceDetails => Distances.Count - currentIndex > 1;
+    public bool HasRemainingDistanceDetails => Distances.Count - sessionService.CurrentIndex > 1;
 
     public bool ShowRemainingDistanceDetails
     {
@@ -282,7 +284,7 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
     public string PrimaryActionText => IsBusy
         ? "Gemmer..."
-        : Distances.Count - currentIndex <= 1
+        : Distances.Count - sessionService.CurrentIndex <= 1
             ? "Gem og afslut"
             : "Registrer putt";
 
@@ -290,26 +292,18 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
     public string FinalSgText => RunningSgText;
 
-    public string BestResultText => FormatResult(completedPutts.MaxBy(putt => putt.StrokesGainedPutting));
+    public string BestResultText => FormatResult(sessionService.CompletedPutts.MaxBy(putt => putt.StrokesGainedPutting));
 
-    public string WorstResultText => FormatResult(completedPutts.MinBy(putt => putt.StrokesGainedPutting));
+    public string WorstResultText => FormatResult(sessionService.CompletedPutts.MinBy(putt => putt.StrokesGainedPutting));
 
     public void Start(string gameMode)
     {
-        mode = PuttingGame.NormalizeMode(gameMode);
-        currentGameDefinition = PuttingGame.GetDefinition(mode);
-        completedPutts.Clear();
-        currentIndex = 0;
+        sessionService.Start(gameMode);
         PuttsUsed = 2;
         ShowRemainingDistanceDetails = false;
         IsComplete = false;
-        IsSetup = mode != PuttingGame.TourRoundMode;
-        gameTargetText = PuttingGame.TargetPutts.ToString();
-        if (!IsSetup)
-        {
-            customDistancesMeters = [];
-        }
-
+        IsSetup = sessionService.Mode != PuttingGame.TourRoundMode;
+        gameTargetText = sessionService.TargetPutts.ToString("0.#");
         RefreshAll();
     }
 
@@ -334,13 +328,12 @@ public sealed class PuttingGameViewModel : ViewModelBase
             return false;
         }
 
-        customDistancesMeters = PuttingGame.BuildTrainingDistancesMeters(
+        sessionService.StartTraining(
             holeCount,
             minimumDistanceMeters,
             maximumDistanceMeters,
             trainingDistanceDistribution);
-        currentGameDefinition = PuttingGame.CreateCustomDefinition(customDistancesMeters);
-        gameTargetText = customDistancesMeters.Sum(PuttingGame.GetExpectedPutts).ToString("0.0");
+        gameTargetText = sessionService.TargetPutts.ToString("0.0");
         BeginCustomDistanceGame();
         return true;
     }
@@ -370,35 +363,28 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
         if (IsComplete)
         {
-            return roundId;
+            return sessionService.RoundId;
         }
 
         IsBusy = true;
         ErrorMessage = string.Empty;
         try
         {
-            completedPutts.Add(UseCustomDistances
-                ? PuttingGame.BuildPutt(currentIndex + 1, CurrentDistanceMeters, PuttsUsed)
-                : PuttingGame.BuildPutt(currentIndex + 1, CurrentDistanceFeet, PuttsUsed, mode));
-            currentIndex++;
-
-            if (currentIndex >= Distances.Count)
+            var result = await sessionService.SubmitAsync(PuttsUsed);
+            if (result.IsComplete)
             {
-                var saved = await SaveAsync();
-                if (!saved)
-                {
-                    currentIndex--;
-                    completedPutts.RemoveAt(completedPutts.Count - 1);
-                    RefreshAll();
-                    return null;
-                }
-
                 IsComplete = true;
                 RefreshAll();
-                return roundId;
+                return result.RoundId;
             }
 
             PuttsUsed = 2;
+            RefreshAll();
+            return null;
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Resultatet kunne ikke gemmes. Pr�v igen, eller tjek lagring under Indstillinger.";
             RefreshAll();
             return null;
         }
@@ -408,44 +394,14 @@ public sealed class PuttingGameViewModel : ViewModelBase
         }
     }
 
-    private IReadOnlyList<double> Distances => UseCustomDistances
-        ? customDistancesMeters
-        : PuttingGame.GetPresetDistances(mode).Select(distance => (double)distance).ToList();
+    private IReadOnlyList<double> Distances => sessionService.Distances;
 
-    private bool UseCustomDistances => customDistancesMeters.Count > 0;
+    private bool UseCustomDistances => sessionService.DistancesAreMeters;
 
-    private int CurrentDistanceFeet => (int)Distances[currentIndex];
+    private double CurrentDistanceMeters => sessionService.CurrentDistanceMeters;
 
-    private double CurrentDistanceMeters => UseCustomDistances
-        ? Distances[currentIndex]
-        : FeetToMeters(CurrentDistanceFeet);
+    private double CurrentExpectedPutts => sessionService.CurrentExpectedPutts;
 
-    private double CurrentExpectedPutts => UseCustomDistances
-        ? PuttingGame.GetExpectedPutts(CurrentDistanceMeters)
-        : PuttingGame.GetExpectedPutts(CurrentDistanceFeet, mode);
-
-    private async Task<bool> SaveAsync()
-    {
-        var round = new Round(
-            roundId,
-            DateTime.Now,
-            completedPutts.ToList(),
-            new RoundTrackingOptions(true, false, false, true, mode),
-            completedPutts.Count,
-            false,
-            PuttingGame.CreateRoundGameInfo(currentGameDefinition));
-
-        try
-        {
-            await repository.SaveRoundAsync(round);
-            return true;
-        }
-        catch (Exception)
-        {
-            ErrorMessage = "Resultatet kunne ikke gemmes. Pr\u00f8v igen, eller tjek lagring under Indstillinger.";
-            return false;
-        }
-    }
 
     private void RefreshAll()
     {
@@ -513,21 +469,15 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
     private void StartBenchmark(string benchmark)
     {
-        var benchmarkDefinition = PuttingGame.GetBenchmarkDefinition(benchmark);
-        customDistancesMeters = PuttingGame.OrderDistances(
-            benchmarkDefinition.DistancesMeters,
-            benchmarkDistanceOrder);
-        currentGameDefinition = benchmarkDefinition with { DistancesMeters = customDistancesMeters };
-        gameTargetText = customDistancesMeters.Sum(PuttingGame.GetExpectedPutts).ToString("0.0");
+        sessionService.StartBenchmark(benchmark, benchmarkDistanceOrder);
+        gameTargetText = sessionService.TargetPutts.ToString("0.0");
         BeginCustomDistanceGame();
     }
 
     private void StartLadderBenchmark(string benchmark)
     {
-        var benchmarkDefinition = PuttingGame.GetBenchmarkDefinition(benchmark);
-        customDistancesMeters = benchmarkDefinition.DistancesMeters;
-        currentGameDefinition = benchmarkDefinition;
-        gameTargetText = customDistancesMeters.Sum(PuttingGame.GetExpectedPutts).ToString("0.0");
+        sessionService.StartLadderBenchmark(benchmark);
+        gameTargetText = sessionService.TargetPutts.ToString("0.0");
         BeginCustomDistanceGame();
     }
 
@@ -575,8 +525,6 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
     private void BeginCustomDistanceGame()
     {
-        completedPutts.Clear();
-        currentIndex = 0;
         PuttsUsed = 2;
         ShowRemainingDistanceDetails = false;
         SetupErrorText = string.Empty;

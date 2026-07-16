@@ -71,7 +71,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\GolfSG.Application\GolfSG.Application.csproj" />
 	  <ProjectReference Include="..\GolfSG.Core\GolfSG.Core.csproj" />
+	  <ProjectReference Include="..\GolfSG.Infrastructure\GolfSG.Infrastructure.csproj" />
 	</ItemGroup>
 
 </Project>

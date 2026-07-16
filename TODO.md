@@ -27,14 +27,14 @@
 
 ## Architecture follow-up
 
-- [ ] Extract a plain .NET application layer for testable use cases that currently live inside MAUI view models.
-- [ ] Move round creation, edit, validation, save, and summary orchestration out of `RoundInputViewModel` into focused application services.
-- [ ] Move putting-game session progression and save orchestration out of `PuttingGameViewModel` while keeping UI state and formatting in the view model.
-- [ ] Replace linked MAUI source files in `GolfSG.Tests.csproj` with direct references to testable Core/Application projects.
-- [ ] Introduce reusable async command/navigation guards for save, submit, delete, import/export, and page navigation actions.
-- [ ] Decide whether `RoundFileStore` should remain in `GolfSG.Core` or move to an infrastructure project if storage grows beyond local JSON.
-- [ ] Split large C# page classes where interaction handlers, layout construction, and reusable UI components can be separated without changing behavior.
-- [ ] Keep all strokes-gained calculations, summary rules, and benchmark rules centralized in Core/Application so pages never duplicate business rules.
+- [x] Extract a plain .NET application layer for testable use cases that currently live inside MAUI view models.
+- [x] Move round creation, edit, validation, save, and summary orchestration out of `RoundInputViewModel` into focused application services.
+- [x] Move putting-game session progression and save orchestration out of `PuttingGameViewModel` while keeping UI state and formatting in the view model.
+- [x] Replace linked MAUI source files in `GolfSG.Tests.csproj` with direct references to testable Core/Application projects.
+- [x] Introduce reusable async command/navigation guards for save, submit, delete, import/export, and page navigation actions.
+- [x] Decide whether `RoundFileStore` should remain in `GolfSG.Core` or move to an infrastructure project if storage grows beyond local JSON.
+- [x] Split large C# page classes where interaction handlers, layout construction, and reusable UI components can be separated without changing behavior.
+- [x] Keep all strokes-gained calculations, summary rules, and benchmark rules centralized in Core/Application so pages never duplicate business rules.
 
 ## Rename project to GolfSG
 

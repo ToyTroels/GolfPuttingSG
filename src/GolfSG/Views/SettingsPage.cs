@@ -388,7 +388,7 @@ public sealed class SettingsPage : ContentPage
         };
 
         var tap = new TapGestureRecognizer();
-        tap.Tapped += async (_, _) => await Navigation.PushAsync(createPage());
+        tap.Tapped += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PushAsync(createPage()));
         card.GestureRecognizers.Add(tap);
 
         return card;

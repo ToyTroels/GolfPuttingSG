@@ -68,7 +68,10 @@ public sealed class StorageDiagnosticsPage : ContentPage
         };
     }
 
-    private async Task ExportAsync()
+    private async Task ExportAsync() =>
+        await this.RunActionOnceAsync(ExportCoreAsync);
+
+    private async Task ExportCoreAsync()
     {
         try
         {
@@ -86,7 +89,10 @@ public sealed class StorageDiagnosticsPage : ContentPage
         }
     }
 
-    private async Task ImportAsync()
+    private async Task ImportAsync() =>
+        await this.RunActionOnceAsync(ImportCoreAsync);
+
+    private async Task ImportCoreAsync()
     {
         try
         {

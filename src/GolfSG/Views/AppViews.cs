@@ -54,4 +54,64 @@ public static class AppViews
             TextColor = GolfTheme.Colors.Text
         };
     }
+
+    public static Button StepperButton(string text, double size = 48, double fontSize = 18)
+    {
+        return new Button
+        {
+            Text = text,
+            WidthRequest = size,
+            HeightRequest = size,
+            CornerRadius = GolfTheme.Radius.Button,
+            BackgroundColor = GolfTheme.Colors.PrimaryGreen,
+            TextColor = Microsoft.Maui.Graphics.Colors.White,
+            FontAttributes = FontAttributes.Bold,
+            FontSize = fontSize,
+            Padding = 0
+        };
+    }
+
+    public static Entry NumericEntry(string bindingPath)
+    {
+        var entry = new Entry
+        {
+            Keyboard = Keyboard.Numeric,
+            TextColor = GolfTheme.Colors.Text,
+            BackgroundColor = GolfTheme.Colors.CardBackground,
+            HeightRequest = GolfTheme.Sizes.ButtonHeight
+        };
+        entry.SetBinding(Entry.TextProperty, bindingPath, BindingMode.TwoWay);
+        return entry;
+    }
+
+    public static View Field(string labelText, View input) =>
+        Field(FieldLabel(labelText), input);
+
+    public static View BoundField(string labelBindingPath, View input)
+    {
+        var label = FieldLabel(string.Empty);
+        label.SetBinding(Label.TextProperty, labelBindingPath);
+        return Field(label, input);
+    }
+
+    public static View Field(Label label, View input) =>
+        new VerticalStackLayout
+        {
+            Spacing = 4,
+            Children = { label, input }
+        };
+
+    public static Label FieldLabel(string text) =>
+        new()
+        {
+            Text = text,
+            TextColor = GolfTheme.Colors.MutedText,
+            FontAttributes = FontAttributes.Bold
+        };
+
+    public static Border FormCard(View content, bool includeBottomMargin = true) =>
+        Card(
+            content,
+            includeBottomMargin ? new Thickness(0, 0, 0, 10) : default,
+            padding: 14);
 }

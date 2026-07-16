@@ -4,7 +4,7 @@ using Microsoft.Maui.Controls.Shapes;
 
 namespace GolfSG.Views;
 
-public sealed class RoundInputPage : ContentPage
+public sealed partial class RoundInputPage : ContentPage
 {
     private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
     private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
@@ -26,7 +26,7 @@ public sealed class RoundInputPage : ContentPage
             Text = "⚙",
             Order = ToolbarItemOrder.Primary,
             Priority = 0,
-            Command = new Command(async () => await Navigation.PushAsync(new RoundSettingsPage(viewModel)))
+            Command = new Command(async () => await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new RoundSettingsPage(viewModel))))
         });
         Shell.SetBackButtonBehavior(this, new BackButtonBehavior
         {
@@ -75,14 +75,7 @@ public sealed class RoundInputPage : ContentPage
             HeightRequest = 52,
             FontAttributes = FontAttributes.Bold
         };
-        startButton.Clicked += async (_, _) =>
-        {
-            viewModel.StartRound();
-            if (viewModel.Holes.FirstOrDefault() is HoleInputViewModel firstHole)
-            {
-                await Navigation.PushAsync(new HoleEntryPage(viewModel, firstHole));
-            }
-        };
+        startButton.Clicked += async (_, _) => await StartRoundAsync();
 
         var saveButton = new Button
         {
@@ -93,38 +86,7 @@ public sealed class RoundInputPage : ContentPage
         };
         saveButton.SetBinding(Button.TextProperty, nameof(RoundInputViewModel.SaveButtonText));
         saveButton.SetBinding(VisualElement.IsEnabledProperty, nameof(RoundInputViewModel.CanSave));
-        saveButton.Clicked += async (_, _) =>
-        {
-            saveButton.IsEnabled = false;
-            try
-            {
-                var roundId = await viewModel.SaveAsync();
-                if (string.IsNullOrWhiteSpace(roundId))
-                {
-                    if (viewModel.HasError)
-                    {
-                        await DisplayAlertAsync("Runden kunne ikke gemmes", viewModel.ErrorMessage, "OK");
-                    }
-
-                    return;
-                }
-
-                var page = Handler!.MauiContext!.Services.GetRequiredService<RoundResultPage>();
-                await page.LoadAsync(roundId);
-                await Navigation.PushAsync(page);
-            }
-            catch (Exception)
-            {
-                await DisplayAlertAsync(
-                    "Runden kunne ikke gemmes",
-                    "Prøv igen, eller tjek lagring under Indstillinger.",
-                    "OK");
-            }
-            finally
-            {
-                saveButton.IsEnabled = true;
-            }
-        };
+        saveButton.Clicked += async (_, _) => await SaveRoundAsync(saveButton);
         saveButton.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.IsRoundVisible));
 
         var error = new Border
@@ -218,30 +180,6 @@ public sealed class RoundInputPage : ContentPage
         };
     }
 
-    private async Task NavigateBackAsync()
-    {
-        if (viewModel.IsRoundVisible)
-        {
-            await ConfirmCloseRoundAsync();
-            return;
-        }
-
-        await Navigation.PopAsync();
-    }
-
-    private async Task ConfirmCloseRoundAsync()
-    {
-        var closeRound = await DisplayAlertAsync(
-            "Luk runde?",
-            "Du er midt i en runde. Vil du lukke runden og miste den igangværende score?",
-            "Luk runde",
-            "Bliv her");
-
-        if (closeRound)
-        {
-            await Navigation.PopToRootAsync();
-        }
-    }
 
     private DataTemplate HoleTemplate()
     {
@@ -336,7 +274,7 @@ public sealed class RoundInputPage : ContentPage
             {
                 if (card.BindingContext is HoleInputViewModel hole)
                 {
-                    await Navigation.PushAsync(new HoleEntryPage(viewModel, hole));
+                    await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new HoleEntryPage(viewModel, hole)));
                 }
             };
             card.GestureRecognizers.Add(tap);

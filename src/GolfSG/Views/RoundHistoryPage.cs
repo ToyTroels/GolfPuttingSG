@@ -138,7 +138,7 @@ public sealed class RoundHistoryPage : ContentPage
         {
             var page = services.GetRequiredService<RoundResultPage>();
             await page.LoadAsync(item.Id);
-            await Navigation.PushAsync(page);
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
         }
         catch (Exception)
         {
@@ -149,7 +149,10 @@ public sealed class RoundHistoryPage : ContentPage
         }
     }
 
-    private async Task DeleteRoundAsync(RoundListItemViewModel item)
+    private async Task DeleteRoundAsync(RoundListItemViewModel item) =>
+        await this.RunActionOnceAsync(() => DeleteRoundCoreAsync(item));
+
+    private async Task DeleteRoundCoreAsync(RoundListItemViewModel item)
     {
         var confirmed = await DisplayAlertAsync(
             "Slet runde",
@@ -177,7 +180,7 @@ public sealed class RoundHistoryPage : ContentPage
 
     private async Task ShowRoundActionsAsync(RoundListItemViewModel item)
     {
-        await Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false);
+        await this.RunNavigationOnceAsync(() => Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false));
     }
 
     private static View FilterPanel(Picker type, Picker category, Picker period, Picker sort)

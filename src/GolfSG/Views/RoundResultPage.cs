@@ -45,7 +45,7 @@ public sealed class RoundResultPage : ContentPage
             {
                 var page = Handler!.MauiContext!.Services.GetRequiredService<RoundInputPage>();
                 await page.LoadAsync(viewModel.RoundId);
-                await Navigation.PushAsync(page);
+                await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
             }
             catch (Exception)
             {
@@ -126,7 +126,7 @@ public sealed class RoundResultPage : ContentPage
     {
         if (Navigation.NavigationStack.Count > 1)
         {
-            await Navigation.PopToRootAsync();
+            await this.RunNavigationOnceAsync(() => Navigation.PopToRootAsync());
         }
     }
 

@@ -174,7 +174,7 @@ public sealed class RoundActionsSheetPage : ContentPage
     {
         if (Navigation.ModalStack.Contains(this))
         {
-            await Navigation.PopModalAsync(false);
+            await this.RunNavigationOnceAsync(() => Navigation.PopModalAsync(false));
         }
     }
 }

@@ -40,7 +40,7 @@ public sealed class LoadingPage : ContentPage
         hasNavigated = true;
         await Task.Delay(1200);
 
-        if (Application.Current?.Windows.FirstOrDefault() is Window window)
+        if (Microsoft.Maui.Controls.Application.Current?.Windows.FirstOrDefault() is Window window)
         {
             window.Page = appShell;
         }

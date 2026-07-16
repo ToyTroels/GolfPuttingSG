@@ -1,4 +1,7 @@
+using GolfSG.Application.Putting;
+using GolfSG.Application.Rounds;
 using GolfSG.Core;
+using GolfSG.Infrastructure.Persistence;
 using GolfSG.Services;
 using GolfSG.ViewModels;
 using GolfSG.Views;
@@ -23,15 +26,21 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
-        builder.Services.AddSingleton<IRoundRepository, FileRoundRepository>();
+        builder.Services.AddSingleton<IRoundRepository>(_ => new FileRoundRepository(FileSystem.AppDataDirectory));
+        builder.Services.AddTransient<IRoundApplicationService, RoundApplicationService>();
+        builder.Services.AddTransient<IPuttingGameSessionService, PuttingGameSessionService>();
         builder.Services.AddSingleton<IDistanceUnitSettings, PreferenceDistanceUnitSettings>();
         builder.Services.AddSingleton<IStrokesGainedPuttingService, StrokesGainedPuttingService>();
         builder.Services.AddSingleton<IStrokesGainedAroundGreenService, StrokesGainedAroundGreenService>();
         builder.Services.AddSingleton<IStrokesGainedApproachService, StrokesGainedApproachService>();
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddTransient<StartViewModel>();
-        builder.Services.AddTransient<RoundInputViewModel>();
-        builder.Services.AddTransient<PuttingGameViewModel>();
+        builder.Services.AddTransient(serviceProvider => new RoundInputViewModel(
+            serviceProvider.GetRequiredService<IRoundApplicationService>(),
+            serviceProvider.GetRequiredService<IDistanceUnitSettings>()));
+        builder.Services.AddTransient(serviceProvider => new PuttingGameViewModel(
+            serviceProvider.GetRequiredService<IPuttingGameSessionService>(),
+            serviceProvider.GetRequiredService<IDistanceUnitSettings>()));
         builder.Services.AddTransient<RoundResultViewModel>();
         builder.Services.AddTransient<RoundHistoryViewModel>();
         builder.Services.AddTransient<EvaluationViewModel>();

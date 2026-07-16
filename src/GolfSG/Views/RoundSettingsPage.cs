@@ -72,7 +72,7 @@ public sealed class RoundSettingsPage : ContentPage
             HeightRequest = 52,
             FontAttributes = FontAttributes.Bold
         };
-        button.Clicked += async (_, _) => await Navigation.PopAsync();
+        button.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PopAsync());
         return button;
     }
 

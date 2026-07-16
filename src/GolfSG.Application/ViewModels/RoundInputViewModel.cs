@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using GolfSG.Application.Rounds;
 using GolfSG.Core;
 using GolfSG.Core.Models;
 using GolfSG.Services;
@@ -7,10 +8,7 @@ namespace GolfSG.ViewModels;
 
 public sealed class RoundInputViewModel : ViewModelBase
 {
-    private const int MinimumHoleCount = 1;
-    private const int MaximumHoleCount = 36;
-
-    private readonly IRoundRepository repository;
+    private readonly IRoundApplicationService roundApplicationService;
     private readonly IDistanceUnitSettings distanceUnitSettings;
     private string roundId = Guid.NewGuid().ToString("N");
     private DateTime date = DateTime.Now;
@@ -25,8 +23,15 @@ public sealed class RoundInputViewModel : ViewModelBase
     private string errorMessage = string.Empty;
 
     public RoundInputViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
+        : this(new RoundApplicationService(repository), distanceUnitSettings)
     {
-        this.repository = repository;
+    }
+
+    public RoundInputViewModel(
+        IRoundApplicationService roundApplicationService,
+        IDistanceUnitSettings? distanceUnitSettings = null)
+    {
+        this.roundApplicationService = roundApplicationService;
         this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
         Holes = [];
         SetHoleCount(18);
@@ -88,7 +93,7 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     public int CompletedHoleCount => Holes.Count(IsTrackedHoleCompleted);
 
-    public bool IsRoundComplete => CompletedHoleCount >= HoleCount;
+    public bool IsRoundComplete => roundApplicationService.IsComplete(BuildDraft());
 
     public bool TrackPutting
     {
@@ -202,7 +207,7 @@ public sealed class RoundInputViewModel : ViewModelBase
         ErrorMessage = string.Empty;
         try
         {
-            var round = await repository.GetRoundAsync(existingRoundId);
+            var round = await roundApplicationService.LoadAsync(existingRoundId);
             if (round is null)
             {
                 ErrorMessage = "Runden kunne ikke findes.";
@@ -221,7 +226,8 @@ public sealed class RoundInputViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsSetupVisible));
             OnPropertyChanged(nameof(IsRoundVisible));
             OnTrackingPropertiesChanged();
-            SetHoleCount(Math.Clamp(round.ConfiguredHoleCount > 0 ? round.ConfiguredHoleCount : round.Holes.Count, MinimumHoleCount, MaximumHoleCount));
+            SetHoleCount(roundApplicationService.ClampHoleCount(
+                round.ConfiguredHoleCount > 0 ? round.ConfiguredHoleCount : round.Holes.Count));
 
             foreach (var hole in round.Holes)
             {
@@ -252,8 +258,7 @@ public sealed class RoundInputViewModel : ViewModelBase
         ErrorMessage = string.Empty;
         try
         {
-            var round = BuildRound();
-            await repository.SaveRoundAsync(round);
+            var round = await roundApplicationService.SaveAsync(BuildDraft());
             return round.Id;
         }
         catch (Exception)
@@ -267,21 +272,17 @@ public sealed class RoundInputViewModel : ViewModelBase
         }
     }
 
-    private Round BuildRound()
-    {
-        return new Round(
+    private RoundDraft BuildDraft() =>
+        new(
             roundId,
             date,
             Holes.Select(hole => hole.ToHole()).ToList(),
             new RoundTrackingOptions(TrackPutting, TrackApproach, TrackAroundGreen),
-            HoleCount,
-            !IsRoundComplete);
-    }
+            HoleCount);
 
     private void SetHoleCount(int count)
     {
-        var minimumCount = Math.Max(MinimumHoleCount, HighestEnteredHoleNumber());
-        var clampedCount = Math.Clamp(count, minimumCount, MaximumHoleCount);
+        var clampedCount = roundApplicationService.ClampHoleCount(count, HighestEnteredHoleNumber());
         while (Holes.Count < clampedCount)
         {
             AddHole(Holes.Count + 1);
@@ -320,7 +321,7 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     private void RefreshSummary()
     {
-        summary = StrokesGainedCalculator.CalculateRoundSummary(BuildRound());
+        summary = roundApplicationService.Summarize(BuildDraft());
         OnPropertyChanged(nameof(TotalSgText));
         OnPropertyChanged(nameof(TotalPuttingSgText));
         OnPropertyChanged(nameof(TotalApproachSgText));
@@ -376,7 +377,7 @@ public sealed class RoundInputViewModel : ViewModelBase
         return Holes
             .Where(HasAnyTrackedInput)
             .Select(hole => hole.HoleNumber)
-            .DefaultIfEmpty(MinimumHoleCount)
+            .DefaultIfEmpty(RoundApplicationService.MinimumHoleCount)
             .Max();
     }
 

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using GolfSG.Core.Models;
 
-namespace GolfSG.Core.Persistence;
+namespace GolfSG.Infrastructure.Persistence;
 
 public sealed class RoundFileStore
 {

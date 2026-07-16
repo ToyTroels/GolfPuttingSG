@@ -1,7 +1,7 @@
 using System.Text.Json;
 using GolfSG.Core;
 using GolfSG.Core.Models;
-using GolfSG.Core.Persistence;
+using GolfSG.Infrastructure.Persistence;
 
 namespace GolfSG.Tests;
 

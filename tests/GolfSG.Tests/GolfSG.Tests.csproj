@@ -16,27 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\GolfSG.Application\GolfSG.Application.csproj" />
     <ProjectReference Include="..\..\src\GolfSG.Core\GolfSG.Core.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="..\..\src\GolfSG\Services\IRoundRepository.cs" Link="App\Services\IRoundRepository.cs" />
-    <Compile Include="..\..\src\GolfSG\Services\IDistanceUnitSettings.cs" Link="App\Services\IDistanceUnitSettings.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\UiFormat.cs" Link="App\ViewModels\UiFormat.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\ViewModelBase.cs" Link="App\ViewModels\ViewModelBase.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\EvaluationViewModel.cs" Link="App\ViewModels\EvaluationViewModel.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\BenchmarkHistoryViewModel.cs" Link="App\ViewModels\BenchmarkHistoryViewModel.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\DistanceInputParser.cs" Link="App\ViewModels\DistanceInputParser.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\SgDistanceInputPresets.cs" Link="App\ViewModels\SgDistanceInputPresets.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\HoleCarryForwardService.cs" Link="App\ViewModels\HoleCarryForwardService.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\ShotInputMapper.cs" Link="App\ViewModels\ShotInputMapper.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\ShotLieLabels.cs" Link="App\ViewModels\ShotLieLabels.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\HoleInputViewModel.cs" Link="App\ViewModels\HoleInputViewModel.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\PuttingGameViewModel.cs" Link="App\ViewModels\PuttingGameViewModel.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\RoundInputViewModel.cs" Link="App\ViewModels\RoundInputViewModel.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\RoundHistoryViewModel.cs" Link="App\ViewModels\RoundHistoryViewModel.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\RoundListItemViewModel.cs" Link="App\ViewModels\RoundListItemViewModel.cs" />
-    <Compile Include="..\..\src\GolfSG\ViewModels\StartViewModel.cs" Link="App\ViewModels\StartViewModel.cs" />
+    <ProjectReference Include="..\..\src\GolfSG.Infrastructure\GolfSG.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

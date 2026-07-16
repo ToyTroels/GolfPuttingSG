@@ -52,24 +52,24 @@ public sealed class PuttingGamesPage : ContentPage
     {
         var page = services.GetRequiredService<PuttingGamePage>();
         page.Start(PuttingGame.LadderMode);
-        await Navigation.PushAsync(page);
+        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
     }
 
     private async Task OpenTourRoundAsync()
     {
         var page = services.GetRequiredService<PuttingGamePage>();
         page.Start(PuttingGame.TourRoundMode);
-        await Navigation.PushAsync(page);
+        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
     }
 
     private async Task OpenBenchmarkAsync()
     {
-        await Navigation.PushAsync(new PuttingBenchmarkPage(services));
+        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new PuttingBenchmarkPage(services)));
     }
 
     private async Task OpenBenchmarkHistoryAsync()
     {
-        await Navigation.PushAsync(services.GetRequiredService<BenchmarkHistoryPage>());
+        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<BenchmarkHistoryPage>()));
     }
 
     private static View BetaGameItem(string title, string subtitle, Func<Task> openAsync)

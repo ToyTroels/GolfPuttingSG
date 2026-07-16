@@ -1,6 +1,6 @@
 namespace GolfSG;
 
-public partial class App : Application
+public partial class App : Microsoft.Maui.Controls.Application
 {
     private readonly AppShell appShell;
 

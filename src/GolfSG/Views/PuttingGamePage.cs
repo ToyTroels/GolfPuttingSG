@@ -4,7 +4,7 @@ using Microsoft.Maui.Controls.Shapes;
 
 namespace GolfSG.Views;
 
-public sealed class PuttingGamePage : ContentPage
+public sealed partial class PuttingGamePage : ContentPage
 {
     private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
     private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
@@ -54,24 +54,7 @@ public sealed class PuttingGamePage : ContentPage
         submitButton.SetBinding(Button.TextProperty, nameof(PuttingGameViewModel.PrimaryActionText));
         submitButton.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsActive));
         submitButton.SetBinding(VisualElement.IsEnabledProperty, nameof(PuttingGameViewModel.CanSubmit));
-        submitButton.Clicked += async (_, _) =>
-        {
-            try
-            {
-                completedRoundId = await viewModel.SubmitAsync();
-                if (viewModel.HasError)
-                {
-                    await DisplayAlertAsync("Resultatet kunne ikke gemmes", viewModel.ErrorMessage, "OK");
-                }
-            }
-            catch (Exception)
-            {
-                await DisplayAlertAsync(
-                    "Resultatet kunne ikke gemmes",
-                    "Prøv igen, eller tjek lagring under Indstillinger.",
-                    "OK");
-            }
-        };
+        submitButton.Clicked += async (_, _) => await SubmitCurrentPuttAsync();
 
         var setupPanel = SetupPanel();
         setupPanel.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsSetup));
@@ -144,9 +127,9 @@ public sealed class PuttingGamePage : ContentPage
 
     private View SetupPanel()
     {
-        var holeCount = NumericEntry(nameof(PuttingGameViewModel.HoleCountText));
-        var minimumDistance = NumericEntry(nameof(PuttingGameViewModel.MinimumDistanceMetersText));
-        var maximumDistance = NumericEntry(nameof(PuttingGameViewModel.MaximumDistanceMetersText));
+        var holeCount = AppViews.NumericEntry(nameof(PuttingGameViewModel.HoleCountText));
+        var minimumDistance = AppViews.NumericEntry(nameof(PuttingGameViewModel.MinimumDistanceMetersText));
+        var maximumDistance = AppViews.NumericEntry(nameof(PuttingGameViewModel.MaximumDistanceMetersText));
         var distanceDistribution = new Picker
         {
             Title = "Fordeling",
@@ -176,7 +159,7 @@ public sealed class PuttingGamePage : ContentPage
         };
         start.Clicked += (_, _) => viewModel.StartConfiguredGame();
 
-        return Card(new VerticalStackLayout
+        return AppViews.FormCard(new VerticalStackLayout
         {
             Spacing = 12,
             Children =
@@ -188,10 +171,10 @@ public sealed class PuttingGamePage : ContentPage
                     FontAttributes = FontAttributes.Bold,
                     TextColor = TextColor
                 },
-                Field("Putts", holeCount),
-                BoundField(nameof(PuttingGameViewModel.MinimumDistanceLabel), minimumDistance),
-                BoundField(nameof(PuttingGameViewModel.MaximumDistanceLabel), maximumDistance),
-                Field("Afstandsfordeling", distanceDistribution),
+                AppViews.Field("Putts", holeCount),
+                AppViews.BoundField(nameof(PuttingGameViewModel.MinimumDistanceLabel), minimumDistance),
+                AppViews.BoundField(nameof(PuttingGameViewModel.MaximumDistanceLabel), maximumDistance),
+                AppViews.Field("Afstandsfordeling", distanceDistribution),
                 error,
                 start
             }
@@ -233,10 +216,10 @@ public sealed class PuttingGamePage : ContentPage
         };
         distance.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.CurrentDistanceText));
 
-        var minus = StepperButton("-");
+        var minus = AppViews.StepperButton("-");
         minus.Clicked += (_, _) => viewModel.DecreasePutts();
 
-        var plus = StepperButton("+");
+        var plus = AppViews.StepperButton("+");
         plus.Clicked += (_, _) => viewModel.IncreasePutts();
 
         var putts = new Label
@@ -282,7 +265,7 @@ public sealed class PuttingGamePage : ContentPage
             Spacing = 10,
             Children =
             {
-                Card(new VerticalStackLayout
+                AppViews.FormCard(new VerticalStackLayout
                 {
                     Spacing = 10,
                     Children =
@@ -360,7 +343,7 @@ public sealed class PuttingGamePage : ContentPage
             }
         };
 
-        return Card(new VerticalStackLayout
+        return AppViews.FormCard(new VerticalStackLayout
         {
             Spacing = 10,
             Children =
@@ -379,30 +362,6 @@ public sealed class PuttingGamePage : ContentPage
         });
     }
 
-    private async Task ConfirmCloseActiveGameAsync()
-    {
-        var closeGame = await DisplayAlertAsync(
-            "Luk spil?",
-            "Du er midt i et putting-spil. Vil du lukke spillet og miste den igangværende score?",
-            "Luk spil",
-            "Bliv her");
-
-        if (closeGame)
-        {
-            await Navigation.PopAsync();
-        }
-    }
-
-    private async Task NavigateBackAsync()
-    {
-        if (viewModel.IsActive)
-        {
-            await ConfirmCloseActiveGameAsync();
-            return;
-        }
-
-        await Navigation.PopAsync();
-    }
 
     private View CompletePanel()
     {
@@ -426,7 +385,7 @@ public sealed class PuttingGamePage : ContentPage
             {
                 var page = Handler!.MauiContext!.Services.GetRequiredService<RoundResultPage>();
                 await page.LoadAsync(completedRoundId);
-                await Navigation.PushAsync(page);
+                await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
             }
             catch (Exception)
             {
@@ -447,9 +406,9 @@ public sealed class PuttingGamePage : ContentPage
             CornerRadius = 8,
             HeightRequest = 50
         };
-        finish.Clicked += async (_, _) => await Navigation.PopToRootAsync();
+        finish.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PopToRootAsync());
 
-        return Card(new VerticalStackLayout
+        return AppViews.FormCard(new VerticalStackLayout
         {
             Spacing = 8,
             Children =
@@ -512,77 +471,4 @@ public sealed class PuttingGamePage : ContentPage
         };
     }
 
-    private static Button StepperButton(string text)
-    {
-        return new Button
-        {
-            Text = text,
-            WidthRequest = 48,
-            HeightRequest = 48,
-            CornerRadius = 8,
-            BackgroundColor = PrimaryGreen,
-            TextColor = Colors.White,
-            FontAttributes = FontAttributes.Bold,
-            FontSize = 20,
-            Padding = 0
-        };
-    }
-
-    private static Entry NumericEntry(string bindingPath)
-    {
-        var entry = new Entry
-        {
-            Keyboard = Keyboard.Numeric,
-            TextColor = TextColor,
-            BackgroundColor = Colors.White,
-            HeightRequest = 48
-        };
-        entry.SetBinding(Entry.TextProperty, bindingPath, BindingMode.TwoWay);
-        return entry;
-    }
-
-    private static View Field(string labelText, View input)
-    {
-        return Field(FieldLabel(labelText), input);
-    }
-
-    private static View BoundField(string labelBindingPath, View input)
-    {
-        var label = FieldLabel(string.Empty);
-        label.SetBinding(Label.TextProperty, labelBindingPath);
-        return Field(label, input);
-    }
-
-    private static View Field(Label label, View input)
-    {
-        return new VerticalStackLayout
-        {
-            Spacing = 4,
-            Children =
-            {
-                label,
-                input
-            }
-        };
-    }
-
-    private static Label FieldLabel(string text) => new()
-    {
-        Text = text,
-        TextColor = MutedTextColor,
-        FontAttributes = FontAttributes.Bold
-    };
-
-    private static Border Card(View content)
-    {
-        return new Border
-        {
-            BackgroundColor = Colors.White,
-            Stroke = CardStroke,
-            StrokeShape = new RoundRectangle { CornerRadius = 8 },
-            Padding = 14,
-            Margin = new Thickness(0, 0, 0, 10),
-            Content = content
-        };
-    }
 }

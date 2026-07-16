@@ -25,7 +25,7 @@ public sealed class StartPage : ContentPage
             Text = "\u2699",
             Order = ToolbarItemOrder.Primary,
             Priority = 0,
-            Command = new Command(async () => await Navigation.PushAsync(services.GetRequiredService<SettingsPage>()))
+            Command = new Command(async () => await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<SettingsPage>())))
         });
     }
 
@@ -60,24 +60,24 @@ public sealed class StartPage : ContentPage
         var newRoundButton = AppViews.PrimaryButton("Ny runde");
         newRoundButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         newRoundButton.Clicked += async (_, _) =>
-            await Navigation.PushAsync(services.GetRequiredService<RoundInputPage>());
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundInputPage>()));
 
         var puttingGameButton = AppViews.SecondaryButton("Putting-spil");
         puttingGameButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         puttingGameButton.Clicked += async (_, _) =>
-            await Navigation.PushAsync(services.GetRequiredService<PuttingGamesPage>());
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<PuttingGamesPage>()));
 
         var historyButton = this.historyButton = AppViews.SecondaryButton("Historik beta");
         historyButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         historyButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         historyButton.Clicked += async (_, _) =>
-            await Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>());
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>()));
 
         evaluationButton = AppViews.SecondaryButton("SG evaluering beta");
         evaluationButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         evaluationButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         evaluationButton.Clicked += async (_, _) =>
-            await Navigation.PushAsync(services.GetRequiredService<EvaluationPage>());
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<EvaluationPage>()));
 
         var warning = new Border
         {
@@ -166,7 +166,7 @@ public sealed class StartPage : ContentPage
         {
             var page = services.GetRequiredService<RoundResultPage>();
             await page.LoadAsync(item.Id);
-            await Navigation.PushAsync(page);
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
         }
         catch (Exception)
         {
@@ -189,7 +189,7 @@ public sealed class StartPage : ContentPage
         {
             var page = services.GetRequiredService<RoundInputPage>();
             await page.LoadAsync(item.Id);
-            await Navigation.PushAsync(page);
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
         }
         catch (Exception)
         {
@@ -200,7 +200,10 @@ public sealed class StartPage : ContentPage
         }
     }
 
-    private async Task DeleteRoundAsync(RoundListItemViewModel item)
+    private async Task DeleteRoundAsync(RoundListItemViewModel item) =>
+        await this.RunActionOnceAsync(() => DeleteRoundCoreAsync(item));
+
+    private async Task DeleteRoundCoreAsync(RoundListItemViewModel item)
     {
         var confirmed = await DisplayAlertAsync(
             "Slet runde",
@@ -228,7 +231,7 @@ public sealed class StartPage : ContentPage
 
     private async Task ShowRoundActionsAsync(RoundListItemViewModel item)
     {
-        await Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false);
+        await this.RunNavigationOnceAsync(() => Navigation.PushModalAsync(new RoundActionsSheetPage(item, DeleteRoundAsync), false));
     }
 
     private static View InsightDashboard()

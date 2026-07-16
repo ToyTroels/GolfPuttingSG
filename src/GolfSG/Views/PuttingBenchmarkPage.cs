@@ -110,14 +110,14 @@ public sealed class PuttingBenchmarkPage : ContentPage
     private Button BackButton()
     {
         var button = AppViews.SecondaryButton("Tilbage");
-        button.Clicked += async (_, _) => await Navigation.PopAsync();
+        button.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PopAsync());
         return button;
     }
 
     private async Task OpenBenchmarkGameAsync()
     {
         var page = new PuttingGamePage(viewModel);
-        await Navigation.PushAsync(page);
+        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
         if (Navigation.NavigationStack.Contains(this))
         {
             Navigation.RemovePage(this);
