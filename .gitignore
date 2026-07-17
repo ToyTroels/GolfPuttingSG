@@ -1,16 +1,22 @@
-bin/
-obj/
+# Visual Studio and user-specific files.
 .vs/
 *.user
 *.suo
+*.userosscache
+*.sln.docstates
+
+# .NET build output.
+[Bb]in/
+[Oo]bj/
+
+# Test and local tooling output.
 TestResults/
+coverage/
 artifacts/
 
-# Rider / ReSharper
-.idea/
-_ReSharper*/
-*.DotSettings.user
-
-# OS/editor noise
-.DS_Store
-Thumbs.db
+# Android signing material — never commit private keys or passwords.
+*.keystore
+*.jks
+*.p12
+*.pfx
+*signing*.txt
