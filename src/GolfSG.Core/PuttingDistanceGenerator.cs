@@ -36,9 +36,14 @@ internal static class PuttingDistanceGenerator
             throw new ArgumentOutOfRangeException(nameof(maximumDistanceMeters), "Maximum distance must be greater than or equal to the minimum distance.");
         }
 
-        if (holeCount == 1 || Math.Abs(maximumDistanceMeters - minimumDistanceMeters) < 0.001)
+        if (holeCount == 1)
         {
             return [(minimumDistanceMeters + maximumDistanceMeters) / 2];
+        }
+
+        if (Math.Abs(maximumDistanceMeters - minimumDistanceMeters) < 0.001)
+        {
+            return Enumerable.Repeat(minimumDistanceMeters, holeCount).ToList();
         }
 
         var binCount = Math.Min(Math.Max(holeCount, 5), 21);

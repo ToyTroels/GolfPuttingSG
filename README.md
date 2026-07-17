@@ -1,43 +1,42 @@
-# Golf SG
+# GolfSG
 
-.NET MAUI MVP til Visual Studio-suiten, bygget i C# med MVVM-lag og lokal lagring.
+GolfSG is an offline-first .NET MAUI app for tracking golf putting performance with strokes gained. It helps golfers record rounds and practice sessions, compare results with a PGA Tour reference baseline, and identify where practice will have the greatest impact.
 
-Appen tracker strokes gained putting pr. golfrunde mod en PGA Tour-baseline.
+> **Status: 0.1.0-alpha**
+>
+> The core putting experience is usable, but the application is still under active development. Expect incomplete workflows, changing UI, and limited release packaging.
 
-## Struktur
+## What it does
 
-- `GolfSG.sln`: Visual Studio-løsningen.
-- `src/GolfSG`: .NET MAUI-appen.
-- `src/GolfSG.Core`: domænemodeller, PGA-baseline, interpolation og strokes gained-beregning.
-- `tests/GolfSG.Tests`: MSTest unit tests for beregningerne.
+- Records putting performance by hole, including first-putt distance and putts used.
+- Calculates strokes gained per hole and for the complete round or session.
+- Supports partial rounds and configurable round lengths.
+- Provides putting games and benchmark sessions, including ladder-style practice.
+- Stores round and practice history locally as JSON.
+- Provides history, filtering, editing, recovery, and import/export support.
+- Keeps scoring and statistics in testable, platform-independent .NET projects.
 
-## Funktioner i MVP
+The current product focus is putting. Approach and around-the-green tracking are being expanded and should be considered experimental in this alpha release.
 
-- Startskærm med ny runde og tidligere runder.
-- Runde-input med 18 huller, første putt-afstand og hurtig putt-stepper fra 0 til 5.
-- Beregnet SG pr. hul og total SG.
-- Resultatskærm med total SG, SG pr. hul, gennemsnitlig første putt-afstand, total putts, 3-putt rate, bedste/værste hul og simpel analyse.
-- Gem/rediger runder lokalt i appens datafolder via JSON.
-- Halvfærdige runder understøttes: huller med `0` putts regnes ikke med i summary.
+## Supported development targets
 
-## Beregning
+The project is configured for:
 
-Baseline-tabellen ligger i `src/GolfSG.Core/StrokesGainedCalculator.cs`.
+- Windows
+- Android
+- iOS
+- Mac Catalyst
 
-- Afstande mellem to baselinepunkter beregnes med lineær interpolation.
-- Afstande under 0,3 m bruger laveste baseline.
-- Afstande over 27,4 m bruger højeste baseline. Det er valgt i MVP'en, fordi tabellen ikke har nok datapunkter til troværdig ekstrapolation.
+The primary development and verification targets are Windows and Android. Store-ready packages and formal device support will be documented as the release process matures.
 
-## Kør i Visual Studio
+## Run locally
 
-1. Åbn `GolfSG.sln` i Visual Studio.
-2. Vælg startup-projektet `GolfSG`.
-3. Vælg target, fx `Windows Machine` eller en Android-emulator.
-4. Tryk Run.
+Requirements:
 
-Se `RUN_ON_PHONE.md` for agent-noter om at køre appen på en trådløst forbundet Android-telefon via ADB/MSBuild.
+- Visual Studio with the .NET MAUI workload, or an equivalent .NET SDK setup.
+- A configured Windows target or mobile emulator/device for the chosen platform.
 
-## Kommandoer
+From the repository root:
 
 ```powershell
 dotnet restore GolfSG.sln
@@ -45,72 +44,67 @@ dotnet test tests\GolfSG.Tests\GolfSG.Tests.csproj
 dotnet build src\GolfSG\GolfSG.csproj -f net10.0-windows10.0.19041.0
 ```
 
-## Versionsstyring
+To run the app, open `GolfSG.sln` in Visual Studio, select the `GolfSG` startup project, choose a target, and start debugging. See [RUN_ON_PHONE.md](RUN_ON_PHONE.md) for Android device notes.
 
-App-versionen styres centralt i `Directory.Build.props`.
+## Build an Android APK
 
-- `VersionPrefix` er den numeriske version, fx `0.1.0`.
-- `VersionSuffix` er release-kanalen, fx `alpha`. Aktuelt er appen `0.1.0-alpha`.
-- `ApplicationBuildNumber` er buildnummeret, som skal stige ved nye installerbare builds.
-- Platformenes interne app-version holdes numerisk via `ApplicationDisplayVersion`, mens Indstillinger-siden viser release-labelen med suffix.
+For a local, installable APK:
 
-Vis den aktuelle version:
+```powershell
+dotnet publish src\GolfSG\GolfSG.csproj `
+  -f net10.0-android `
+  -c Release `
+  -p:AndroidPackageFormat=apk `
+  -p:PublishTrimmed=false `
+  -p:RunAOTCompilation=false `
+  -p:AndroidLinkMode=None
+```
+
+The output is written below `src\GolfSG\bin\Release\net10.0-android\publish`.
+
+## Project structure
+
+| Project | Responsibility |
+| --- | --- |
+| `src/GolfSG` | .NET MAUI composition, pages, navigation, and platform integration |
+| `src/GolfSG.Application` | Application services, view models, ports, and workflows |
+| `src/GolfSG.Core` | Domain models, strokes-gained calculations, summaries, and game rules |
+| `src/GolfSG.Infrastructure` | Local JSON persistence and storage recovery |
+| `tests/GolfSG.Tests` | Core, application, infrastructure, and view-model tests |
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for dependency rules and [TESTING_STRATEGY.md](TESTING_STRATEGY.md) for the testing roadmap.
+
+## Scoring model
+
+The putting calculation uses the reference table in [`StrokesGainedCalculator.cs`](src/GolfSG.Core/StrokesGainedCalculator.cs). Values between known baseline points use linear interpolation. Values below the lowest supported distance use the lowest baseline, and values above the highest supported distance use the highest baseline rather than extrapolating beyond the available data.
+
+The methodology and source provenance of the reference data will be documented more fully before a stable release. GolfSG is a training and analysis tool; its results are not an official handicap or tournament scoring system.
+
+## Data and privacy
+
+GolfSG is designed to work without an account or an internet connection. Round and practice data is stored in the app's local data directory. The current application does not provide cloud synchronization, advertising, or an analytics account.
+
+See [PRIVACY.md](PRIVACY.md) for the current data-handling statement and [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for third-party assets and data notes.
+
+## Versioning and releases
+
+The version is maintained centrally in `Directory.Build.props`:
 
 ```powershell
 .\scripts\Set-AppVersion.ps1 -Show
-```
-
-Bump versionen før en release. Scriptet hæver automatisk buildnummeret med 1 og beholder suffixet:
-
-```powershell
 .\scripts\Set-AppVersion.ps1 -Bump Patch
-.\scripts\Set-AppVersion.ps1 -Bump Minor
-.\scripts\Set-AppVersion.ps1 -Bump Major
-.\scripts\Set-AppVersion.ps1 -Bump Build
 ```
 
-Skift release-kanal:
+Release history is maintained in [CHANGELOG.md](CHANGELOG.md). The current release-note draft is [v0.1.0-alpha](docs/release-notes/v0.1.0-alpha.md).
 
-```powershell
-.\scripts\Set-AppVersion.ps1 -Suffix alpha
-.\scripts\Set-AppVersion.ps1 -ClearSuffix
-```
+## Product documentation
 
-Sæt en bestemt version og build:
+- [Product brief](docs/product/product-brief.md)
+- [User stories](docs/product/user-stories.md)
+- [Roadmap](docs/product/roadmap.md)
+- [Architecture](ARCHITECTURE.md)
+- [Testing strategy](TESTING_STRATEGY.md)
 
-```powershell
-.\scripts\Set-AppVersion.ps1 -Version 1.0.0 -BuildNumber 20 -ClearSuffix
-```
+## License
 
-Anbefalet release-flow:
-
-1. Kør et version-bump med scriptet.
-2. Kør tests.
-3. Byg eller publish appen.
-4. Commit ændringen i `Directory.Build.props`.
-## Udgiv Android APK til OneDrive
-
-Når appen skal udgives som en lokal Android APK, brug denne kommando fra repoets rod:
-
-```powershell
-dotnet publish src\GolfSG\GolfSG.csproj -f net10.0-android -c Release -p:AndroidPackageFormat=apk -p:PublishTrimmed=false -p:RunAOTCompilation=false -p:AndroidLinkMode=None --no-restore
-```
-
-Den signerede APK bliver oprettet her:
-
-```text
-src\GolfSG\bin\Release\net10.0-android\publish\com.troel.golfsg-Signed.apk
-```
-
-Kopier den derefter til OneDrive:
-
-```powershell
-New-Item -ItemType Directory -Path 'C:\Users\Troel\OneDrive\GolfSG' -Force
-Copy-Item -LiteralPath 'C:\Users\Troel\source\repos\GolfPuttingSG\src\GolfSG\bin\Release\net10.0-android\publish\com.troel.golfsg-Signed.apk' -Destination 'C:\Users\Troel\OneDrive\GolfSG\GolfSG.apk' -Force
-```
-
-Noter:
-
-- `--no-restore` bruges, fordi restore tidligere ramte en NuGet-lock i `AppData`.
-- `PublishTrimmed=false`, `RunAOTCompilation=false` og `AndroidLinkMode=None` bruges til en lokal installérbar APK, fordi trimmed/AOT publish tidligere fejlede i Android assembly processing.
-- Kopiering til OneDrive kræver skriveadgang uden for repoet.
+GolfSG is released under the [MIT License](LICENSE). Review [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for dependencies, fonts, template assets, and baseline-data notes.
