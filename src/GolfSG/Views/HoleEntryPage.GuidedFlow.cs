@@ -1,4 +1,4 @@
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 
 namespace GolfSG.Views;
 
@@ -223,6 +223,7 @@ public sealed partial class HoleEntryPage
         var nextHole = GetNextHole();
         if (nextHole is null)
         {
+            await roundViewModel.FlushAutosaveAsync();
             await this.RunNavigationOnceAsync(() => Navigation.PopAsync());
             return;
         }
@@ -234,12 +235,13 @@ public sealed partial class HoleEntryPage
     {
         var closeRound = await DisplayAlertAsync(
             "Luk runde?",
-            "Du er midt i en runde. Vil du lukke runden og miste den igangværende score?",
+            "Runden er gemt automatisk. Du kan forts\u00e6tte den fra forsiden.",
             "Luk runde",
             "Bliv her");
 
         if (closeRound)
         {
+            await roundViewModel.FlushAutosaveAsync();
             await this.RunNavigationOnceAsync(() => Navigation.PopToRootAsync());
         }
     }
@@ -250,6 +252,8 @@ public sealed partial class HoleEntryPage
         {
             return;
         }
+
+        await roundViewModel.SetCurrentHoleAsync(hole.HoleNumber);
 
         var page = new HoleEntryPage(roundViewModel, hole)
         {

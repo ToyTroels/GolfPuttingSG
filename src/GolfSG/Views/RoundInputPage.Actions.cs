@@ -1,4 +1,4 @@
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GolfSG.Views;
@@ -7,7 +7,12 @@ public sealed partial class RoundInputPage
 {
     private async Task StartRoundAsync()
     {
-        viewModel.StartRound();
+        if (!await viewModel.StartRoundAsync())
+        {
+            await DisplayAlertAsync("Runden kunne ikke startes", viewModel.ErrorMessage, "OK");
+            return;
+        }
+
         if (viewModel.Holes.FirstOrDefault() is HoleInputViewModel firstHole)
         {
             await this.RunNavigationOnceAsync(
@@ -69,12 +74,13 @@ public sealed partial class RoundInputPage
     {
         var closeRound = await DisplayAlertAsync(
             "Luk runde?",
-            "Du er midt i en runde. Vil du lukke runden og miste den igangværende score?",
+            "Runden er gemt automatisk. Du kan forts\u00e6tte den fra forsiden.",
             "Luk runde",
             "Bliv her");
 
         if (closeRound)
         {
+            await viewModel.FlushAutosaveAsync();
             await this.RunNavigationOnceAsync(() => Navigation.PopToRootAsync());
         }
     }

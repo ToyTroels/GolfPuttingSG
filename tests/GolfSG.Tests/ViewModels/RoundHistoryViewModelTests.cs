@@ -1,7 +1,7 @@
 using GolfSG.Core;
 using GolfSG.Core.Models;
-using GolfSG.Services;
-using GolfSG.ViewModels;
+using GolfSG.Application.Services;
+using GolfSG.Application.ViewModels;
 
 namespace GolfSG.Tests;
 

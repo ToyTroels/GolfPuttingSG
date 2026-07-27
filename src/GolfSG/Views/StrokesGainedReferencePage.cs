@@ -1,5 +1,5 @@
 using GolfSG.Core;
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 using Microsoft.Maui.Controls.Shapes;
 
 namespace GolfSG.Views;

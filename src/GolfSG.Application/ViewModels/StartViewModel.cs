@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
-using GolfSG.Services;
+using GolfSG.Application.Queries;
+using GolfSG.Application.Rounds;
+using GolfSG.Application.Services;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public sealed class StartViewModel : ViewModelBase
 {
@@ -9,6 +11,9 @@ public sealed class StartViewModel : ViewModelBase
     private const int TrendGroupSize = 3;
 
     private readonly IRoundRepository repository;
+    private readonly IActiveRoundSessionRepository activeRoundSessionRepository;
+    private readonly IRoundApplicationService roundApplicationService;
+    private readonly IRoundHistoryQueryService historyQueryService;
     private readonly IDistanceUnitSettings distanceUnitSettings;
     private bool showRecoveredFromBackupWarning;
     private bool hasInsights;
@@ -24,15 +29,40 @@ public sealed class StartViewModel : ViewModelBase
     private string focusInsightValue = "Mere data";
     private string focusInsightDetail = "Track flere SG-kategorier";
 
-    public StartViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
+    public StartViewModel(
+        IRoundRepository repository,
+        IDistanceUnitSettings? distanceUnitSettings = null,
+        IActiveRoundSessionRepository? activeRoundSessionRepository = null)
     {
         this.repository = repository;
+        this.activeRoundSessionRepository = activeRoundSessionRepository ?? NullActiveRoundSessionRepository.Instance;
+        roundApplicationService = new RoundApplicationService(repository);
+        historyQueryService = new RoundHistoryQueryService(repository);
         this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
     public ObservableCollection<RoundListItemViewModel> Rounds { get; } = [];
 
     public ObservableCollection<RoundListItemViewModel> RecentRounds { get; } = [];
+
+    public ActiveRoundSession? ActiveRoundSession { get; private set; }
+
+    public bool HasActiveRound => ActiveRoundSession is not null;
+
+    public string ActiveRoundDetailText
+    {
+        get
+        {
+            if (ActiveRoundSession is not { } session)
+            {
+                return string.Empty;
+            }
+
+            var round = roundApplicationService.CreateRound(session.Draft);
+            var savedAt = session.UpdatedAtUtc.ToLocalTime().ToString("HH:mm");
+            return $"{round.CompletedHoleCount}/{round.ConfiguredHoleCount} huller registreret | gemt {savedAt}";
+        }
+    }
 
     public bool HasInsights
     {
@@ -142,8 +172,17 @@ public sealed class StartViewModel : ViewModelBase
         ErrorMessage = string.Empty;
         try
         {
-            var rounds = await repository.GetRoundsAsync();
-            ShowRecoveredFromBackupWarning = repository.WasLastReadRecoveredFromBackup;
+            var history = await historyQueryService.LoadAsync();
+            ShowRecoveredFromBackupWarning = history.WasRecoveredFromBackup;
+            var rounds = history.Rounds;
+            var activeSession = await activeRoundSessionRepository.GetAsync();
+            if (activeSession is not null && rounds.Any(round => round.Id == activeSession.Draft.Id))
+            {
+                await activeRoundSessionRepository.DeleteAsync();
+                activeSession = null;
+            }
+
+            SetActiveRound(activeSession);
             var sortedRounds = rounds
                 .OrderByDescending(round => round.Date)
                 .ThenByDescending(round => round.Id, StringComparer.Ordinal)
@@ -162,6 +201,39 @@ public sealed class StartViewModel : ViewModelBase
         }
     }
 
+    public async Task<bool> AbandonActiveRoundAsync()
+    {
+        if (IsBusy || ActiveRoundSession is null)
+        {
+            return ActiveRoundSession is null;
+        }
+
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
+        {
+            await activeRoundSessionRepository.DeleteAsync();
+            SetActiveRound(null);
+            return true;
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Den igangv\u00e6rende runde kunne ikke slettes. Pr\u00f8v igen, eller tjek lagring under Indstillinger.";
+            return false;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void SetActiveRound(ActiveRoundSession? session)
+    {
+        ActiveRoundSession = session;
+        OnPropertyChanged(nameof(ActiveRoundSession));
+        OnPropertyChanged(nameof(HasActiveRound));
+        OnPropertyChanged(nameof(ActiveRoundDetailText));
+    }
     public async Task<bool> DeleteRoundAsync(RoundListItemViewModel round)
     {
         if (IsBusy)

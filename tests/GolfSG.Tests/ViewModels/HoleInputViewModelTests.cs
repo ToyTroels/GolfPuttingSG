@@ -1,8 +1,8 @@
 using System.Globalization;
 using GolfSG.Core;
-using GolfSG.Services;
+using GolfSG.Application.Services;
 using GolfSG.Core.Models;
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 
 namespace GolfSG.Tests;
 

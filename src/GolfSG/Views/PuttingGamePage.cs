@@ -1,4 +1,4 @@
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls.Shapes;
 

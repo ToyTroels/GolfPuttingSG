@@ -1,7 +1,8 @@
 using System.Collections.ObjectModel;
-using GolfSG.Services;
+using GolfSG.Application.Queries;
+using GolfSG.Application.Services;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public sealed class RoundHistoryViewModel : ViewModelBase
 {
@@ -23,6 +24,7 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     private const string HistorySortWorstSg = "V\u00e6rste SG";
 
     private readonly IRoundRepository repository;
+    private readonly IRoundHistoryQueryService historyQueryService;
     private readonly IDistanceUnitSettings distanceUnitSettings;
     private readonly List<RoundListItemViewModel> allRoundItems = [];
     private bool showRecoveredFromBackupWarning;
@@ -37,6 +39,7 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     public RoundHistoryViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
         this.repository = repository;
+        historyQueryService = new RoundHistoryQueryService(repository);
         this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
@@ -209,8 +212,9 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         ErrorMessage = string.Empty;
         try
         {
-            var rounds = await repository.GetRoundsAsync();
-            ShowRecoveredFromBackupWarning = repository.WasLastReadRecoveredFromBackup;
+            var history = await historyQueryService.LoadAsync();
+            ShowRecoveredFromBackupWarning = history.WasRecoveredFromBackup;
+            var rounds = history.Rounds;
             var loadedItems = rounds
                 .Select(round => new RoundListItemViewModel(round, distanceUnitSettings))
                 .ToList();

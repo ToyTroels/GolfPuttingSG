@@ -1,4 +1,4 @@
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 
 namespace GolfSG.Views;
 

@@ -1,20 +1,21 @@
 using System.Collections.ObjectModel;
 using GolfSG.Core;
 using GolfSG.Core.Models;
-using GolfSG.Services;
+using GolfSG.Application.Queries;
+using GolfSG.Application.Services;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public sealed class BenchmarkHistoryViewModel : ViewModelBase
 {
-    private readonly IRoundRepository repository;
+    private readonly IBenchmarkHistoryQueryService queryService;
     private readonly IDistanceUnitSettings distanceUnitSettings;
     private bool isBusy;
     private string errorMessage = string.Empty;
 
     public BenchmarkHistoryViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
-        this.repository = repository;
+        queryService = new BenchmarkHistoryQueryService(repository);
         this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
@@ -55,8 +56,7 @@ public sealed class BenchmarkHistoryViewModel : ViewModelBase
         ErrorMessage = string.Empty;
         try
         {
-            var rounds = await repository.GetRoundsAsync();
-            var summaries = BenchmarkHistoryService.Summarize(rounds);
+            var summaries = await queryService.LoadAsync();
             Benchmarks.Clear();
             foreach (var summary in summaries)
             {

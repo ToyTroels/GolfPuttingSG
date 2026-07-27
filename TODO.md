@@ -13,7 +13,8 @@
 - [ ] Fold remaining `SG evaluering beta` period/category drilldown into the start-page insights experience.
 - [ ] Add trend charts for total SG, category SG, putting SG by distance band, benchmark scores, 3-putt rate, and make percentage.
 - [ ] Upgrade round results from static notes into actionable coaching, including top gained/lost holes, category contribution, and next-practice recommendations.
-- [ ] Autosave active rounds and putting games, show a resume action on the start page, and require explicit abandon/delete for in-progress work.
+- [x] Autosave active rounds, show a resume action on the start page, and require explicit abandon/delete for in-progress rounds.
+- [ ] Extend active-session autosave and resume support to putting games.
 - [x] Improve history with filters for round/game/benchmark type, date period, and best/worst SG sorting.
 - [x] Add SG-category-specific history filtering/sorting and round comparison views.
 - [ ] Fix the history tab so previously saved rounds are visible and not hidden by filters, loading errors, or round/game type grouping.
@@ -35,6 +36,22 @@
 - [x] Decide whether `RoundFileStore` should remain in `GolfSG.Core` or move to an infrastructure project if storage grows beyond local JSON.
 - [x] Split large C# page classes where interaction handlers, layout construction, and reusable UI components can be separated without changing behavior.
 - [x] Keep all strokes-gained calculations, summary rules, and benchmark rules centralized in Core/Application so pages never duplicate business rules.
+
+## Structural cleanup
+
+See [docs/ARCHITECTURE_CLEANUP.md](docs/ARCHITECTURE_CLEANUP.md) for scope, sequencing, and acceptance criteria.
+
+- [x] Standardize namespaces for Application-owned code under `GolfSG.Application.*`, including view models, services, and workflows.
+- [x] Split `HoleEntryPage` into smaller layout/components and focused interaction flows without changing behavior.
+- [x] Split `HoleInputViewModel` into focused state/coordination components while keeping the public UI contract stable.
+- [ ] Complete application-level query services for history, evaluation, and result workflows, including moving remaining repository querying and aggregation out of view models.
+- [ ] Register application query services in the MAUI composition root and inject their interfaces into consuming view models instead of constructing concrete services directly.
+- [ ] Add focused tests for query-service contracts, including missing-round handling, tracking-option fallback, backup-recovery metadata, and benchmark/statistics aggregation.
+- [x] Extract more reusable MAUI controls from the largest code-built pages where this improves readability and testability.
+- [x] Review and remove empty folders, stale project-user files, and other repository artifacts that no longer serve a purpose.
+- [x] Organize tests by architectural area—Core, Application, Infrastructure, and UI/view-model workflows—as the test suite continues to grow.
+- [x] Run the architecture boundary tests and the full test suite after each structural refactor.
+- [ ] Ensure all newly added refactor source files and relocated tests are included in the final change, with no required files left untracked.
 
 ## Rename project to GolfSG
 
@@ -90,7 +107,6 @@
 - [x] Persist whether a saved round was completed normally or ended early.
 - [x] Make result views and SG summaries handle partial rounds without treating missing holes as zero-value holes.
 - [x] Add tests for custom hole counts, early round finish, and saving partial rounds.
-
 ## Carry remaining distances between SG categories
 
 - [ ] When an approach shot misses the green, carry the entered remaining distance to the hole forward into SG around-the-green automatically.

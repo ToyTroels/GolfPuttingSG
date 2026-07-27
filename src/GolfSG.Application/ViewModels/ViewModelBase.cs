@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public abstract class ViewModelBase : INotifyPropertyChanged
 {

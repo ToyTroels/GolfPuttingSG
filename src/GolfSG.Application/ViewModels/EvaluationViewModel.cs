@@ -1,9 +1,10 @@
 using System.Collections.ObjectModel;
 using GolfSG.Core;
 using GolfSG.Core.Models;
-using GolfSG.Services;
+using GolfSG.Application.Queries;
+using GolfSG.Application.Services;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public sealed class EvaluationViewModel : ViewModelBase
 {
@@ -16,7 +17,7 @@ public sealed class EvaluationViewModel : ViewModelBase
     private const string ApproachCategory = "Approach";
     private const string AroundGreenCategory = "Omkring green";
 
-    private readonly IRoundRepository repository;
+    private readonly IRoundStatisticsQueryService queryService;
     private IReadOnlyList<Round> rounds = [];
     private string selectedPeriod = Last30Days;
     private string selectedCategory = TotalCategory;
@@ -26,7 +27,7 @@ public sealed class EvaluationViewModel : ViewModelBase
 
     public EvaluationViewModel(IRoundRepository repository)
     {
-        this.repository = repository;
+        queryService = new RoundStatisticsQueryService(repository);
     }
 
     public IReadOnlyList<string> PeriodOptions { get; } = [Last7Days, Last30Days, SeasonToDate, AllRounds];
@@ -116,7 +117,7 @@ public sealed class EvaluationViewModel : ViewModelBase
         ErrorMessage = string.Empty;
         try
         {
-            rounds = await repository.GetRoundsAsync();
+            rounds = await queryService.LoadRoundsAsync();
             RefreshSummary();
         }
         catch (Exception)
@@ -132,7 +133,7 @@ public sealed class EvaluationViewModel : ViewModelBase
     private void RefreshSummary()
     {
         var (startDate, endDate) = GetSelectedPeriod(DateTime.Today);
-        summary = RoundStatisticsService.Summarize(
+        summary = queryService.Summarize(
             rounds,
             GetSelectedCategory(),
             startDate,

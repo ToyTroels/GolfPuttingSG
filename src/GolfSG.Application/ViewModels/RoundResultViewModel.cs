@@ -1,13 +1,14 @@
 using System.Collections.ObjectModel;
 using GolfSG.Core;
 using GolfSG.Core.Models;
-using GolfSG.Services;
+using GolfSG.Application.Queries;
+using GolfSG.Application.Services;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public sealed class RoundResultViewModel : ViewModelBase
 {
-    private readonly IRoundRepository repository;
+    private readonly IRoundResultQueryService queryService;
     private readonly IDistanceUnitSettings distanceUnitSettings;
     private Round? round;
     private RoundSummary? summary;
@@ -15,7 +16,7 @@ public sealed class RoundResultViewModel : ViewModelBase
 
     public RoundResultViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
     {
-        this.repository = repository;
+        queryService = new RoundResultQueryService(repository);
         this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
     }
 
@@ -67,14 +68,15 @@ public sealed class RoundResultViewModel : ViewModelBase
 
     public async Task LoadAsync(string roundId)
     {
-        round = await repository.GetRoundAsync(roundId);
-        if (round is null)
+        var result = await queryService.LoadAsync(roundId);
+        if (result is null)
         {
             return;
         }
 
-        trackingOptions = round.TrackingOptions ?? RoundTrackingOptions.PuttingOnly;
-        summary = StrokesGainedCalculator.CalculateRoundSummary(round);
+        round = result.Round;
+        trackingOptions = result.TrackingOptions;
+        summary = result.Summary;
         HoleResults.Clear();
         foreach (var hole in round.Holes.Where(round.IsTrackedHoleCompleted))
         {

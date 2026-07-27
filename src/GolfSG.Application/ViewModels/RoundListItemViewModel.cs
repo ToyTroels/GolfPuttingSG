@@ -1,8 +1,8 @@
 using GolfSG.Core;
 using GolfSG.Core.Models;
-using GolfSG.Services;
+using GolfSG.Application.Services;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public enum HistorySgCategory
 {

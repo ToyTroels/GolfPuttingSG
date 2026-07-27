@@ -1,6 +1,7 @@
 using GolfSG.Core;
 using GolfSG.Core.Models;
-using GolfSG.ViewModels;
+using GolfSG.Application.Services;
+using GolfSG.Application.ViewModels;
 
 namespace GolfSG.Tests;
 
@@ -22,6 +23,31 @@ public sealed class InputMappingHelperTests
         Assert.AreEqual(0, DistanceInputParser.ParseOrZero("not a number"));
         Assert.AreEqual(0, DistanceInputParser.ParseOrZero("-2,5"));
         Assert.AreEqual(0, DistanceInputParser.ParseOrZero(null));
+    }
+
+    [TestMethod]
+    public void MetricPuttingQuickPicksIncludeCommonIntermediateDistances()
+    {
+        var distances = SgDistanceInputPresets.GetPuttingQuickPickMeters(
+            PuttingDistanceUnitPreference.Meters);
+
+        CollectionAssert.Contains(distances.ToList(), 2.5);
+        CollectionAssert.Contains(distances.ToList(), 3.5);
+        CollectionAssert.Contains(distances.ToList(), 4.5);
+        CollectionAssert.Contains(distances.ToList(), 5.5);
+        CollectionAssert.Contains(distances.ToList(), 7.0);
+        Assert.IsTrue(distances.SequenceEqual(distances.OrderBy(distance => distance)));
+    }
+
+    [TestMethod]
+    public void FeetPuttingQuickPicksKeepReferenceDistances()
+    {
+        var distances = SgDistanceInputPresets.GetPuttingQuickPickMeters(
+            PuttingDistanceUnitPreference.Feet);
+
+        CollectionAssert.AreEqual(
+            SgDistanceInputPresets.PuttingMeters.ToList(),
+            distances.ToList());
     }
 
     [TestMethod]

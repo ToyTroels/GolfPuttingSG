@@ -1,8 +1,8 @@
 using System.Globalization;
 using GolfSG.Core;
-using GolfSG.Services;
+using GolfSG.Application.Services;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public static class UiFormat
 {

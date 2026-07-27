@@ -1,5 +1,5 @@
 using GolfSG.Core;
-using GolfSG.Services;
+using GolfSG.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GolfSG.Views;

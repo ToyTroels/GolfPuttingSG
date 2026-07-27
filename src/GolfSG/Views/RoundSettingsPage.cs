@@ -1,4 +1,4 @@
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Layouts;
 

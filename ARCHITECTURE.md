@@ -17,8 +17,12 @@ GolfSG.Tests references Core, Application, and Infrastructure directly. It does 
 
 - **Core** owns strokes-gained calculations, round summaries, putting-game definitions, benchmark generation/scoring, and domain models. It has no UI or storage dependency.
 - **Application** owns round editing/saving orchestration, putting-session progression and saving, repository/settings abstractions, testable view models, and reusable asynchronous action guards.
-- **Infrastructure** owns RoundFileStore and the repository implementation for local JSON. The MAUI composition root supplies the platform-specific app-data path.
+- **Infrastructure** owns `RoundFileStore`, `ActiveRoundSessionFileStore`, and their repository implementations for local JSON. Completed history and the single active-round draft are stored separately so unfinished data cannot affect statistics. The MAUI composition root supplies the platform-specific app-data path.
 - **MAUI** owns pages, navigation, platform preferences, visual formatting, and dependency registration. Pages bind to application/view-model results and do not reproduce scoring rules.
+
+## Active round recovery
+
+An active round is autosaved as an `ActiveRoundSession` containing its draft, current hole, and update time. Finalizing writes the completed or intentionally shortened round to history before deleting the active session. The start page reconciles a stale active session whose id is already present in history.
 
 ## UI concurrency
 

@@ -1,5 +1,5 @@
 using GolfSG.Core.Models;
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 
 namespace GolfSG.Tests;
 

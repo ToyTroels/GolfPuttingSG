@@ -1,5 +1,5 @@
-﻿using GolfSG.Core.Models;
-using GolfSG.Services;
+using GolfSG.Core.Models;
+using GolfSG.Application.Services;
 
 namespace GolfSG.Tests;
 

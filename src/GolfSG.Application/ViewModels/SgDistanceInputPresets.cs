@@ -1,7 +1,7 @@
 using GolfSG.Core;
-using GolfSG.Services;
+using GolfSG.Application.Services;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public static class SgDistanceInputPresets
 {
@@ -9,6 +9,37 @@ public static class SgDistanceInputPresets
         StrokesGainedCalculator.PuttingReference
             .Select(point => point.DistanceMeters)
             .ToArray();
+
+    public static IReadOnlyList<double> MetricPuttingQuickPickMeters { get; } =
+    [
+        0.3,
+        0.5,
+        0.6,
+        0.9,
+        1.0,
+        1.2,
+        1.5,
+        1.8,
+        2.0,
+        2.5,
+        3.0,
+        3.5,
+        4.0,
+        4.5,
+        5.0,
+        5.5,
+        6.0,
+        7.0,
+        8.0,
+        9.0,
+        10.0,
+        12.0,
+        15.0,
+        18.0,
+        20.0,
+        25.0,
+        30.0
+    ];
 
     public static IReadOnlyList<double> ApproachMeters { get; } =
     [
@@ -128,6 +159,12 @@ public static class SgDistanceInputPresets
                 distance))
             .ToArray();
     }
+
+    public static IReadOnlyList<double> GetPuttingQuickPickMeters(
+        PuttingDistanceUnitPreference puttingDistanceUnit) =>
+        puttingDistanceUnit == PuttingDistanceUnitPreference.Meters
+            ? MetricPuttingQuickPickMeters
+            : PuttingMeters;
 
     private static string FormatLabel(
         double distanceMeters,

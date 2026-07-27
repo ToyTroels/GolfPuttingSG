@@ -1,4 +1,4 @@
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -20,7 +20,7 @@ public sealed class RoundHistoryPage : ContentPage
         this.viewModel = viewModel;
         this.services = services;
         BindingContext = viewModel;
-        Title = "Historik beta";
+        Title = "Historik";
         BackgroundColor = PageBackground;
         BuildLayout();
     }
@@ -110,7 +110,7 @@ public sealed class RoundHistoryPage : ContentPage
                     warning,
                     new Label
                     {
-                        Text = "Historik beta",
+                        Text = "Historik",
                         FontSize = 30,
                         FontAttributes = FontAttributes.Bold,
                         TextColor = TextColor

@@ -1,6 +1,6 @@
 using GolfSG.Core.Models;
 
-namespace GolfSG.Services;
+namespace GolfSG.Application.Services;
 
 public interface IRoundRepository
 {

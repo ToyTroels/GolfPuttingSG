@@ -1,4 +1,4 @@
-namespace GolfSG.Services;
+namespace GolfSG.Application.Services;
 
 public enum PuttingDistanceUnitPreference
 {

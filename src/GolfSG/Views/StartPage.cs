@@ -1,5 +1,5 @@
-using GolfSG.ViewModels;
-using GolfSG.Services;
+using GolfSG.Application.ViewModels;
+using GolfSG.Application.Services;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,7 +9,6 @@ public sealed class StartPage : ContentPage
 {
     private readonly StartViewModel viewModel;
     private readonly IServiceProvider services;
-    private Button? historyButton;
     private Button? evaluationButton;
 
     public StartPage(StartViewModel viewModel, IServiceProvider services)
@@ -37,10 +36,6 @@ public sealed class StartPage : ContentPage
             evaluationButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         }
 
-        if (historyButton is not null)
-        {
-            historyButton.IsVisible = FeatureSettings.EnableBetaFeatures;
-        }
 
         try
         {
@@ -59,17 +54,15 @@ public sealed class StartPage : ContentPage
     {
         var newRoundButton = AppViews.PrimaryButton("Ny runde");
         newRoundButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
-        newRoundButton.Clicked += async (_, _) =>
-            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundInputPage>()));
+        newRoundButton.Clicked += async (_, _) => await StartNewRoundAsync();
 
         var puttingGameButton = AppViews.SecondaryButton("Putting-spil");
         puttingGameButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         puttingGameButton.Clicked += async (_, _) =>
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<PuttingGamesPage>()));
 
-        var historyButton = this.historyButton = AppViews.SecondaryButton("Historik beta");
+        var historyButton = AppViews.SecondaryButton("Historik");
         historyButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
-        historyButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         historyButton.Clicked += async (_, _) =>
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>()));
 
@@ -111,6 +104,8 @@ public sealed class StartPage : ContentPage
         error.SetBinding(IsVisibleProperty, nameof(StartViewModel.HasError));
         ((Label)error.Content).SetBinding(Label.TextProperty, nameof(StartViewModel.ErrorMessage));
 
+        var activeRound = ActiveRoundCard();
+
         var insights = InsightDashboard();
         insights.SetBinding(IsVisibleProperty, nameof(StartViewModel.HasInsights));
 
@@ -132,6 +127,7 @@ public sealed class StartPage : ContentPage
                         FontSize = 16,
                         TextColor = GolfTheme.Colors.MutedText
                     },
+                    activeRound,
                     new VerticalStackLayout
                     {
                         Spacing = 10,
@@ -160,6 +156,107 @@ public sealed class StartPage : ContentPage
         Content = rounds.Margin(new Thickness(16));
     }
 
+    private View ActiveRoundCard()
+    {
+        var detail = new Label
+        {
+            FontSize = 14,
+            TextColor = GolfTheme.Colors.MutedText
+        };
+        detail.SetBinding(Label.TextProperty, nameof(StartViewModel.ActiveRoundDetailText));
+
+        var resume = AppViews.PrimaryButton("Forts\u00e6t runde");
+        resume.Clicked += async (_, _) => await ResumeActiveRoundAsync();
+
+        var abandon = AppViews.SecondaryButton("Opgiv runde");
+        abandon.Clicked += async (_, _) => await AbandonActiveRoundAsync();
+
+        var card = AppViews.Card(new VerticalStackLayout
+        {
+            Spacing = 10,
+            Children =
+            {
+                new Label
+                {
+                    Text = "Igangv\u00e6rende runde",
+                    FontSize = 18,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = GolfTheme.Colors.Text
+                },
+                detail,
+                new Grid
+                {
+                    ColumnDefinitions =
+                    {
+                        new ColumnDefinition(GridLength.Star),
+                        new ColumnDefinition(GridLength.Star)
+                    },
+                    ColumnSpacing = 8,
+                    Children =
+                    {
+                        resume.Column(0),
+                        abandon.Column(1)
+                    }
+                }
+            }
+        }, new Thickness(0, 16, 0, 0));
+        card.SetBinding(IsVisibleProperty, nameof(StartViewModel.HasActiveRound));
+        return card;
+    }
+
+    private async Task StartNewRoundAsync()
+    {
+        if (viewModel.HasActiveRound)
+        {
+            await DisplayAlertAsync(
+                "Igangv\u00e6rende runde",
+                "Forts\u00e6t eller opgiv den igangv\u00e6rende runde, f\u00f8r du starter en ny.",
+                "OK");
+            return;
+        }
+
+        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundInputPage>()));
+    }
+
+    private async Task ResumeActiveRoundAsync()
+    {
+        try
+        {
+            var page = services.GetRequiredService<RoundInputPage>();
+            if (!await page.LoadActiveAsync())
+            {
+                return;
+            }
+
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
+            await page.OpenResumeHoleAsync();
+        }
+        catch (Exception)
+        {
+            await DisplayAlertAsync(
+                "Runden kunne ikke indl\u00e6ses",
+                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
+                "OK");
+        }
+    }
+
+    private async Task AbandonActiveRoundAsync()
+    {
+        var confirmed = await DisplayAlertAsync(
+            "Opgiv runde?",
+            "Den gemte, igangv\u00e6rende runde bliver slettet permanent.",
+            "Opgiv runde",
+            "Annuller");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        if (!await viewModel.AbandonActiveRoundAsync() && viewModel.HasError)
+        {
+            await DisplayAlertAsync("Runden kunne ikke slettes", viewModel.ErrorMessage, "OK");
+        }
+    }
     private async Task OpenRoundAsync(RoundListItemViewModel item)
     {
         try

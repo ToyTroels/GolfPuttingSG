@@ -1,4 +1,4 @@
-using GolfSG.ViewModels;
+using GolfSG.Application.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -42,6 +42,27 @@ public sealed partial class RoundInputPage : ContentPage
             await DisplayAlertAsync("Runden kunne ikke indl\u00e6ses", viewModel.ErrorMessage, "OK");
         }
     }
+
+    public async Task<bool> LoadActiveAsync()
+    {
+        var loaded = await viewModel.LoadActiveAsync();
+        if (!loaded && viewModel.HasError)
+        {
+            await DisplayAlertAsync("Runden kunne ikke indl\u00e6ses", viewModel.ErrorMessage, "OK");
+        }
+
+        return loaded;
+    }
+
+    public async Task OpenResumeHoleAsync()
+    {
+        var hole = viewModel.Holes.FirstOrDefault(hole => hole.HoleNumber == viewModel.ResumeHoleNumber);
+        if (hole is not null)
+        {
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new HoleEntryPage(viewModel, hole)));
+        }
+    }
+    public Task FlushActiveRoundAsync() => viewModel.FlushAutosaveAsync();
 
     protected override bool OnBackButtonPressed()
     {
@@ -274,6 +295,7 @@ public sealed partial class RoundInputPage : ContentPage
             {
                 if (card.BindingContext is HoleInputViewModel hole)
                 {
+                    await viewModel.SetCurrentHoleAsync(hole.HoleNumber);
                     await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new HoleEntryPage(viewModel, hole)));
                 }
             };

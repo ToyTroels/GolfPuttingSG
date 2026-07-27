@@ -1,7 +1,7 @@
 using GolfSG.Core;
 using GolfSG.Core.Models;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public static class ShotInputMapper
 {

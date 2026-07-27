@@ -1,6 +1,6 @@
 using Microsoft.Maui.Storage;
 
-namespace GolfSG.Services;
+namespace GolfSG.Application.Services;
 
 public static class FeatureSettings
 {

@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace GolfSG.ViewModels;
+namespace GolfSG.Application.ViewModels;
 
 public static class DistanceInputParser
 {
