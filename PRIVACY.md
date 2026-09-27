@@ -1,8 +1,8 @@
-# Privacy
+# GolfSG Privacy Policy
 
-Last updated: 2026-07-17
+Last updated: 2026-09-27
 
-GolfSG is an offline-first golf training application. This document describes the behavior of the current alpha version.
+GolfSG is an offline-first golf training application. This policy describes the behavior of the current alpha version.
 
 ## Data stored by the app
 
@@ -12,32 +12,49 @@ GolfSG may store:
 - Putting-game and benchmark results.
 - Dates, titles, scores, strokes-gained values, and summary statistics.
 - App settings such as distance preferences and selected tracking options.
-- Temporary active-round or active-session state when those workflows use it.
+- Temporary active-round or active-session state.
 
-This data is stored in the application's local data directory using JSON files. The exact directory is selected by the platform and is not intended to be a shared public folder.
+This data is stored as JSON and preferences in the application's platform-managed local data directory. It is not uploaded to a GolfSG service.
 
-## Data not currently collected
+## How data is used
+
+GolfSG uses locally stored data to calculate scores and strokes-gained values, display round history, progress and benchmark results, resume an unfinished round, and remember your settings. These functions run on your device.
+
+## Security
+
+GolfSG stores its data in the application's platform-managed private data directory and uses operating-system preferences for settings. Access protection relies on the operating system's app isolation and device security. GolfSG does not add its own encryption to its JSON files or exported files. When you export data, protection of the resulting copy depends on the destination you choose.
+
+## Data not collected by GolfSG
 
 The current alpha does not include:
 
 - User accounts or sign-in.
-- Cloud synchronization.
+- GolfSG cloud synchronization.
 - Advertising.
-- A hosted analytics service.
+- Hosted analytics or crash-reporting services.
 - Sale or sharing of personal data.
 
-The app's core scoring and history features are designed to work without network access.
+The app's scoring and history features work without network access.
 
-## Export and deletion
+## Platform backups
 
-Where the app exposes import/export, exported files are created by the user and are under the user's control. Exported files may contain complete round history and should be handled like any other personal data.
+GolfSG disables Android cloud backup for its application data. Operating systems, device manufacturers, enterprise administrators, or user-controlled device-transfer tools may still back up or transfer application data outside GolfSG's control. Those platform services are governed by the user's platform account and settings, not by GolfSG.
 
-To remove locally stored GolfSG data, use the platform's app-data reset/uninstall controls. This permanently removes local history unless the user has exported or backed it up elsewhere.
+## Retention, export and deletion
+
+An export is created only when the user requests it and may contain the complete round history. The destination and any later sharing are controlled by the user.
+
+Saved rounds have no automatic expiry and remain in the active history until you delete or replace them. Settings remain until changed or the app's data is cleared.
+
+Deleting an individual round removes it from the active history. The app keeps a previous version of the history as a local recovery backup, which may still contain deleted rounds until that backup is replaced. Preserved recovery files and cached exports may also contain older data and have no app-managed expiry. These local recovery copies are separate from Android cloud backup.
+
+To remove all locally stored GolfSG data, including local recovery files and cached exports, use the platform's app-data reset or uninstall controls. Exported copies outside the app and platform-managed backups must be deleted separately. GolfSG has no user accounts or server-side round storage.
 
 ## Future changes
 
-Cloud synchronization, accounts, telemetry, or third-party integrations would change this policy and should not be introduced without updating this document and providing an appropriate user-facing notice.
+Cloud synchronization, accounts, telemetry, advertising, or third-party integrations must not be introduced without updating this policy, the in-app notice, and the relevant store declarations.
 
 ## Contact
 
-For privacy questions, open an issue in the repository or contact the project maintainer through the repository's published contact channel.
+Privacy questions and reproducible issues can be submitted through the public repository:
+[GolfSG GitHub issues](https://github.com/ToyTroels/GolfPuttingSG/issues). Please do not include sensitive personal information in public issues.
