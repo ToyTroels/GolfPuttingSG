@@ -59,10 +59,12 @@ public sealed class StorageDiagnosticsPage : ContentPage
                         storageStatus),
                     ActionButton(
                         "Eksporter rounds.json",
-                        ExportAsync),
+                        ExportAsync,
+                        UiAutomationIds.StorageExport),
                     ActionButton(
                         "Importer rounds.json",
-                        ImportAsync)
+                        ImportAsync,
+                        UiAutomationIds.StorageImport)
                 }
             }
         };
@@ -170,9 +172,9 @@ public sealed class StorageDiagnosticsPage : ContentPage
         });
     }
 
-    private static View ActionButton(string text, Func<Task> action)
+    private static View ActionButton(string text, Func<Task> action, string automationId)
     {
-        var button = AppViews.SecondaryButton(text);
+        var button = AppViews.SecondaryButton(text).Accessible(automationId, text);
         button.Clicked += async (_, _) => await action();
         return button;
     }

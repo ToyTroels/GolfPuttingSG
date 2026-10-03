@@ -137,8 +137,8 @@ public sealed class StrokesGainedAroundGreenService : IStrokesGainedAroundGreenS
     }
 
     /// <summary>
-    /// Uses an approximate PGA Tour average around-the-green benchmark. Official PGA Tour ShotLink
-    /// expected-strokes tables are not public, so these values are suitable as app-level estimates.
+    /// Uses project-maintained approximate around-the-green benchmark values. They are not official or
+    /// endorsed tour statistics.
     /// </summary>
     public double GetAroundGreenExpectedStrokes(double distance, DistanceUnit unit, ShotLie lie)
     {

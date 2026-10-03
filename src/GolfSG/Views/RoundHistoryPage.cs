@@ -22,6 +22,7 @@ public sealed class RoundHistoryPage : ContentPage
         BindingContext = viewModel;
         Title = "Historik";
         BackgroundColor = PageBackground;
+        this.Accessible(UiAutomationIds.HistoryPage, "Historik over gemte runder og spil");
         BuildLayout();
     }
 
@@ -59,19 +60,23 @@ public sealed class RoundHistoryPage : ContentPage
         warning.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.ShowRecoveredFromBackupWarning));
         ((Label)warning.Content).SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.RecoveredFromBackupWarningText));
 
-        var type = HistoryPicker("Type");
+        var type = HistoryPicker("Type")
+            .Accessible(UiAutomationIds.HistoryType, "Filtrer historik efter type");
         type.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistoryTypeOptions));
         type.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistoryType), BindingMode.TwoWay);
 
-        var category = HistoryPicker("SG-kategori");
+        var category = HistoryPicker("SG-kategori")
+            .Accessible(UiAutomationIds.HistoryCategory, "Filtrer historik efter strokes gained-kategori");
         category.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistoryCategoryOptions));
         category.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistoryCategory), BindingMode.TwoWay);
 
-        var period = HistoryPicker("Periode");
+        var period = HistoryPicker("Periode")
+            .Accessible(UiAutomationIds.HistoryPeriod, "Filtrer historik efter periode");
         period.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistoryPeriodOptions));
         period.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistoryPeriod), BindingMode.TwoWay);
 
-        var sort = HistoryPicker("Sortering");
+        var sort = HistoryPicker("Sortering")
+            .Accessible(UiAutomationIds.HistorySort, "Sorter historikken");
         sort.SetBinding(Picker.ItemsSourceProperty, nameof(RoundHistoryViewModel.HistorySortOptions));
         sort.SetBinding(Picker.SelectedItemProperty, nameof(RoundHistoryViewModel.SelectedHistorySort), BindingMode.TwoWay);
 
@@ -96,7 +101,7 @@ public sealed class RoundHistoryPage : ContentPage
         var rounds = new VerticalStackLayout
         {
             Spacing = 0
-        };
+        }.Accessible(UiAutomationIds.HistoryList, "Gemte runder og spil");
         BindableLayout.SetItemTemplate(rounds, RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync));
         rounds.SetBinding(BindableLayout.ItemsSourceProperty, nameof(RoundHistoryViewModel.Rounds));
 

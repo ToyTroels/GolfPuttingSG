@@ -9,6 +9,34 @@ namespace GolfSG.Tests;
 public sealed class RoundHistoryViewModelTests
 {
     [TestMethod]
+    public async Task DefaultHistoryViewShowsEverySavedEntry()
+    {
+        var today = DateTime.Today;
+        var repository = new InMemoryRoundRepository(
+            CreateRound("round", today.AddDays(-2)),
+            CreateRound(
+                "game",
+                today.AddDays(-1),
+                trackingOptions: new RoundTrackingOptions(true, false, false, true, PuttingGame.LadderMode),
+                gameInfo: PuttingGame.CreateRoundGameInfo(PuttingGame.GetDefinition(PuttingGame.LadderMode))),
+            CreateRound(
+                "benchmark",
+                today,
+                trackingOptions: new RoundTrackingOptions(true, false, false, true, PuttingGame.NormalBenchmark),
+                gameInfo: PuttingGame.CreateRoundGameInfo(PuttingGame.GetBenchmarkDefinition(PuttingGame.NormalBenchmark))));
+        var viewModel = new RoundHistoryViewModel(repository);
+
+        await viewModel.LoadAsync();
+
+        CollectionAssert.AreEqual(
+            new[] { "benchmark", "game", "round" },
+            viewModel.Rounds.Select(round => round.Id).ToArray());
+        Assert.AreEqual(viewModel.TotalHistoryCount, viewModel.FilteredHistoryCount);
+        Assert.AreEqual("Alle", viewModel.SelectedHistoryType);
+        Assert.AreEqual("Alle datoer", viewModel.SelectedHistoryPeriod);
+    }
+
+    [TestMethod]
     public async Task HistoryTypeFilterSeparatesRoundsGamesAndBenchmarks()
     {
         var today = DateTime.Today;

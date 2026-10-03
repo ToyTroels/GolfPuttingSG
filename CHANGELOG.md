@@ -6,8 +6,33 @@ The project follows semantic versioning where practical. Alpha releases may cont
 
 ## [Unreleased]
 
-- Continue hardening the alpha release and resolving known workflow issues.
-- Improve public documentation, product discovery notes, and release procedures.
+### Changed
+
+- Continue development beyond the 0.2.0 alpha release candidate.
+
+## [0.2.0-alpha] - Unreleased
+
+### Fixed
+
+- Starting a round immediately with approach and around-the-green tracking enabled.
+- Default History visibility for saved rounds, games, and benchmarks.
+
+### Added
+
+- Stable accessibility and UI-automation identifiers for critical journeys.
+- An in-app privacy statement and aligned platform privacy configuration.
+- Reference-data scope, limitations, and a documented provenance/rights release gate.
+- Locked dependency graphs, pinned SDK, cross-platform CI, Android AAB/APK validation, Windows MSIX packaging, and release/smoke checklists.
+
+### Changed
+
+- Replaced official-tour wording with general reference-baseline wording throughout the product.
+- Disabled Android application backup and declared Apple preferences/encryption use.
+
+### Release gates
+
+- Production signing credentials and store identities are not stored in the repository.
+- Public distribution requires reference-data provenance approval and physical-device/store acceptance.
 
 ## [0.1.0-alpha] - 2026-07-17
 

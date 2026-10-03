@@ -145,8 +145,8 @@ public sealed class StrokesGainedApproachService : IStrokesGainedApproachService
     }
 
     /// <summary>
-    /// Uses approximate PGA Tour average approach benchmark values, not the official private
-    /// PGA Tour ShotLink table.
+    /// Uses project-maintained approximate approach benchmark values. They are not official or endorsed
+    /// tour statistics.
     /// </summary>
     public double GetApproachExpectedStrokes(double distance, DistanceUnit unit, ShotLie lie)
     {

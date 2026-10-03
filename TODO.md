@@ -2,7 +2,7 @@
 
 ## User-perspective improvement backlog
 
-- [ ] Fix new-round setup so selecting approach and around-the-green tracking is immediate and does not crash the app.
+- [x] Fix new-round setup so selecting approach and around-the-green tracking is immediate and does not crash the app.
 - [ ] Modernize the benchmark game UI so 1-, 2-, and 3-putt actions can be tapped on screen like the regular putting game.
 - [ ] Let benchmark players review entered putts in an overview and edit previous benchmark putt results before saving.
 - [x] Make guided hole entry the default for new installs so on-course input starts in the faster flow.
@@ -17,7 +17,7 @@
 - [ ] Extend active-session autosave and resume support to putting games.
 - [x] Improve history with filters for round/game/benchmark type, date period, and best/worst SG sorting.
 - [x] Add SG-category-specific history filtering/sorting and round comparison views.
-- [ ] Fix the history tab so previously saved rounds are visible and not hidden by filters, loading errors, or round/game type grouping.
+- [x] Fix the history tab so previously saved rounds are visible and not hidden by filters, loading errors, or round/game type grouping.
 - [ ] Fix history row date styling so the date text is visible against the row background.
 - [x] Let players open old rounds from the start screen to view detailed results and edit the saved round.
 - [ ] Add personal baseline options such as PGA Tour, scratch, handicap ranges, and the player's own recent average.

@@ -22,6 +22,7 @@ public sealed class SettingsPage : ContentPage
         this.distanceUnitSettings = distanceUnitSettings;
         Title = "Indstillinger";
         BackgroundColor = PageBackground;
+        this.Accessible(UiAutomationIds.SettingsPage, "Indstillinger");
         BuildLayout();
     }
 
@@ -90,6 +91,11 @@ public sealed class SettingsPage : ContentPage
                         TextColor = TextColor,
                         Margin = new Thickness(0, 8, 0, 0)
                     },
+                    ReferenceItem(
+                        "Privatliv",
+                        "L\u00e6s hvordan GolfSG gemmer og beskytter dine data",
+                        () => new PrivacyPage(),
+                        UiAutomationIds.PrivacyEntry),
                     ReferenceItem(
                         "Lagring",
                         "Vis aktiv filsti og antal gemte runder",
@@ -187,6 +193,7 @@ public sealed class SettingsPage : ContentPage
             ItemsSource = new[] { "Meter", "Fod" },
             SelectedIndex = distanceUnitSettings.PuttingDistanceUnit == PuttingDistanceUnitPreference.Feet ? 1 : 0
         };
+        picker.Accessible(UiAutomationIds.DistanceUnit, "Vælg enhed for putting-afstande");
         picker.SelectedIndexChanged += (_, _) =>
         {
             distanceUnitSettings.PuttingDistanceUnit = picker.SelectedIndex == 1
@@ -337,7 +344,11 @@ public sealed class SettingsPage : ContentPage
         return card;
     }
 
-    private View ReferenceItem(string title, string subtitle, Func<Page> createPage)
+    private View ReferenceItem(
+        string title,
+        string subtitle,
+        Func<Page> createPage,
+        string? automationId = null)
     {
         var card = new Border
         {
@@ -386,6 +397,11 @@ public sealed class SettingsPage : ContentPage
                 }
             }
         };
+
+        if (!string.IsNullOrWhiteSpace(automationId))
+        {
+            card.Accessible(automationId, title, subtitle);
+        }
 
         var tap = new TapGestureRecognizer();
         tap.Tapped += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PushAsync(createPage()));

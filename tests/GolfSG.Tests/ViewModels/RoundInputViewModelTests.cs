@@ -33,6 +33,31 @@ public sealed class RoundInputViewModelTests
     }
 
     [TestMethod]
+    public async Task RoundCanStartImmediatelyWithApproachAndAroundGreenTracking()
+    {
+        var activeRepository = new TestActiveRoundSessionRepository();
+        var viewModel = new RoundInputViewModel(
+            new SuccessfulRoundRepository(),
+            activeRoundSessionRepository: activeRepository);
+
+        viewModel.TrackApproach = true;
+        viewModel.TrackAroundGreen = true;
+        viewModel.TrackPutting = false;
+
+        var started = await viewModel.StartRoundAsync();
+
+        Assert.IsTrue(started);
+        Assert.IsNotNull(activeRepository.Session);
+        Assert.IsFalse(activeRepository.Session.Draft.TrackingOptions.TrackPutting);
+        Assert.IsTrue(activeRepository.Session.Draft.TrackingOptions.TrackApproach);
+        Assert.IsTrue(activeRepository.Session.Draft.TrackingOptions.TrackAroundGreen);
+        Assert.IsTrue(viewModel.Holes.All(hole =>
+            !hole.TrackPutting &&
+            hole.TrackApproach &&
+            hole.TrackAroundGreen));
+    }
+
+    [TestMethod]
     public async Task SaveFailureSetsErrorAndReturnsEmptyRoundId()
     {
         var viewModel = new RoundInputViewModel(new FailingRoundRepository());

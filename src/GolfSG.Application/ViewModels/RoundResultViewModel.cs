@@ -110,11 +110,11 @@ public sealed class RoundResultViewModel : ViewModelBase
         {
             if (summary.TotalStrokesGainedPutting > 0)
             {
-                yield return "Du puttede bedre end PGA Tour-baseline på denne runde.";
+                yield return "Du puttede bedre end referencebaseline på denne runde.";
             }
             else if (summary.TotalStrokesGainedPutting >= -2)
             {
-                yield return "Du var tæt på PGA Tour-baseline på greens.";
+                yield return "Du var tæt på referencebaseline på greens.";
             }
             else
             {
@@ -144,11 +144,11 @@ public sealed class RoundResultViewModel : ViewModelBase
         {
             if (summary.TotalStrokesGainedApproach > 0)
             {
-                yield return "Dine indspil var bedre end PGA Tour-baseline.";
+                yield return "Dine indspil var bedre end referencebaseline.";
             }
             else if (summary.TotalStrokesGainedApproach >= -2)
             {
-                yield return "Dine indspil var tæt på PGA Tour-baseline.";
+                yield return "Dine indspil var tæt på referencebaseline.";
             }
             else
             {
@@ -160,11 +160,11 @@ public sealed class RoundResultViewModel : ViewModelBase
         {
             if (summary.TotalStrokesGainedAroundGreen > 0)
             {
-                yield return "Dine slag omkring green var bedre end PGA Tour-baseline.";
+                yield return "Dine slag omkring green var bedre end referencebaseline.";
             }
             else if (summary.TotalStrokesGainedAroundGreen >= -2)
             {
-                yield return "Dine slag omkring green var tæt på PGA Tour-baseline.";
+                yield return "Dine slag omkring green var tæt på referencebaseline.";
             }
             else
             {

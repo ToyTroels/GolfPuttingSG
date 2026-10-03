@@ -1,11 +1,15 @@
 <Project>
   <PropertyGroup>
     <BuildInParallel>false</BuildInParallel>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <RestorePackagesWithLockFile Condition="'$(MSBuildProjectName)' != 'GolfSG'">true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true' and '$(MSBuildProjectName)' != 'GolfSG'">true</RestoreLockedMode>
 
     <!-- Release versioning. Use scripts\Set-AppVersion.ps1 to update these. -->
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>0.2.0</VersionPrefix>
     <VersionSuffix>alpha</VersionSuffix>
-    <ApplicationBuildNumber>1</ApplicationBuildNumber>
+    <ApplicationBuildNumber>2</ApplicationBuildNumber>
     <Version>$(VersionPrefix)</Version>
     <Version Condition="'$(VersionSuffix)' != ''">$(VersionPrefix)-$(VersionSuffix)</Version>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>

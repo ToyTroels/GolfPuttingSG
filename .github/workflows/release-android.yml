@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing version tag to build, for example v0.1.0-alpha'
+        description: 'Existing version tag to build, for example v0.2.0-alpha'
         required: true
         type: string
 
@@ -27,71 +27,102 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: 10.0.302
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
-      - name: Install MAUI Android workload
-        run: dotnet workload install maui-android
+      - name: Verify tag matches project version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          version_prefix=$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' Directory.Build.props)
+          version_suffix=$(sed -n 's:.*<VersionSuffix>\(.*\)</VersionSuffix>.*:\1:p' Directory.Build.props)
+          expected_tag="v${version_prefix}"
+          if [ -n "$version_suffix" ]; then
+            expected_tag="${expected_tag}-${version_suffix}"
+          fi
+          test "$RELEASE_TAG" = "$expected_tag" || {
+            echo "Tag $RELEASE_TAG does not match project version $expected_tag."
+            exit 1
+          }
 
-      - name: Decode Android signing keystore
+      - name: Restore and test application layers
+        run: |
+          dotnet restore tests/GolfSG.Tests/GolfSG.Tests.csproj --locked-mode
+          dotnet test tests/GolfSG.Tests/GolfSG.Tests.csproj -c Release --no-restore
+
+      - name: Install pinned-workload manifests
+        run: dotnet workload install maui-android --skip-manifest-update
+
+      - name: Restore Android app
+        run: dotnet restore src/GolfSG/GolfSG.csproj
+
+      - name: Check dependencies for known vulnerabilities
+        shell: bash
+        run: |
+          dotnet list src/GolfSG/GolfSG.csproj package --framework net10.0-android --vulnerable --include-transitive --no-restore --format json --output-version 1 > vulnerability-report.json
+          jq -e '[.projects[].frameworks[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0' vulnerability-report.json
+
+      - name: Decode Android signing material
         shell: bash
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          test -n "$ANDROID_KEYSTORE_BASE64" || {
-            echo "ANDROID_KEYSTORE_BASE64 is not configured."
-            exit 1
-          }
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/golfsg-release.keystore"
-          chmod 600 "$RUNNER_TEMP/golfsg-release.keystore"
-
-      - name: Build and sign APK
-        shell: bash
-        env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          test -n "$ANDROID_KEYSTORE_PASSWORD" || {
-            echo "ANDROID_KEYSTORE_PASSWORD is not configured."
-            exit 1
-          }
-          test -n "$ANDROID_KEY_PASSWORD" || {
-            echo "ANDROID_KEY_PASSWORD is not configured."
-            exit 1
-          }
+          test -n "$ANDROID_KEYSTORE_BASE64" || { echo "ANDROID_KEYSTORE_BASE64 is not configured."; exit 1; }
+          test -n "$ANDROID_KEYSTORE_PASSWORD" || { echo "ANDROID_KEYSTORE_PASSWORD is not configured."; exit 1; }
+          test -n "$ANDROID_KEY_PASSWORD" || { echo "ANDROID_KEY_PASSWORD is not configured."; exit 1; }
 
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/golfsg-release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_PASSWORD" > "$RUNNER_TEMP/android-store-password.txt"
+          printf '%s' "$ANDROID_KEY_PASSWORD" > "$RUNNER_TEMP/android-key-password.txt"
+          chmod 600 "$RUNNER_TEMP/golfsg-release.keystore" "$RUNNER_TEMP/android-store-password.txt" "$RUNNER_TEMP/android-key-password.txt"
+
+      - name: Build signed AAB and APK
+        shell: bash
+        run: |
           dotnet publish src/GolfSG/GolfSG.csproj \
             -f net10.0-android \
             -c Release \
-            -p:AndroidPackageFormat=apk \
-            -p:PublishTrimmed=false \
-            -p:RunAOTCompilation=false \
-            -p:AndroidLinkMode=None \
+            --no-restore \
+            -p:AndroidPackageFormats=aab%3Bapk \
             -p:AndroidKeyStore=true \
             -p:AndroidSigningKeyStore="$RUNNER_TEMP/golfsg-release.keystore" \
             -p:AndroidSigningKeyAlias=golfsg \
-            -p:AndroidSigningKeyPass=env:ANDROID_KEY_PASSWORD \
-            -p:AndroidSigningStorePass=env:ANDROID_KEYSTORE_PASSWORD
+            -p:AndroidSigningKeyPass="file:$RUNNER_TEMP/android-key-password.txt" \
+            -p:AndroidSigningStorePass="file:$RUNNER_TEMP/android-store-password.txt"
 
-      - name: Prepare release assets
+      - name: Verify signing identity and prepare release assets
         shell: bash
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           mkdir -p artifacts
-          apk_path=$(find src/GolfSG/bin/Release/net10.0-android/publish -type f -iname '*-Signed.apk' -print -quit)
-          if [ -z "$apk_path" ]; then
-            echo "No signed APK was produced."
+          apk_path=$(find src/GolfSG/bin/Release/net10.0-android -type f -iname '*-Signed.apk' -print -quit)
+          aab_path=$(find src/GolfSG/bin/Release/net10.0-android -type f -iname '*-Signed.aab' -print -quit)
+          test -n "$apk_path" || { echo "No signed APK was produced."; exit 1; }
+          test -n "$aab_path" || { echo "No signed AAB was produced."; exit 1; }
+
+          keytool -printcert -jarfile "$apk_path" > artifacts/signing-certificate.txt
+          if grep -q 'CN=Android Debug' artifacts/signing-certificate.txt; then
+            echo "Release package is signed with the Android debug certificate."
+            exit 1
+          fi
+          keytool -printcert -jarfile "$aab_path" > artifacts/bundle-signing-certificate.txt
+          if grep -q 'CN=Android Debug' artifacts/bundle-signing-certificate.txt; then
+            echo "Release bundle is signed with the Android debug certificate."
             exit 1
           fi
 
           cp "$apk_path" "artifacts/GolfSG-${RELEASE_TAG}.apk"
-          sha256sum "artifacts/GolfSG-${RELEASE_TAG}.apk" > "artifacts/GolfSG-${RELEASE_TAG}.apk.sha256"
+          cp "$aab_path" "artifacts/GolfSG-${RELEASE_TAG}.aab"
+          sha256sum "artifacts/GolfSG-${RELEASE_TAG}.apk" "artifacts/GolfSG-${RELEASE_TAG}.aab" > artifacts/SHA256SUMS.txt
 
       - name: Create or update GitHub release
         shell: bash
@@ -100,10 +131,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" \
-              "artifacts/GolfSG-${RELEASE_TAG}.apk" \
-              "artifacts/GolfSG-${RELEASE_TAG}.apk.sha256" \
-              --clobber
+            gh release upload "$RELEASE_TAG" artifacts/* --clobber
             exit 0
           fi
 
@@ -118,9 +146,12 @@ jobs:
             prerelease_args+=(--prerelease)
           fi
 
-          gh release create "$RELEASE_TAG" \
-            "artifacts/GolfSG-${RELEASE_TAG}.apk" \
-            "artifacts/GolfSG-${RELEASE_TAG}.apk.sha256" \
+          gh release create "$RELEASE_TAG" artifacts/* \
             --title "GolfSG ${RELEASE_TAG}" \
             "${notes_args[@]}" \
             "${prerelease_args[@]}"
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/golfsg-release.keystore" "$RUNNER_TEMP/android-store-password.txt" "$RUNNER_TEMP/android-key-password.txt"

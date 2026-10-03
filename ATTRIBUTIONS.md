@@ -12,15 +12,15 @@ The test suite uses Microsoft's MSTest framework and related test tooling throug
 
 ## Open Sans
 
-The application includes Open Sans font files under `src/GolfSG/Resources/Fonts`. Open Sans is distributed under the SIL Open Font License. See the font project's license and notice files for the applicable terms.
+The application includes Open Sans font files under `src/GolfSG/Resources/Fonts`. Open Sans is distributed under the SIL Open Font License. The required copyright and license text is included in [`OPEN_SANS_LICENSE.txt`](OPEN_SANS_LICENSE.txt).
 
 ## Application icons and template assets
 
-The app icon and splash assets are maintained in the repository under `src/GolfSG/Resources`. The repository also contains assets inherited from the .NET MAUI template. Unused template assets should be removed before a stable public release.
+The app icon and splash assets are maintained in the repository under `src/GolfSG/Resources`. Unused .NET MAUI template artwork is not included in the distributable application.
 
 ## Strokes-gained reference data
 
-The current putting reference table is maintained in [`StrokesGainedCalculator.cs`](src/GolfSG.Core/StrokesGainedCalculator.cs). Before a stable release, the project should record the exact source, publication, permissions, and any transformations applied to that table. Until that provenance is complete, the table should be treated as an implementation reference for the alpha product rather than an independently certified statistical dataset.
+GolfSG uses project-maintained approximate reference tables and does not identify them as official PGA Tour or ShotLink data. The table locations, calculation scope, limitations, and required public-release provenance check are documented in [`docs/REFERENCE_DATA.md`](docs/REFERENCE_DATA.md).
 
 ## Dependency licenses
 

@@ -20,6 +20,7 @@ public sealed partial class RoundInputPage : ContentPage
         BindingContext = viewModel;
         Title = "Runde";
         BackgroundColor = PageBackground;
+        this.Accessible(UiAutomationIds.RoundPage, "Rundeopsætning og rundeoversigt");
         BuildLayout();
         ToolbarItems.Add(new ToolbarItem
         {
@@ -83,7 +84,7 @@ public sealed partial class RoundInputPage : ContentPage
         var holes = new VerticalStackLayout
         {
             Spacing = 0
-        };
+        }.Accessible(UiAutomationIds.HoleList, "Rundens huller");
         BindableLayout.SetItemTemplate(holes, HoleTemplate());
         holes.SetBinding(BindableLayout.ItemsSourceProperty, nameof(RoundInputViewModel.Holes));
 
@@ -96,6 +97,7 @@ public sealed partial class RoundInputPage : ContentPage
             HeightRequest = 52,
             FontAttributes = FontAttributes.Bold
         };
+        startButton.Accessible(UiAutomationIds.StartRound, "Start runden med de valgte kategorier");
         startButton.Clicked += async (_, _) => await StartRoundAsync();
 
         var saveButton = new Button
@@ -105,6 +107,7 @@ public sealed partial class RoundInputPage : ContentPage
             CornerRadius = 8,
             HeightRequest = 48
         };
+        saveButton.Accessible(UiAutomationIds.SaveRound, "Gem eller afslut runden");
         saveButton.SetBinding(Button.TextProperty, nameof(RoundInputViewModel.SaveButtonText));
         saveButton.SetBinding(VisualElement.IsEnabledProperty, nameof(RoundInputViewModel.CanSave));
         saveButton.Clicked += async (_, _) => await SaveRoundAsync(saveButton);
@@ -397,6 +400,7 @@ public sealed partial class RoundInputPage : ContentPage
             OnColor = PrimaryGreen,
             ThumbColor = Colors.White
         };
+        putting.Accessible(UiAutomationIds.TrackPutting, "Track putting");
         putting.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackPutting), BindingMode.TwoWay);
 
         var approach = new Switch
@@ -404,6 +408,7 @@ public sealed partial class RoundInputPage : ContentPage
             OnColor = PrimaryGreen,
             ThumbColor = Colors.White
         };
+        approach.Accessible(UiAutomationIds.TrackApproach, "Track approachslag");
         approach.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackApproach), BindingMode.TwoWay);
 
         var aroundGreen = new Switch
@@ -411,6 +416,7 @@ public sealed partial class RoundInputPage : ContentPage
             OnColor = PrimaryGreen,
             ThumbColor = Colors.White
         };
+        aroundGreen.Accessible(UiAutomationIds.TrackAroundGreen, "Track slag omkring green");
         aroundGreen.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackAroundGreen), BindingMode.TwoWay);
 
         return Card(new VerticalStackLayout

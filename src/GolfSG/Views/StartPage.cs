@@ -18,6 +18,7 @@ public sealed class StartPage : ContentPage
         BindingContext = viewModel;
         Title = "Putting SG";
         BackgroundColor = GolfTheme.Colors.PageBackground;
+        this.Accessible(UiAutomationIds.StartPage, "GolfSG startside");
         BuildLayout();
         ToolbarItems.Add(new ToolbarItem
         {
@@ -52,16 +53,19 @@ public sealed class StartPage : ContentPage
 
     private void BuildLayout()
     {
-        var newRoundButton = AppViews.PrimaryButton("Ny runde");
+        var newRoundButton = AppViews.PrimaryButton("Ny runde")
+            .Accessible(UiAutomationIds.NewRound, "Start en ny runde");
         newRoundButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         newRoundButton.Clicked += async (_, _) => await StartNewRoundAsync();
 
-        var puttingGameButton = AppViews.SecondaryButton("Putting-spil");
+        var puttingGameButton = AppViews.SecondaryButton("Putting-spil")
+            .Accessible(UiAutomationIds.PuttingGames, "Åbn putting-spil");
         puttingGameButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         puttingGameButton.Clicked += async (_, _) =>
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<PuttingGamesPage>()));
 
-        var historyButton = AppViews.SecondaryButton("Historik");
+        var historyButton = AppViews.SecondaryButton("Historik")
+            .Accessible(UiAutomationIds.History, "Åbn gemte runder og spil");
         historyButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         historyButton.Clicked += async (_, _) =>
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>()));
@@ -123,7 +127,7 @@ public sealed class StartPage : ContentPage
                     AppViews.PageTitle("Putting SG", 34),
                     new Label
                     {
-                        Text = "Registrer strokes gained putting mod PGA Tour-baseline",
+                        Text = "Registrer strokes gained putting mod en generel referencebaseline",
                         FontSize = 16,
                         TextColor = GolfTheme.Colors.MutedText
                     },
@@ -165,10 +169,12 @@ public sealed class StartPage : ContentPage
         };
         detail.SetBinding(Label.TextProperty, nameof(StartViewModel.ActiveRoundDetailText));
 
-        var resume = AppViews.PrimaryButton("Forts\u00e6t runde");
+        var resume = AppViews.PrimaryButton("Forts\u00e6t runde")
+            .Accessible(UiAutomationIds.ResumeActiveRound, "Fortsæt den igangværende runde");
         resume.Clicked += async (_, _) => await ResumeActiveRoundAsync();
 
-        var abandon = AppViews.SecondaryButton("Opgiv runde");
+        var abandon = AppViews.SecondaryButton("Opgiv runde")
+            .Accessible(UiAutomationIds.AbandonActiveRound, "Opgiv og slet den igangværende runde");
         abandon.Clicked += async (_, _) => await AbandonActiveRoundAsync();
 
         var card = AppViews.Card(new VerticalStackLayout

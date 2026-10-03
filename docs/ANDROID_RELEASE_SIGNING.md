@@ -1,57 +1,40 @@
 # Android release signing
 
-GolfSG's Android release workflow creates a signed APK and attaches it to a GitHub Release. The private signing key must be created once, backed up securely, and never committed to this repository.
+GolfSG's Android release workflow creates a signed Android App Bundle (AAB) for Play distribution and a signed APK for direct testing. It refuses packages signed by the Android debug certificate. The private key must be created once, backed up securely, and never committed.
 
-## Create the keystore
+## Create and protect the keystore
 
-Run this on a trusted development machine with a JDK installed:
+Run `keytool -genkeypair` on a trusted machine with JDK 21 or newer. Use alias `golfsg`, RSA 2048 or stronger, and an appropriate validity period. Keep the keystore and both passwords in independent secure backups. Android updates must retain the same signing identity.
 
-```powershell
-New-Item -ItemType Directory -Path "$HOME\GolfSG-Secrets" -Force
+## Configure GitHub Actions secrets
 
-keytool -genkeypair `
-  -v `
-  -keystore "$HOME\GolfSG-Secrets\golfsg-release.keystore" `
-  -alias golfsg `
-  -keyalg RSA `
-  -keysize 2048 `
-  -validity 10000
-```
-
-Back up the keystore and both passwords in a password manager or other secure backup. The alias used by the workflow is `golfsg`. Do not create a replacement keystore for a later update: Android updates must continue to use the same signing identity.
-
-## Add GitHub Actions secrets
-
-In the repository, open **Settings → Secrets and variables → Actions** and add these repository secrets:
+Add these repository Actions secrets:
 
 - `ANDROID_KEYSTORE_BASE64`
 - `ANDROID_KEYSTORE_PASSWORD`
 - `ANDROID_KEY_PASSWORD`
 
-To convert the keystore to a Base64 value without committing it:
+To copy a keystore as Base64 from PowerShell:
 
 ```powershell
 [Convert]::ToBase64String(
-  [IO.File]::ReadAllBytes("$HOME\GolfSG-Secrets\golfsg-release.keystore")
+  [IO.File]::ReadAllBytes('C:\secure\golfsg-release.keystore')
 ) | Set-Clipboard
 ```
 
-Paste the clipboard contents into `ANDROID_KEYSTORE_BASE64`. Store the keystore password and key password in the other two secrets. If the passwords are the same, the same value may be used for both secrets.
+The workflow writes secrets only under the temporary runner directory and removes them in an `always()` step. Passwords are supplied to the Android toolchain through temporary password files so they are not exposed as command-line values.
 
-## Test locally first
+## Test a production-signed package locally
 
 ```powershell
-$env:GOLFSG_SIGNING_PASSWORD = Read-Host "Keystore password"
+$env:GOLFSG_SIGNING_PASSWORD = Read-Host 'Keystore password'
 
 dotnet publish src\GolfSG\GolfSG.csproj `
   -f net10.0-android `
   -c Release `
-  -p:AndroidPackageFormat=apk `
-  -p:PublishTrimmed=false `
-  -p:RunAOTCompilation=false `
-  -p:AndroidLinkMode=None `
+  -p:AndroidPackageFormats=aab%3Bapk `
   -p:AndroidKeyStore=true `
-  -p:AndroidSigningKeyStore="$HOME\GolfSG-Secrets\golfsg-release.keystore" `
+  -p:AndroidSigningKeyStore='C:\secure\golfsg-release.keystore' `
   -p:AndroidSigningKeyAlias=golfsg `
   -p:AndroidSigningKeyPass=env:GOLFSG_SIGNING_PASSWORD `
   -p:AndroidSigningStorePass=env:GOLFSG_SIGNING_PASSWORD
@@ -59,17 +42,17 @@ dotnet publish src\GolfSG\GolfSG.csproj `
 Remove-Item Env:GOLFSG_SIGNING_PASSWORD
 ```
 
-Install the generated `*-Signed.apk` on a real device before publishing it.
+Inspect both signing identities with `keytool -printcert -jarfile <package>` and compare the certificate fingerprint with the backed-up production identity. Never distribute a package that reports `CN=Android Debug`. Install the APK on a physical device and validate the AAB through a Play internal-test track.
 
 ## Publish a release
 
-The workflow in `.github/workflows/release-android.yml` runs when a `v*` tag is pushed. It also supports **Actions → Android release → Run workflow** with an existing tag, which can be used to add an APK to an already-created source release such as `v0.1.0-alpha`.
+`.github/workflows/release-android.yml` runs for `v*` tags and can also rebuild an existing version tag manually. It verifies that the tag matches the centrally defined version, runs the Release tests and dependency audit, builds signed AAB and APK files, rejects debug signing, creates SHA-256 checksums, records signing-certificate reports, and creates or updates the GitHub prerelease.
 
-For a new alpha release:
+For the current alpha after every item in `docs/RELEASE_CHECKLIST.md` is satisfied:
 
 ```powershell
-git tag -a v0.2.0-alpha -m "GolfSG v0.2.0-alpha"
+git tag -a v0.2.0-alpha -m 'GolfSG v0.2.0-alpha'
 git push origin v0.2.0-alpha
 ```
 
-The workflow builds the APK, creates or updates the GitHub pre-release, attaches the APK, and attaches a SHA-256 checksum file.
+Do not tag a commit that differs from the one exercised by the final packaged-app smoke tests.

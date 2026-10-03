@@ -1,8 +1,8 @@
-﻿# Testing strategy
+# Testing strategy
 
 ## Current position
 
-GolfSG now has 188 fast tests covering Core, Application, Infrastructure, and view-model behavior. The suite runs in a few hundred milliseconds and should remain the first pull-request gate.
+GolfSG now has 203 fast tests covering Core, Application, Infrastructure, and view-model behavior. The suite runs in a few hundred milliseconds and should remain the first pull-request gate.
 
 The current strengths are:
 
@@ -14,7 +14,7 @@ The current strengths are:
 - result-screen presentation and distance-unit formatting;
 - concurrency guards and project dependency boundaries.
 
-The main remaining gap is the real MAUI interface. The app currently has no AutomationId or SemanticProperties test contracts, so an Appium suite would have to locate controls by visible text. That is brittle across copy changes, localization, and platforms.
+The main remaining gap is execution through the real MAUI interface. Critical controls now expose stable `AutomationId` values and semantic descriptions through `src/GolfSG/Views/UiAutomationIds.cs`, but an Appium runner and approved visual baselines are not yet implemented. Until they are, packaged-app smoke, accessibility, and physical-device checks remain mandatory release gates.
 
 ## Recommended test layers
 
@@ -44,9 +44,9 @@ Use the official multi-project Appium structure:
 
 Windows can run Windows and Android tests. iOS and Mac Catalyst require a macOS host.
 
-Before creating the Appium suite:
+The automation contracts are in place. Before running the Appium suite in CI:
 
-1. Add stable, unique AutomationId values to every control used by a test.
+1. Extend the existing stable, unique AutomationId constants whenever a test uses a new control.
 2. Add SemanticProperties.Description and Hint where controls are not self-describing.
 3. Treat these identifiers as a public testing contract; do not derive them from translated display text.
 4. Add a test launch mode with an isolated storage directory and known seed data.
@@ -169,13 +169,13 @@ Coverage is useful for finding untested areas, not as proof of correctness. Add 
 Raise thresholds only after establishing a baseline. Microsoft documents both built-in code coverage and Coverlet integration:
 https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-code-coverage
 
-Keep MSTest for the existing fast suite. There is no value in migrating 188 working tests merely because current MAUI documentation uses xUnit in its unit-test example. Use NUnit only for the Appium projects because that matches the official sample and keeps UI-runner setup conventional.
+Keep MSTest for the existing fast suite. There is no value in migrating 203 working tests merely because current MAUI documentation uses xUnit in its unit-test example. Use NUnit only for the Appium projects because that matches the official sample and keeps UI-runner setup conventional.
 
 ## Suggested rollout
 
 ### Phase 1: UI-test readiness
 
-- add AutomationId constants and semantic descriptions;
+- [complete] add AutomationId constants and semantic descriptions for critical flows;
 - add isolated test storage, deterministic clock/random, and reset/seed hooks;
 - establish code coverage reporting.
 

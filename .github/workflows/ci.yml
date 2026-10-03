@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Restore tests
+        run: dotnet restore tests/GolfSG.Tests/GolfSG.Tests.csproj --locked-mode
+
+      - name: Run Release tests
+        run: dotnet test tests/GolfSG.Tests/GolfSG.Tests.csproj -c Release --no-restore
+
+      - name: Check test dependencies for known vulnerabilities
+        shell: bash
+        run: |
+          dotnet list tests/GolfSG.Tests/GolfSG.Tests.csproj package --vulnerable --include-transitive --no-restore --format json --output-version 1 > vulnerability-report.json
+          jq -e '[.projects[].frameworks[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0' vulnerability-report.json
+
+  android:
+    name: Android Release build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Install pinned-workload manifests
+        run: dotnet workload install maui-android --skip-manifest-update
+
+      - name: Restore Android app
+        run: dotnet restore src/GolfSG/GolfSG.csproj
+
+      - name: Check Android dependencies for known vulnerabilities
+        shell: bash
+        run: |
+          dotnet list src/GolfSG/GolfSG.csproj package --framework net10.0-android --vulnerable --include-transitive --no-restore --format json --output-version 1 > vulnerability-report.json
+          jq -e '[.projects[].frameworks[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0' vulnerability-report.json
+
+      - name: Publish Android Release packages
+        run: >-
+          dotnet publish src/GolfSG/GolfSG.csproj
+          -f net10.0-android
+          -c Release
+          --no-restore
+          -p:AndroidPackageFormats=aab%3Bapk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release-packaging-check
+          path: |
+            src/GolfSG/bin/Release/net10.0-android/**/*.aab
+            src/GolfSG/bin/Release/net10.0-android/**/*.apk
+          if-no-files-found: error
+
+  windows:
+    name: Windows MSIX build
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Install pinned-workload manifests
+        run: dotnet workload install maui --skip-manifest-update
+
+      - name: Restore Windows app
+        run: dotnet restore src/GolfSG/GolfSG.csproj
+
+      - name: Publish unsigned MSIX validation package
+        run: >-
+          dotnet publish src/GolfSG/GolfSG.csproj
+          -f net10.0-windows10.0.19041.0
+          -c Release
+          --no-restore
+          -p:RuntimeIdentifierOverride=win-x64
+          -p:AppxPackageSigningEnabled=false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-msix-validation
+          path: src/GolfSG/bin/Release/net10.0-windows10.0.19041.0/win-x64/AppPackages/**/*
+          if-no-files-found: error
+
+  apple:
+    name: Apple Release compile check
+    runs-on: macos-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.302
+
+      - name: Require current App Store SDK generation
+        shell: bash
+        run: |
+          xcodebuild -version
+          major=$(xcodebuild -version | awk '/Xcode/{split($2, version, "."); print version[1]}')
+          test "$major" -ge 26 || {
+            echo "Xcode 26 or newer is required for App Store submissions."
+            exit 1
+          }
+
+      - name: Install pinned-workload manifests
+        run: dotnet workload install maui --skip-manifest-update
+
+      - name: Restore Apple targets
+        run: dotnet restore src/GolfSG/GolfSG.csproj
+
+      - name: Compile iOS simulator and Mac Catalyst
+        shell: bash
+        run: |
+          if [ "$(uname -m)" = "arm64" ]; then
+            ios_rid=iossimulator-arm64
+            mac_rid=maccatalyst-arm64
+          else
+            ios_rid=iossimulator-x64
+            mac_rid=maccatalyst-x64
+          fi
+          dotnet build src/GolfSG/GolfSG.csproj -f net10.0-ios -c Release --no-restore -p:RuntimeIdentifier="$ios_rid"
+          dotnet build src/GolfSG/GolfSG.csproj -f net10.0-maccatalyst -c Release --no-restore -p:RuntimeIdentifier="$mac_rid"

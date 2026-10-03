@@ -1,10 +1,10 @@
 # GolfSG
 
-GolfSG is an offline-first .NET MAUI app for tracking golf putting performance with strokes gained. It helps golfers record rounds and practice sessions, compare results with a PGA Tour reference baseline, and identify where practice will have the greatest impact.
+GolfSG is an offline-first .NET MAUI app for tracking golf putting performance with strokes gained. It helps golfers record rounds and practice sessions, compare results with a general strokes-gained reference baseline, and identify where practice will have the greatest impact.
 
-> **Status: 0.1.0-alpha**
+> **Status: 0.2.0-alpha**
 >
-> The core putting experience is usable, but the application is still under active development. Expect incomplete workflows, changing UI, and limited release packaging.
+> The core experience is usable and repository-side release hardening is in place, but this remains prerelease software. Public distribution still requires production signing, reference-data provenance approval, store metadata, and physical-device acceptance.
 
 ## What it does
 
@@ -27,7 +27,7 @@ The project is configured for:
 - iOS
 - Mac Catalyst
 
-The primary development and verification targets are Windows and Android. Store-ready packages and formal device support will be documented as the release process matures.
+CI compiles every configured platform and validates Android and Windows packaging. Production signing and store/device acceptance are platform-owner release gates.
 
 ## Run locally
 
@@ -46,22 +46,20 @@ dotnet build src\GolfSG\GolfSG.csproj -f net10.0-windows10.0.19041.0
 
 To run the app, open `GolfSG.sln` in Visual Studio, select the `GolfSG` startup project, choose a target, and start debugging. See [RUN_ON_PHONE.md](RUN_ON_PHONE.md) for Android device notes.
 
-## Build an Android APK
+## Build Android packages
 
-For a local, installable APK:
+An ordinary local Release APK may use a development signing identity and must not be distributed. Production Android releases are built as both AAB and APK files by the guarded release workflow. Follow [docs/ANDROID_RELEASE_SIGNING.md](docs/ANDROID_RELEASE_SIGNING.md) and verify the certificate fingerprint before installation or upload.
+
+For an unsigned packaging check:
 
 ```powershell
 dotnet publish src\GolfSG\GolfSG.csproj `
   -f net10.0-android `
   -c Release `
-  -p:AndroidPackageFormat=apk `
-  -p:PublishTrimmed=false `
-  -p:RunAOTCompilation=false `
-  -p:AndroidLinkMode=None
+  -p:AndroidPackageFormats=aab%3Bapk
 ```
 
 The output is written below `src\GolfSG\bin\Release\net10.0-android\publish`.
-
 ## Project structure
 
 | Project | Responsibility |
@@ -78,7 +76,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for dependency rules and [TESTING_STRATEG
 
 The putting calculation uses the reference table in [`StrokesGainedCalculator.cs`](src/GolfSG.Core/StrokesGainedCalculator.cs). Values between known baseline points use linear interpolation. Values below the lowest supported distance use the lowest baseline, and values above the highest supported distance use the highest baseline rather than extrapolating beyond the available data.
 
-The methodology and source provenance of the reference data will be documented more fully before a stable release. GolfSG is a training and analysis tool; its results are not an official handicap or tournament scoring system.
+The methodology, limitations, and public-release provenance gate are documented in [docs/REFERENCE_DATA.md](docs/REFERENCE_DATA.md). GolfSG is a training and analysis tool; its results are not official tour statistics, a handicap, or a tournament scoring system.
 
 ## Data and privacy
 
@@ -95,7 +93,7 @@ The version is maintained centrally in `Directory.Build.props`:
 .\scripts\Set-AppVersion.ps1 -Bump Patch
 ```
 
-Release history is maintained in [CHANGELOG.md](CHANGELOG.md). The current release-note draft is [v0.1.0-alpha](docs/release-notes/v0.1.0-alpha.md).
+Release history is maintained in [CHANGELOG.md](CHANGELOG.md). The current release-note draft is [v0.2.0-alpha](docs/release-notes/v0.2.0-alpha.md). Use the [release checklist](docs/RELEASE_CHECKLIST.md) before tagging or distributing a package.
 
 ## Product documentation
 

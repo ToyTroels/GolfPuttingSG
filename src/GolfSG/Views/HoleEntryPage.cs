@@ -53,6 +53,7 @@ public sealed partial class HoleEntryPage : ContentPage
         BindingContext = viewModel;
         Title = viewModel.Title;
         BackgroundColor = PageBackground;
+        this.Accessible(UiAutomationIds.HoleEntryPage, $"Input for hul {viewModel.HoleNumber}");
         BuildLayout();
         ToolbarItems.Add(new ToolbarItem
         {
@@ -133,6 +134,7 @@ public sealed partial class HoleEntryPage : ContentPage
             FontAttributes = FontAttributes.Bold,
             IsVisible = previousHole is not null
         };
+        previous.Accessible(UiAutomationIds.PreviousHole, "Gå til forrige hul");
         previous.Clicked += async (_, _) => await GoToHoleAsync(GetPreviousHole());
 
         var title = new Label
@@ -267,6 +269,7 @@ public sealed partial class HoleEntryPage : ContentPage
             OnColor = PrimaryGreen,
             ThumbColor = Colors.White
         };
+        approachHoled.Accessible(UiAutomationIds.ApproachHoled, "Approachslaget gik i hul");
         approachHoled.SetBinding(Switch.IsToggledProperty, nameof(HoleInputViewModel.ApproachHoled), BindingMode.TwoWay);
 
         var approachPenaltyStrokes = CountLabel();
@@ -349,6 +352,7 @@ public sealed partial class HoleEntryPage : ContentPage
             OnColor = PrimaryGreen,
             ThumbColor = Colors.White
         };
+        aroundGreenHoled.Accessible(UiAutomationIds.AroundGreenHoled, "Slaget omkring green gik i hul");
         aroundGreenHoled.SetBinding(Switch.IsToggledProperty, nameof(HoleInputViewModel.AroundGreenHoled), BindingMode.TwoWay);
 
         var aroundGreenSg = SgLabel();
@@ -367,6 +371,7 @@ public sealed partial class HoleEntryPage : ContentPage
             TextColor = PrimaryGreen,
             FontAttributes = FontAttributes.Bold
         };
+        addAroundGreenShot.Accessible(UiAutomationIds.AddAroundGreenShot, "Tilføj endnu et slag omkring green");
         addAroundGreenShot.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.CanAddAnotherAroundGreenShot));
         addAroundGreenShot.Clicked += (_, _) => viewModel.AddAnotherAroundGreenShot();
 
@@ -381,6 +386,7 @@ public sealed partial class HoleEntryPage : ContentPage
             TextColor = GolfTheme.Colors.DangerText,
             FontAttributes = FontAttributes.Bold
         };
+        undoAroundGreenShot.Accessible(UiAutomationIds.UndoAroundGreenShot, "Fortryd seneste slag omkring green");
         undoAroundGreenShot.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.CanUndoLastAroundGreenShot));
         undoAroundGreenShot.Clicked += (_, _) => viewModel.UndoLastAroundGreenShot();
 
@@ -463,6 +469,7 @@ public sealed partial class HoleEntryPage : ContentPage
             TextColor = PrimaryGreen,
             FontAttributes = FontAttributes.Bold
         };
+        done.Accessible(UiAutomationIds.CompleteHole, "Gem input for hullet og gå til oversigten");
         done.Clicked += async (_, _) =>
         {
             await roundViewModel.FlushAutosaveAsync();
@@ -478,6 +485,7 @@ public sealed partial class HoleEntryPage : ContentPage
             TextColor = Colors.White,
             FontAttributes = FontAttributes.Bold
         };
+        next.Accessible(UiAutomationIds.NextHole, "Gem input og gå til næste hul");
         next.Clicked += async (_, _) => await GoToNextHoleOrOverviewAsync();
 
         if (useGuidedInput)
@@ -563,6 +571,7 @@ public sealed partial class HoleEntryPage : ContentPage
             TextColor = PrimaryGreen,
             FontAttributes = FontAttributes.Bold
         };
+        guidedBackButton.Accessible(UiAutomationIds.GuidedBack, "Gå til forrige inputtrin");
         guidedBackButton.Clicked += async (_, _) => await GoBackInGuidedFlowAsync();
 
         guidedNextButton = new Button
@@ -573,6 +582,7 @@ public sealed partial class HoleEntryPage : ContentPage
             TextColor = Colors.White,
             FontAttributes = FontAttributes.Bold
         };
+        guidedNextButton.Accessible(UiAutomationIds.GuidedNext, "Gå til næste inputtrin");
         guidedNextButton.Clicked += async (_, _) => await GoForwardInGuidedFlowAsync();
 
         UpdateGuidedStepVisibility();

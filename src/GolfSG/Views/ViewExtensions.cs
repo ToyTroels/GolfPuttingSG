@@ -19,4 +19,20 @@ public static class ViewExtensions
         view.Margin = margin;
         return view;
     }
+
+    public static T Accessible<T>(
+        this T view,
+        string automationId,
+        string description,
+        string? hint = null) where T : VisualElement
+    {
+        view.AutomationId = automationId;
+        SemanticProperties.SetDescription(view, description);
+        if (!string.IsNullOrWhiteSpace(hint))
+        {
+            SemanticProperties.SetHint(view, hint);
+        }
+
+        return view;
+    }
 }
