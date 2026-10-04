@@ -22,6 +22,7 @@ public sealed class RoundResultViewModel : ViewModelBase
 
     public ObservableCollection<HoleResultItemViewModel> HoleResults { get; } = [];
     public ObservableCollection<string> Analysis { get; } = [];
+    public bool HasAnalysis => Analysis.Count > 0;
     public ObservableCollection<PuttingDistanceBucketItemViewModel> PuttingDistanceBuckets { get; } = [];
 
     public string RoundId => round?.Id ?? string.Empty;
@@ -47,6 +48,9 @@ public sealed class RoundResultViewModel : ViewModelBase
     public string AverageApproachDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(summary.AverageApproachDistance);
     public string AverageAroundGreenDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(YardsToMeters(summary.AverageAroundGreenDistance));
     public string TotalPuttsText => summary?.TotalPutts.ToString() ?? "0";
+    public string ExpectedPuttsText => ((summary?.TotalPutts ?? 0) + (summary?.TotalStrokesGainedPutting ?? 0))
+        .ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("da-DK"));
+    public bool ShowTotalSg => new[] { TrackPutting, TrackApproach, TrackAroundGreen }.Count(tracked => tracked) > 1;
     public string TargetPuttsText => IsPuttingGame && round is not null
         ? round.Holes.Sum(hole => hole.ExpectedPutts).ToString("0.0")
         : string.Empty;
@@ -59,6 +63,25 @@ public sealed class RoundResultViewModel : ViewModelBase
         ? string.Empty
         : round.EndedEarly ? "Runden blev afsluttet tidligt." : "Runden blev fuldført.";
     public string ThreePuttRateText => summary is null ? "0%" : $"{CalculateThreePuttRate(summary):0}%";
+    public string ThreePuttStartingDistanceText
+    {
+        get
+        {
+            var holes = round?.Holes.Where(hole => hole.IsCompleted && hole.Putts == 3).ToList();
+            return holes is not { Count: > 0 } ? "Ingen 3-putts registreret"
+                : $"{UiFormat.PuttingDistance(holes.Average(hole => hole.FirstPuttDistanceMeters), PuttingDistanceUnit)} · {holes.Count} 3-putts";
+        }
+    }
+    public string PuttingOpportunityText
+    {
+        get
+        {
+            var weakest = PuttingDistanceBuckets.Where(bucket => bucket.IsLoss)
+                .MinBy(bucket => bucket.TotalStrokesGained);
+            return weakest is null ? "Ingen afstandsgruppe har tabte slag mod PGA-reference."
+                : $"{weakest.Name}: {UiFormat.Sg(weakest.TotalStrokesGained)} SG på {weakest.Attempts} registreringer.";
+        }
+    }
     public string BestHoleText => FormatPuttingResult(summary?.BestHole);
     public string WorstHoleText => FormatPuttingResult(summary?.WorstHole);
     public string BestApproachHoleText => summary?.BestApproachHole is null ? "-" : $"Hul {summary.BestApproachHole.HoleNumber} ({UiFormat.Sg(summary.BestApproachHole.StrokesGainedApproach)})";
@@ -84,18 +107,40 @@ public sealed class RoundResultViewModel : ViewModelBase
         }
 
         PuttingDistanceBuckets.Clear();
-        foreach (var bucket in summary.PuttingDistanceBuckets)
+        foreach (var bucket in BuildRecapDistanceBuckets(summary.PuttingDistanceBuckets))
         {
             PuttingDistanceBuckets.Add(new PuttingDistanceBucketItemViewModel(bucket, PuttingDistanceUnit));
         }
 
         Analysis.Clear();
-        foreach (var note in BuildAnalysis(round, summary, trackingOptions))
+        foreach (var note in BuildAnalysis(summary, trackingOptions))
         {
             Analysis.Add(note);
         }
 
         OnAllPropertiesChanged();
+    }
+
+    public static IReadOnlyList<PuttingDistanceBucketSummary> BuildRecapDistanceBuckets(IReadOnlyList<PuttingDistanceBucketSummary> buckets)
+    {
+        return
+        [
+            CombineBuckets("Korte putts", buckets.Take(2)),
+            buckets[2] with { Name = "Mellemlange putts" },
+            buckets[3] with { Name = "Mellemlange putts" },
+            buckets[4] with { Name = "Mellemlange putts" },
+            buckets[5] with { Name = "Mellemlange putts" },
+            buckets[6] with { Name = "Lange putts" }
+        ];
+    }
+
+    private static PuttingDistanceBucketSummary CombineBuckets(string name, IEnumerable<PuttingDistanceBucketSummary> buckets)
+    {
+        var items = buckets.ToList();
+        return new PuttingDistanceBucketSummary(
+            name, items[0].MinimumDistanceMeters, items[^1].MaximumDistanceMeters,
+            items.Sum(item => item.Attempts), items.Sum(item => item.TotalPutts),
+            items.Sum(item => item.TotalStrokesGained));
     }
 
     private static double CalculateThreePuttRate(RoundSummary summary)
@@ -104,42 +149,8 @@ public sealed class RoundResultViewModel : ViewModelBase
         return completedHoles == 0 ? 0 : summary.ThreePuttsOrWorse / (double)completedHoles * 100;
     }
 
-    private static IEnumerable<string> BuildAnalysis(Round round, RoundSummary summary, RoundTrackingOptions trackingOptions)
+    private static IEnumerable<string> BuildAnalysis(RoundSummary summary, RoundTrackingOptions trackingOptions)
     {
-        if (trackingOptions.TrackPutting)
-        {
-            if (summary.TotalStrokesGainedPutting > 0)
-            {
-                yield return "Du puttede bedre end referencebaseline på denne runde.";
-            }
-            else if (summary.TotalStrokesGainedPutting >= -2)
-            {
-                yield return "Du var tæt på referencebaseline på greens.";
-            }
-            else
-            {
-                yield return "Du tabte især slag på greens.";
-            }
-
-            if (summary.ThreePuttsOrWorse >= 3)
-            {
-                yield return "Fokusområde: længdekontrol på lange putts.";
-            }
-
-            var missedShortPutts = round.Holes.Count(hole =>
-            {
-                var result = HoleResultMapper.ToResult(hole);
-                return result.Putting is { IsCompleted: true } putting &&
-                    putting.FirstPuttDistanceMeters < StrokesGainedCalculator.ShortPuttMaximumMeters &&
-                    putting.Putts >= 2;
-            });
-
-            if (missedShortPutts >= 2)
-            {
-                yield return "Fokusområde: korte putts.";
-            }
-        }
-
         if (trackingOptions.TrackApproach)
         {
             if (summary.TotalStrokesGainedApproach > 0)
@@ -176,6 +187,7 @@ public sealed class RoundResultViewModel : ViewModelBase
     private void OnAllPropertiesChanged()
     {
         OnPropertyChanged(nameof(RoundId));
+        OnPropertyChanged(nameof(HasAnalysis));
         OnPropertyChanged(nameof(TrackPutting));
         OnPropertyChanged(nameof(TrackApproach));
         OnPropertyChanged(nameof(TrackAroundGreen));
@@ -189,12 +201,16 @@ public sealed class RoundResultViewModel : ViewModelBase
         OnPropertyChanged(nameof(AverageApproachDistanceText));
         OnPropertyChanged(nameof(AverageAroundGreenDistanceText));
         OnPropertyChanged(nameof(TotalPuttsText));
+        OnPropertyChanged(nameof(ExpectedPuttsText));
+        OnPropertyChanged(nameof(ShowTotalSg));
         OnPropertyChanged(nameof(TargetPuttsText));
         OnPropertyChanged(nameof(TotalApproachShotsText));
         OnPropertyChanged(nameof(TotalAroundGreenShotsText));
         OnPropertyChanged(nameof(RoundProgressText));
         OnPropertyChanged(nameof(RoundCompletionText));
         OnPropertyChanged(nameof(ThreePuttRateText));
+        OnPropertyChanged(nameof(ThreePuttStartingDistanceText));
+        OnPropertyChanged(nameof(PuttingOpportunityText));
         OnPropertyChanged(nameof(BestHoleText));
         OnPropertyChanged(nameof(WorstHoleText));
         OnPropertyChanged(nameof(BestApproachHoleText));
@@ -273,16 +289,29 @@ public sealed class PuttingDistanceBucketItemViewModel
         PuttingDistanceBucketSummary bucket,
         PuttingDistanceUnitPreference puttingDistanceUnit = PuttingDistanceUnitPreference.Meters)
     {
-        Name = FormatRange(bucket, puttingDistanceUnit);
+        Name = $"{bucket.Name} ({FormatRange(bucket, puttingDistanceUnit)})";
         RangeText = "F\u00F8rste putt-afstand";
         DetailText = $"{bucket.Attempts} f\u00F8rste putts | {bucket.TotalPutts} putts";
-        StrokesGainedText = UiFormat.Sg(bucket.TotalStrokesGained);
+        StrokesGainedText = bucket.Attempts == 0 ? "—" : UiFormat.Sg(bucket.TotalStrokesGained);
+        IsLoss = bucket.Attempts > 0 && bucket.TotalStrokesGained < -0.005;
+        TotalStrokesGained = bucket.TotalStrokesGained;
+        Attempts = bucket.Attempts;
+        IsGain = bucket.Attempts > 0 && bucket.TotalStrokesGained >= 0.005;
+        OutcomeText = bucket.Attempts == 0 ? "Ingen data"
+            : IsLoss ? "SG · tabte slag"
+            : bucket.TotalStrokesGained >= 0.005 ? "SG · vundne slag" : "SG · på niveau";
     }
 
     public string Name { get; }
     public string RangeText { get; }
     public string DetailText { get; }
     public string StrokesGainedText { get; }
+
+    public bool IsLoss { get; }
+    public double TotalStrokesGained { get; }
+    public int Attempts { get; }
+    public bool IsGain { get; }
+    public string OutcomeText { get; }
 
     private static string FormatRange(PuttingDistanceBucketSummary bucket, PuttingDistanceUnitPreference puttingDistanceUnit)
     {

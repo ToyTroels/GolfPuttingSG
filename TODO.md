@@ -2,6 +2,8 @@
 
 ## User-perspective improvement backlog
 
+- [ ] Add a beta pre-round conditions form with optional inputs for the course being played, wind speed/direction, green speed, weather/temperature, and course/green firmness or wetness. Save these conditions with the round and show them when reviewing or editing it, providing context for performance comparisons.
+- [ ] Add a complete shot-tracking mode for approach and around-the-green play: for each shot, enter the distance to the hole and select the current lie (green, fairway/FW, rough, semi-rough, fringe, bunker, or other). Record the remaining distance and lie after each shot, carry that state into the next shot, and continue until the ball is holed so the full sequence can support shot-level strokes-gained calculations and review/editing.
 - [x] Fix new-round setup so selecting approach and around-the-green tracking is immediate and does not crash the app.
 - [ ] Modernize the benchmark game UI so 1-, 2-, and 3-putt actions can be tapped on screen like the regular putting game.
 - [ ] Let benchmark players review entered putts in an overview and edit previous benchmark putt results before saving.

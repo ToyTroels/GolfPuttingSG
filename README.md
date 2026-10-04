@@ -14,6 +14,7 @@ GolfSG is an offline-first .NET MAUI app for tracking golf putting performance w
 - Provides putting games and benchmark sessions, including ladder-style practice.
 - Stores round and practice history locally as JSON.
 - Provides history, filtering, editing, recovery, and import/export support.
+- Import files one at a time to merge round history. Rounds are matched by ID; existing saved versions are kept, and repeated imports do not add duplicates. Copies with different IDs are treated as separate rounds.
 - Keeps scoring and statistics in testable, platform-independent .NET projects.
 
 The current product focus is putting. Approach and around-the-green tracking are being expanded and should be considered experimental in this alpha release.

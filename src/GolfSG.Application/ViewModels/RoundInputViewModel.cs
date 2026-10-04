@@ -337,9 +337,15 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     public async Task SetCurrentHoleAsync(int holeNumber)
     {
+        SetCurrentHole(holeNumber);
+        await FlushAutosaveAsync();
+    }
+
+    public void SetCurrentHole(int holeNumber)
+    {
         currentHoleNumber = Math.Clamp(holeNumber, 1, HoleCount);
         OnPropertyChanged(nameof(ResumeHoleNumber));
-        await FlushAutosaveAsync();
+        ScheduleAutosave();
     }
 
     public async Task FlushAutosaveAsync()
@@ -465,7 +471,11 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     private void OnHolePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (!isApplyingTracking)
+        // DetailText is emitted after Recalculate/Load finishes updating the hole.
+        // Other notifications describe the same edit and must not rebuild the
+        // entire round summary or restart autosave individually.
+        if (!isApplyingTracking &&
+            (string.IsNullOrEmpty(e.PropertyName) || e.PropertyName == nameof(HoleInputViewModel.DetailText)))
         {
             RefreshSummary();
             ScheduleAutosave();
@@ -558,15 +568,21 @@ public sealed class RoundInputViewModel : ViewModelBase
             return true;
         }
 
-        var session = new ActiveRoundSession(
-            BuildDraft(),
-            Math.Clamp(currentHoleNumber, 1, HoleCount),
-            DateTimeOffset.UtcNow);
-
         await autosaveLock.WaitAsync();
         try
         {
-            await activeRoundSessionRepository.SaveAsync(session);
+            if (!isActiveSession || isRestoringSession)
+            {
+                return true;
+            }
+
+            var session = new ActiveRoundSession(
+                BuildDraft(),
+                Math.Clamp(currentHoleNumber, 1, HoleCount),
+                DateTimeOffset.UtcNow);
+            // File backup and replacement can perform synchronous disk work.
+            // Keep that work off the UI thread, using an immutable draft snapshot.
+            await Task.Run(() => activeRoundSessionRepository.SaveAsync(session));
             if (ErrorMessage.StartsWith("Runden kunne ikke gemmes automatisk", StringComparison.Ordinal))
             {
                 ErrorMessage = string.Empty;

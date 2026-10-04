@@ -9,6 +9,74 @@ namespace GolfSG.Tests;
 public sealed class RoundResultViewModelTests
 {
     [TestMethod]
+    public async Task StatsUseOnlyThreePuttHolesAndRankLossByTotalInsteadOfPerHole()
+    {
+        var round = new Round("stats", DateTime.Today,
+        [
+            StrokesGainedCalculator.BuildHole(1, 1, 3),
+            StrokesGainedCalculator.BuildHole(2, 3, 3),
+            StrokesGainedCalculator.BuildHole(3, 3, 3),
+            StrokesGainedCalculator.BuildHole(4, 3, 4),
+            StrokesGainedCalculator.BuildHole(5, 0, 0)
+        ], RoundTrackingOptions.PuttingOnly, 5);
+        var model = new RoundResultViewModel(new TestRoundRepository([round]));
+        await model.LoadAsync(round.Id);
+        Assert.AreEqual($"{UiFormat.PuttingDistance(7d / 3, PuttingDistanceUnitPreference.Meters)} · 3 3-putts",
+            model.ThreePuttStartingDistanceText);
+        StringAssert.StartsWith(model.PuttingOpportunityText, "Mellemlange putts");
+        StringAssert.Contains(model.PuttingOpportunityText, "3 registreringer");
+    }
+
+    [TestMethod]
+    public async Task StatsShowNoThreePuttsOrLossForPositiveRoundAndRespectFeet()
+    {
+        var round = new Round("positive", DateTime.Today,
+            [StrokesGainedCalculator.BuildHole(1, 1, 1)], RoundTrackingOptions.PuttingOnly, 1);
+        var threePuttRound = round with { Id = "three", Holes = [StrokesGainedCalculator.BuildHole(1, DistanceConversions.FeetToMeters(30), 3)] };
+        var model = new RoundResultViewModel(new TestRoundRepository([round, threePuttRound]),
+            new FixedDistanceUnitSettings(PuttingDistanceUnitPreference.Feet));
+        await model.LoadAsync(round.Id);
+        Assert.AreEqual("Ingen 3-putts registreret", model.ThreePuttStartingDistanceText);
+        Assert.AreEqual("Ingen afstandsgruppe har tabte slag mod PGA-reference.", model.PuttingOpportunityText);
+        await model.LoadAsync(threePuttRound.Id);
+        StringAssert.StartsWith(model.ThreePuttStartingDistanceText, "30,0 ft");
+        StringAssert.StartsWith(model.PuttingOpportunityText, "Lange putts");
+    }
+
+    [TestMethod]
+    public async Task DistanceRecapGroupsBoundaryDistancesAndPreservesPuttingTotals()
+    {
+        var holes = new[]
+        {
+            StrokesGainedCalculator.BuildHole(1, DistanceConversions.FeetToMeters(4), 1),
+            StrokesGainedCalculator.BuildHole(2, DistanceConversions.FeetToMeters(5), 2),
+            StrokesGainedCalculator.BuildHole(3, DistanceConversions.FeetToMeters(25), 3),
+            StrokesGainedCalculator.BuildHole(4, DistanceConversions.FeetToMeters(26), 2),
+            StrokesGainedCalculator.BuildHole(5, 0, 0)
+        };
+        var round = new Round("buckets", DateTime.Today, holes, RoundTrackingOptions.PuttingOnly, 5);
+        var viewModel = new RoundResultViewModel(new TestRoundRepository([round]));
+        await viewModel.LoadAsync(round.Id);
+
+        Assert.HasCount(6, viewModel.PuttingDistanceBuckets);
+        StringAssert.StartsWith(viewModel.PuttingDistanceBuckets[0].DetailText, "1 ");
+        StringAssert.StartsWith(viewModel.PuttingDistanceBuckets[1].DetailText, "1 ");
+        StringAssert.StartsWith(viewModel.PuttingDistanceBuckets[4].DetailText, "1 ");
+        StringAssert.StartsWith(viewModel.PuttingDistanceBuckets[5].DetailText, "1 ");
+        Assert.AreEqual(4, viewModel.PuttingDistanceBuckets.Sum(bucket => bucket.Attempts));
+        Assert.AreEqual(holes.Sum(hole => hole.StrokesGainedPutting),
+            viewModel.PuttingDistanceBuckets.Sum(bucket => bucket.TotalStrokesGained), 0.000001);
+        Assert.IsTrue(viewModel.PuttingDistanceBuckets[1].IsLoss);
+        Assert.AreEqual(UiFormat.Sg(holes[1].StrokesGainedPutting),
+            viewModel.PuttingDistanceBuckets[1].StrokesGainedText);
+
+        var empty = new PuttingDistanceBucketItemViewModel(new PuttingDistanceBucketSummary("Empty", null, 1, 0, 0, 0));
+        Assert.AreEqual("—", empty.StrokesGainedText);
+        Assert.AreEqual("Ingen data", empty.OutcomeText);
+        Assert.IsFalse(empty.IsLoss);
+    }
+
+    [TestMethod]
     public async Task LoadPartialRoundPopulatesProgressResultsBucketsAndAnalysis()
     {
         var round = new Round(
@@ -33,9 +101,14 @@ public sealed class RoundResultViewModelTests
         Assert.AreEqual("2 / 9 huller registreret", viewModel.RoundProgressText);
         Assert.AreEqual("Runden blev afsluttet tidligt.", viewModel.RoundCompletionText);
         Assert.AreEqual("50%", viewModel.ThreePuttRateText);
+        var expectedPutts = round.Holes.Where(hole => hole.IsCompleted).Sum(hole => hole.ExpectedPutts)
+            .ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("da-DK"));
+        Assert.AreEqual(expectedPutts, viewModel.ExpectedPuttsText);
+        Assert.IsFalse(viewModel.ShowTotalSg);
         Assert.HasCount(2, viewModel.HoleResults);
         Assert.IsNotEmpty(viewModel.PuttingDistanceBuckets);
-        Assert.IsNotEmpty(viewModel.Analysis);
+        Assert.IsEmpty(viewModel.Analysis);
+        Assert.IsFalse(viewModel.HasAnalysis);
     }
 
     [TestMethod]
@@ -209,6 +282,7 @@ public sealed class RoundResultViewModelTests
         Assert.IsTrue(viewModel.TrackPutting);
         Assert.IsTrue(viewModel.TrackApproach);
         Assert.IsTrue(viewModel.TrackAroundGreen);
+        Assert.IsTrue(viewModel.ShowTotalSg);
         StringAssert.Contains(viewModel.HoleResults[0].Detail, "Indspil");
         StringAssert.Contains(viewModel.HoleResults[0].Detail, "Omkring green");
         Assert.IsNotEmpty(viewModel.Analysis);

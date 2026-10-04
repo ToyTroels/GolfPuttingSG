@@ -8,6 +8,24 @@ namespace GolfSG.Tests;
 [TestClass]
 public sealed class RoundFileStoreTests
 {
+    [TestMethod]
+    public async Task GirValuesSurviveSaveAndReloadIncludingUnrecordedHoles()
+    {
+        using var directory = TestDirectory.Create();
+        var store = new RoundFileStore(directory.Path);
+        var round = new Round("gir", DateTime.Today,
+        [
+            StrokesGainedCalculator.BuildHole(1, 3, 2) with { GreenInRegulation = true },
+            StrokesGainedCalculator.BuildHole(2, 3, 2) with { GreenInRegulation = false },
+            StrokesGainedCalculator.BuildHole(3, 3, 2)
+        ]);
+        await store.SaveRoundAsync(round);
+        var saved = (await store.GetRoundsAsync()).Single();
+        Assert.IsTrue(saved.Holes[0].GreenInRegulation);
+        Assert.IsFalse(saved.Holes[1].GreenInRegulation);
+        Assert.IsNull(saved.Holes[2].GreenInRegulation);
+    }
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -190,7 +208,7 @@ public sealed class RoundFileStoreTests
     }
 
     [TestMethod]
-    public async Task ImportRoundsAcceptsLegacyArrayAndReplacesActiveHistory()
+    public async Task ImportRoundsAcceptsLegacyArrayAndMergesWithActiveHistory()
     {
         using var directory = TestDirectory.Create();
         using var importDirectory = TestDirectory.Create();
@@ -202,9 +220,76 @@ public sealed class RoundFileStoreTests
         await store.ImportRoundsAsync(importPath);
 
         var rounds = await store.GetRoundsAsync();
-        Assert.HasCount(1, rounds);
+        Assert.HasCount(2, rounds);
         Assert.AreEqual("imported", rounds[0].Id);
+        Assert.AreEqual("existing", rounds[1].Id);
         Assert.AreEqual(1, await ReadSchemaVersionAsync(directory.RoundsFilePath));
+    }
+
+    [TestMethod]
+    public async Task ImportOverlappingFilesKeepsUniqueRoundsAndSavedVersions()
+    {
+        using var directory = TestDirectory.Create();
+        using var importDirectory = TestDirectory.Create();
+        var store = new RoundFileStore(directory.Path);
+        var firstPath = Path.Combine(importDirectory.Path, "first.json");
+        var secondPath = Path.Combine(importDirectory.Path, "second.json");
+        await WriteRoundsAsync(firstPath,
+        [
+            CreateRound("one", new DateTime(2026, 6, 1), 1),
+            CreateRound("shared", new DateTime(2026, 6, 2), 2)
+        ]);
+        await WriteRoundsAsync(secondPath,
+        [
+            CreateRound("shared", new DateTime(2026, 7, 2), 3),
+            CreateRound("three", new DateTime(2026, 6, 3), 1),
+            CreateRound("three", new DateTime(2026, 7, 3), 2)
+        ]);
+
+        await store.ImportRoundsAsync(firstPath);
+        await store.ImportRoundsAsync(secondPath);
+        await store.ImportRoundsAsync(secondPath);
+
+        var rounds = await store.GetRoundsAsync();
+        CollectionAssert.AreEqual(new[] { "three", "shared", "one" }, rounds.Select(round => round.Id).ToArray());
+        Assert.AreEqual(new DateTime(2026, 6, 2), rounds.Single(round => round.Id == "shared").Date);
+        Assert.AreEqual(new DateTime(2026, 6, 3), rounds.Single(round => round.Id == "three").Date);
+    }
+
+    [TestMethod]
+    public async Task ImportRecoversBackupAndPreservesCorruptActiveFile()
+    {
+        using var directory = TestDirectory.Create();
+        using var importDirectory = TestDirectory.Create();
+        var store = new RoundFileStore(directory.Path);
+        await WriteRoundsAsync(directory.BackupFilePath, [CreateRound("saved", new DateTime(2026, 6, 1), 2)]);
+        const string corruptContent = "{ invalid json";
+        await File.WriteAllTextAsync(directory.RoundsFilePath, corruptContent);
+        var importPath = Path.Combine(importDirectory.Path, "rounds.json");
+        await WriteRoundsAsync(importPath, [CreateRound("new", new DateTime(2026, 6, 2), 1)]);
+
+        await store.ImportRoundsAsync(importPath);
+
+        Assert.IsTrue(store.WasLastReadRecoveredFromBackup);
+        Assert.IsTrue(store.WasLastUnreadableActiveFilePreserved);
+        Assert.AreEqual(corruptContent, await File.ReadAllTextAsync(store.LastPreservedUnreadableFilePath!));
+        Assert.HasCount(2, await store.GetRoundsAsync());
+    }
+
+    [TestMethod]
+    public async Task ImportInvalidFileLeavesSavedHistoryUnchanged()
+    {
+        using var directory = TestDirectory.Create();
+        using var importDirectory = TestDirectory.Create();
+        var store = new RoundFileStore(directory.Path);
+        await store.SaveRoundAsync(CreateRound("saved", new DateTime(2026, 6, 1), 2));
+        var originalContent = await File.ReadAllTextAsync(directory.RoundsFilePath);
+        var importPath = Path.Combine(importDirectory.Path, "invalid.json");
+        await File.WriteAllTextAsync(importPath, "{ invalid json");
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.ImportRoundsAsync(importPath));
+
+        Assert.AreEqual(originalContent, await File.ReadAllTextAsync(directory.RoundsFilePath));
     }
 
     [TestMethod]

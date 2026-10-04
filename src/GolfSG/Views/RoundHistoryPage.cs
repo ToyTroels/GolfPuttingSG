@@ -142,7 +142,7 @@ public sealed class RoundHistoryPage : ContentPage
         try
         {
             var page = services.GetRequiredService<RoundResultPage>();
-            await page.LoadAsync(item.Id);
+            await page.LoadAsync(item.Id, openedFromHistory: true);
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
         }
         catch (Exception)
@@ -345,15 +345,21 @@ public sealed class RoundHistoryPage : ContentPage
                 }
             };
 
+#if ANDROID
+            card.ShortPressed += async (_, _) =>
+#else
             var tap = new TapGestureRecognizer();
             tap.Tapped += async (_, _) =>
+#endif
             {
                 if (card.BindingContext is RoundListItemViewModel item)
                 {
                     await openRoundAsync(item);
                 }
             };
+#if !ANDROID
             card.GestureRecognizers.Add(tap);
+#endif
 
             card.LongPressed += async (_, _) =>
             {

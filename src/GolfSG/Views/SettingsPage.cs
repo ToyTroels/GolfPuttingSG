@@ -26,6 +26,22 @@ public sealed class SettingsPage : ContentPage
         BuildLayout();
     }
 
+    private View GirTrackingItem()
+    {
+        var toggle = new Switch { IsToggled = FeatureSettings.RecordGreenInRegulation, OnColor = PrimaryGreen };
+        toggle.Toggled += (_, args) => FeatureSettings.RecordGreenInRegulation = args.Value;
+        return AppViews.Card(new VerticalStackLayout
+        {
+            Spacing = 6,
+            Children =
+            {
+                new Label { Text = "Registrer GIR ved putning", FontAttributes = FontAttributes.Bold, TextColor = TextColor },
+                new Label { Text = "Markér om green blev ramt i regulation: på højst par minus 2 slag. Vises ved hulinput. Gemte GIR-valg bevares, når funktionen slås fra.", FontSize = 13, TextColor = MutedTextColor },
+                toggle
+            }
+        });
+    }
+
     private void BuildLayout()
     {
         Content = new ScrollView
@@ -52,6 +68,7 @@ public sealed class SettingsPage : ContentPage
                         Margin = new Thickness(0, 8, 0, 0)
                     },
                     GuidedHoleEntryItem(),
+                    GirTrackingItem(),
                     DistanceUnitItem(),
                     new Label
                     {

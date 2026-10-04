@@ -14,6 +14,8 @@ Run these journeys against the packaged application, not only a debugger build. 
 2. Complete an approach-to-short-game handoff, a short-game-to-putting handoff, and a hole completed directly from each category.
 3. Navigate backward, edit values, use undo, and confirm carried distances and summaries remain consistent.
 4. Finish early, save, reopen the result, edit it, and verify there is exactly one history entry.
+5. Open a hole from the overview, advance through several holes, then tap "Til oversigt". Confirm the round overview opens immediately. Repeat after using the previous-hole arrow, with rapid repeated taps, on the final hole, and with guided input disabled. Verify entered values are preserved.
+6. Open hole 1, use the hole picker to jump to untouched hole 13, then open round settings. Confirm selecting nine holes is refused, hole 13 remains editable, and its subsequent input appears in the overview and survives resuming the round.
 
 ## Persistence and recovery
 
@@ -30,6 +32,7 @@ Run these journeys against the packaged application, not only a debugger build. 
 2. Exercise the primary journeys at the largest supported text size without clipped or unreachable controls.
 3. With the platform screen reader enabled, verify control names, hints, state, focus order, and actionable elements.
 4. Check contrast and focus visibility in every supported theme.
+5. Check the overview, round settings, and hole picker on Android with gesture navigation and system navigation buttons. Confirm controls remain reachable above system bars and around display cutouts.
 
 ## Packaging and lifecycle
 

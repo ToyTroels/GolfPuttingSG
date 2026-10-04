@@ -33,7 +33,8 @@ public sealed record HolePuttingData(
     double ExpectedAroundGreenStartStrokes = 0,
     double ExpectedAroundGreenFinishStrokes = 0,
     double StrokesGainedAroundGreen = 0,
-    IReadOnlyList<GolfShot>? AroundGreenShots = null)
+    IReadOnlyList<GolfShot>? AroundGreenShots = null,
+    bool? GreenInRegulation = null)
 {
     public bool IsCompleted => FirstPuttDistanceMeters > 0 && Putts > 0;
     public bool IsApproachCompleted => ApproachDistanceMeters > 0 && ApproachShots > 0;

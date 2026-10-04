@@ -165,7 +165,16 @@ public sealed class RoundFileStore
                     throw new InvalidDataException("The selected rounds file could not be read.");
                 }
 
-                await WriteRoundsAsync(SortNewestFirst(importRead.Rounds, reverseTies: false));
+                var loadResult = await LoadRoundsForMutationAsync();
+                // Keep saved versions when an export contains the same round ID.
+                // DistinctBy also removes repeated IDs within the imported file.
+                var rounds = loadResult.Rounds
+                    .Concat(importRead.Rounds)
+                    .DistinctBy(round => round.Id, StringComparer.Ordinal)
+                    .ToList();
+
+                await PreserveUnreadableActiveFileBeforeOverwriteAsync(loadResult);
+                await WriteRoundsAsync(SortNewestFirst(rounds, reverseTies: false));
             });
         }
         finally

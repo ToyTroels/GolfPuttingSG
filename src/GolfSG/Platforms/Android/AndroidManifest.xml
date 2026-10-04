@@ -1,4 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.GolfSG.myapp" android:versionCode="1" android:versionName="Alpha">
-	<application android:allowBackup="false" android:icon="@mipmap/appicon" android:supportsRtl="true" android:label="GolfSG"></application>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="1" android:versionName="Alpha">
+	<application android:allowBackup="false" android:icon="@mipmap/appicon" android:supportsRtl="true"></application>
 </manifest>

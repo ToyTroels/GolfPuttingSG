@@ -45,6 +45,8 @@ public static class MauiProgram
             serviceProvider.GetRequiredService<IDistanceUnitSettings>()));
         builder.Services.AddTransient<RoundResultViewModel>();
         builder.Services.AddTransient<RoundHistoryViewModel>();
+        builder.Services.AddTransient<StatisticsViewModel>();
+        builder.Services.AddTransient<StatisticsPage>();
         builder.Services.AddTransient<EvaluationViewModel>();
         builder.Services.AddTransient<BenchmarkHistoryViewModel>();
         builder.Services.AddTransient<StartPage>();

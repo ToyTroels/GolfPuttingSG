@@ -168,7 +168,7 @@ public sealed partial class HoleEntryPage
             return;
         }
 
-        await this.RunNavigationOnceAsync(() => Navigation.PopAsync());
+        await GoToOverviewAsync();
     }
 
     private async Task GoForwardInGuidedFlowAsync()
@@ -223,8 +223,7 @@ public sealed partial class HoleEntryPage
         var nextHole = GetNextHole();
         if (nextHole is null)
         {
-            await roundViewModel.FlushAutosaveAsync();
-            await this.RunNavigationOnceAsync(() => Navigation.PopAsync());
+            await GoToOverviewAsync();
             return;
         }
 
@@ -253,14 +252,66 @@ public sealed partial class HoleEntryPage
             return;
         }
 
-        await roundViewModel.SetCurrentHoleAsync(hole.HoleNumber);
-
-        var page = new HoleEntryPage(roundViewModel, hole)
+        await this.RunNavigationOnceAsync(() =>
         {
-            suppressGuidedAutoAdvanceAfterBack = useGuidedInput && IsPreviousHole(hole)
-        };
-        Navigation.InsertPageBefore(page, this);
-        await this.RunNavigationOnceAsync(() => Navigation.PopAsync(animated: false));
+            CancelGuidedAutoAdvance();
+            var previousHoleNumber = viewModel.HoleNumber;
+            var previousInput = viewModel.ToHole();
+            var inputRegistered = !IsPreviousHole(hole) &&
+                (previousInput.IsCompleted || previousInput.IsApproachCompleted || previousInput.IsAroundGreenCompleted);
+            suppressGuidedAutoAdvanceAfterBack = useGuidedInput && IsPreviousHole(hole);
+            if (isViewModelSubscribed)
+            {
+                viewModel.PropertyChanged -= OnHoleInputPropertyChanged;
+            }
+
+            // Rebind the existing controls rather than constructing and navigating to
+            // another large native control tree for every hole.
+            viewModel = hole;
+            BindingContext = hole;
+            Title = hole.Title;
+            SemanticProperties.SetDescription(this, $"Input for hul {hole.HoleNumber}");
+            if (nextHoleButton is not null)
+            {
+                nextHoleButton.Text = GetNextHole() is null ? "Til oversigt" : "Næste hul";
+            }
+            var visibleSteps = GetVisibleSteps();
+            activeStep = visibleSteps.Count > 0 ? visibleSteps[0] : HoleEntryStep.Putting;
+            if (isViewModelSubscribed)
+            {
+                viewModel.PropertyChanged += OnHoleInputPropertyChanged;
+            }
+            UpdateGuidedStepVisibility();
+            roundViewModel.SetCurrentHole(hole.HoleNumber);
+            ShowHoleFeedback(previousHoleNumber, inputRegistered);
+            return Task.CompletedTask;
+        });
+    }
+
+    private async Task GoToOverviewAsync()
+    {
+        CancelGuidedAutoAdvance();
+        await this.RunNavigationOnceAsync(async () =>
+        {
+            await roundViewModel.FlushAutosaveAsync();
+
+            // Remove any older hole pages so a single pop always reveals the overview.
+            foreach (var page in Navigation.NavigationStack.TakeWhile(page => page != this)
+                         .OfType<HoleEntryPage>().ToArray())
+            {
+                Navigation.RemovePage(page);
+            }
+
+            await Navigation.PopAsync();
+        });
+    }
+
+    private Task NavigateBackFromHeaderAsync()
+    {
+        var previousHole = GetPreviousHole();
+        return previousHole is null
+            ? GoToOverviewAsync()
+            : GoToHoleAsync(previousHole);
     }
 
     private bool IsPreviousHole(HoleInputViewModel hole)

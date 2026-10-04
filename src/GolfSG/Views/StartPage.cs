@@ -71,6 +71,10 @@ public sealed class StartPage : ContentPage
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>()));
 
         evaluationButton = AppViews.SecondaryButton("SG evaluering beta");
+        var statisticsButton = AppViews.SecondaryButton("Statistik (beta)");
+        statisticsButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
+        statisticsButton.Clicked += async (_, _) =>
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<StatisticsPage>()));
         evaluationButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         evaluationButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         evaluationButton.Clicked += async (_, _) =>
@@ -116,7 +120,7 @@ public sealed class StartPage : ContentPage
         var rounds = new CollectionView
         {
             SelectionMode = SelectionMode.None,
-            ItemTemplate = RoundTemplate(OpenRoundAsync, EditRoundAsync, ShowRoundActionsAsync),
+            ItemTemplate = RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync),
             Header = new VerticalStackLayout
             {
                 Spacing = 0,
@@ -135,7 +139,7 @@ public sealed class StartPage : ContentPage
                     new VerticalStackLayout
                     {
                         Spacing = 10,
-                        Children = { newRoundButton, puttingGameButton, historyButton, evaluationButton }
+                        Children = { newRoundButton, puttingGameButton, historyButton, statisticsButton, evaluationButton }
                     }.Margin(new Thickness(0, 16, 0, 18)),
                     insights,
                     new Label
@@ -268,36 +272,13 @@ public sealed class StartPage : ContentPage
         try
         {
             var page = services.GetRequiredService<RoundResultPage>();
-            await page.LoadAsync(item.Id);
+            await page.LoadAsync(item.Id, openedFromHistory: true);
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
         }
         catch (Exception)
         {
             await DisplayAlertAsync(
                 "Runde kunne ikke \u00e5bnes",
-                "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
-                "OK");
-        }
-    }
-
-    private async Task EditRoundAsync(RoundListItemViewModel item)
-    {
-        if (item.IsPuttingGame)
-        {
-            await OpenRoundAsync(item);
-            return;
-        }
-
-        try
-        {
-            var page = services.GetRequiredService<RoundInputPage>();
-            await page.LoadAsync(item.Id);
-            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
-        }
-        catch (Exception)
-        {
-            await DisplayAlertAsync(
-                "Runde kunne ikke redigeres",
                 "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
@@ -435,7 +416,6 @@ public sealed class StartPage : ContentPage
 
     private static DataTemplate RoundTemplate(
         Func<RoundListItemViewModel, Task> openRoundAsync,
-        Func<RoundListItemViewModel, Task> editRoundAsync,
         Func<RoundListItemViewModel, Task> showRoundActionsAsync)
     {
         return new DataTemplate(() =>
@@ -454,40 +434,6 @@ public sealed class StartPage : ContentPage
 
             var detail = new Label { FontSize = 14, TextColor = GolfTheme.Colors.MutedText };
             detail.SetBinding(Label.TextProperty, nameof(RoundListItemViewModel.DetailText));
-
-            var detailsButton = RoundCardActionButton("Se detaljer", isPrimary: true);
-            detailsButton.Clicked += async (_, _) =>
-            {
-                if (detailsButton.BindingContext is RoundListItemViewModel item)
-                {
-                    await openRoundAsync(item);
-                }
-            };
-
-            var editButton = RoundCardActionButton("Rediger", isPrimary: false);
-            editButton.SetBinding(VisualElement.IsVisibleProperty, new Binding(nameof(RoundListItemViewModel.IsPuttingGame), converter: new InvertedBoolConverter()));
-            editButton.Clicked += async (_, _) =>
-            {
-                if (editButton.BindingContext is RoundListItemViewModel item)
-                {
-                    await editRoundAsync(item);
-                }
-            };
-
-            var actions = new Grid
-            {
-                ColumnDefinitions =
-                {
-                    new ColumnDefinition(GridLength.Star),
-                    new ColumnDefinition(GridLength.Star)
-                },
-                ColumnSpacing = 8,
-                Children =
-                {
-                    detailsButton.Column(0),
-                    editButton.Column(1)
-                }
-            };
 
             var card = new LongPressBorder
             {
@@ -512,15 +458,17 @@ public sealed class StartPage : ContentPage
                             ColumnSpacing = 8,
                             Children = { date.Column(0), sg.Column(1) }
                         },
-                        detail,
-                        actions
+                        detail
                     }
                 }
             };
 
+#if ANDROID
+            card.ShortPressed += async (_, _) =>
+#else
             var tap = new TapGestureRecognizer();
-
             tap.Tapped += async (_, _) =>
+#endif
             {
                 if (card.BindingContext is RoundListItemViewModel item)
                 {
@@ -528,7 +476,9 @@ public sealed class StartPage : ContentPage
                 }
             };
 
+#if !ANDROID
             card.GestureRecognizers.Add(tap);
+#endif
 
             card.LongPressed += async (_, _) =>
             {
@@ -548,20 +498,4 @@ public sealed class StartPage : ContentPage
         });
     }
 
-    private static Button RoundCardActionButton(string text, bool isPrimary)
-    {
-        return new Button
-        {
-            Text = text,
-            HeightRequest = 40,
-            CornerRadius = 8,
-            BackgroundColor = isPrimary ? GolfTheme.Colors.PrimaryGreen : Colors.White,
-            BorderColor = GolfTheme.Colors.PrimaryGreen,
-            BorderWidth = 1,
-            TextColor = isPrimary ? Colors.White : GolfTheme.Colors.PrimaryGreen,
-            FontAttributes = FontAttributes.Bold,
-            FontSize = 13,
-            Padding = new Thickness(8, 0)
-        };
-    }
 }

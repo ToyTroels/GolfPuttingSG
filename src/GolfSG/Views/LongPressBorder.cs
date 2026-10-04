@@ -6,6 +6,7 @@ public sealed partial class LongPressBorder : Border
     private bool isPressed;
 
     public event EventHandler? LongPressed;
+    public event EventHandler? ShortPressed;
     public event EventHandler<bool>? PressedChanged;
 
     protected override void OnHandlerChanged()
@@ -57,6 +58,7 @@ public sealed partial class LongPressBorder
         foreach (var view in longPressViews)
         {
             view.LongClick -= OnPlatformLongClick;
+            view.Click -= OnPlatformClick;
             view.Touch -= OnPlatformTouch;
         }
 
@@ -74,6 +76,7 @@ public sealed partial class LongPressBorder
         view.Clickable = true;
         view.LongClickable = true;
         view.LongClick += OnPlatformLongClick;
+        view.Click += OnPlatformClick;
         view.Touch += OnPlatformTouch;
         longPressViews.Add(view);
 
@@ -87,6 +90,14 @@ public sealed partial class LongPressBorder
                     AttachLongPress(child);
                 }
             }
+        }
+    }
+
+    private void OnPlatformClick(object? sender, EventArgs e)
+    {
+        if (DateTime.UtcNow - lastLongPress >= TimeSpan.FromMilliseconds(800))
+        {
+            ShortPressed?.Invoke(this, EventArgs.Empty);
         }
     }
 

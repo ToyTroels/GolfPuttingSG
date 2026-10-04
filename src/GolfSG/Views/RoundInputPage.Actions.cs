@@ -5,6 +5,15 @@ namespace GolfSG.Views;
 
 public sealed partial class RoundInputPage
 {
+    private async Task OpenHoleAsync(HoleInputViewModel hole)
+    {
+        await this.RunNavigationOnceAsync(async () =>
+        {
+            viewModel.SetCurrentHole(hole.HoleNumber);
+            await Navigation.PushAsync(new HoleEntryPage(viewModel, hole));
+        });
+    }
+
     private async Task StartRoundAsync()
     {
         if (!await viewModel.StartRoundAsync())
@@ -15,8 +24,7 @@ public sealed partial class RoundInputPage
 
         if (viewModel.Holes.FirstOrDefault() is HoleInputViewModel firstHole)
         {
-            await this.RunNavigationOnceAsync(
-                () => Navigation.PushAsync(new HoleEntryPage(viewModel, firstHole)));
+            await OpenHoleAsync(firstHole);
         }
     }
 

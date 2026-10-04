@@ -60,7 +60,7 @@ public sealed partial class RoundInputPage : ContentPage
         var hole = viewModel.Holes.FirstOrDefault(hole => hole.HoleNumber == viewModel.ResumeHoleNumber);
         if (hole is not null)
         {
-            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new HoleEntryPage(viewModel, hole)));
+            await OpenHoleAsync(hole);
         }
     }
     public Task FlushActiveRoundAsync() => viewModel.FlushAutosaveAsync();
@@ -298,8 +298,7 @@ public sealed partial class RoundInputPage : ContentPage
             {
                 if (card.BindingContext is HoleInputViewModel hole)
                 {
-                    await viewModel.SetCurrentHoleAsync(hole.HoleNumber);
-                    await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new HoleEntryPage(viewModel, hole)));
+                    await OpenHoleAsync(hole);
                 }
             };
             card.GestureRecognizers.Add(tap);

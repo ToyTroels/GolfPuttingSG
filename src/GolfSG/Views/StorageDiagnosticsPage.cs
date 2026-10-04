@@ -112,7 +112,7 @@ public sealed class StorageDiagnosticsPage : ContentPage
             var rounds = await repository.GetRoundsAsync();
             savedRounds.Text = rounds.Count.ToString();
             storageStatus.Text = BuildStorageStatus();
-            await DisplayAlertAsync("Import fuldført", "Rundehistorikken er importeret.", "OK");
+            await DisplayAlertAsync("Import fuldført", "Nye runder er føjet til historikken. Runder med samme ID beholdes i deres gemte version.", "OK");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {

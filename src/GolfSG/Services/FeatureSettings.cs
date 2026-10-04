@@ -4,6 +4,11 @@ namespace GolfSG.Application.Services;
 
 public static class FeatureSettings
 {
+    public static bool RecordGreenInRegulation
+    {
+        get => Preferences.Default.Get("record-green-in-regulation", false);
+        set => Preferences.Default.Set("record-green-in-regulation", value);
+    }
     private const string EnableBetaFeaturesKey = "enable-beta-features";
     private const string UseGuidedHoleEntryKey = "use-guided-hole-entry";
 

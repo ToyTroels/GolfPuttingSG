@@ -13,6 +13,8 @@ public sealed class RoundResultPage : ContentPage
     private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
 
     private readonly RoundResultViewModel viewModel;
+    private readonly Button finishButton = new();
+    private bool openedFromHistory;
 
     public RoundResultPage(RoundResultViewModel viewModel)
     {
@@ -23,8 +25,10 @@ public sealed class RoundResultPage : ContentPage
         BuildLayout();
     }
 
-    public async Task LoadAsync(string roundId)
+    public async Task LoadAsync(string roundId, bool openedFromHistory = false)
     {
+        this.openedFromHistory = openedFromHistory;
+        finishButton.Text = openedFromHistory ? "Tilbage" : "Færdig";
         await viewModel.LoadAsync(roundId);
     }
 
@@ -65,15 +69,12 @@ public sealed class RoundResultPage : ContentPage
         };
         title.SetBinding(Label.TextProperty, nameof(RoundResultViewModel.ResultTitle));
 
-        var finishButton = new Button
-        {
-            Text = "Afslut runde",
-            BackgroundColor = PrimaryGreen,
-            TextColor = Colors.White,
-            CornerRadius = 8,
-            HeightRequest = 52,
-            FontAttributes = FontAttributes.Bold
-        };
+        finishButton.Text = "Færdig";
+        finishButton.BackgroundColor = PrimaryGreen;
+        finishButton.TextColor = Colors.White;
+        finishButton.CornerRadius = 8;
+        finishButton.HeightRequest = 52;
+        finishButton.FontAttributes = FontAttributes.Bold;
         finishButton.Clicked += async (_, _) => await GoBackToStartAsync();
 
         var holes = new VerticalStackLayout();
@@ -106,7 +107,11 @@ public sealed class RoundResultPage : ContentPage
                                 },
                                 Children =
                                 {
-                                    title.Column(0),
+                                    new VerticalStackLayout
+                                    {
+                                        Spacing = 4,
+                                        Children = { title, BoundLabel(nameof(RoundResultViewModel.RoundProgressText), "{0}") }
+                                    }.Column(0),
                                     editButton.Column(1)
                                 }
                             },
@@ -126,32 +131,42 @@ public sealed class RoundResultPage : ContentPage
     {
         if (Navigation.NavigationStack.Count > 1)
         {
-            await this.RunNavigationOnceAsync(() => Navigation.PopToRootAsync());
+            await this.RunNavigationOnceAsync(async () =>
+            {
+                if (openedFromHistory)
+                {
+                    await Navigation.PopAsync();
+                }
+                else
+                {
+                    await Navigation.PopToRootAsync();
+                }
+            });
         }
     }
 
     private View SummaryPanel()
     {
-        var puttingSg = BoundLabel(nameof(RoundResultViewModel.TotalPuttingSgText), "SG Putning: {0}");
+        var puttingSg = BoundLabel(nameof(RoundResultViewModel.TotalPuttingSgText), "SG Putning: {0}", true);
+        puttingSg.FontSize = 30;
+        puttingSg.TextColor = PrimaryGreen;
         puttingSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
-
-        var averagePuttDistance = BoundLabel(nameof(RoundResultViewModel.AverageDistanceText), "Gns. første putt-afstand: {0}");
-        averagePuttDistance.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
         var totalPutts = BoundLabel(nameof(RoundResultViewModel.TotalPuttsText), "Putts i alt: {0}");
         totalPutts.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
-        var targetPutts = BoundLabel(nameof(RoundResultViewModel.TargetPuttsText), "Mål-putts: {0}");
-        targetPutts.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.IsPuttingGame));
+        var expectedPutts = BoundLabel(nameof(RoundResultViewModel.ExpectedPuttsText), "Forventede putts: {0}");
+        expectedPutts.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
+        var puttingReference = new Label
+        {
+            Text = "Forventede putts beregnes ud fra første putt-afstand på hvert registreret hul og PGA-reference.",
+            FontSize = 12,
+            TextColor = MutedTextColor
+        };
+        puttingReference.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
         var threePuttRate = BoundLabel(nameof(RoundResultViewModel.ThreePuttRateText), "3-putt-andel: {0}");
         threePuttRate.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
-
-        var bestHole = BoundLabel(nameof(RoundResultViewModel.BestHoleText), "Bedste putting-hul: {0}");
-        bestHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
-
-        var worstHole = BoundLabel(nameof(RoundResultViewModel.WorstHoleText), "Værste putting-hul: {0}");
-        worstHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
         var approachSg = BoundLabel(nameof(RoundResultViewModel.TotalApproachSgText), "SG Indspil: {0}");
         approachSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
@@ -183,27 +198,26 @@ public sealed class RoundResultPage : ContentPage
         var worstAroundGreenHole = BoundLabel(nameof(RoundResultViewModel.WorstAroundGreenHoleText), "Værste hul omkring green: {0}");
         worstAroundGreenHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackAroundGreen));
 
+        var totalSg = BoundLabel(nameof(RoundResultViewModel.TotalSgText), "Samlet SG: {0}", true);
+        totalSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.ShowTotalSg));
+
         return Card(new VerticalStackLayout
         {
             Spacing = 6,
             Children =
             {
-                BoundLabel(nameof(RoundResultViewModel.TotalSgText), "Samlet SG: {0}", true),
-                BoundLabel(nameof(RoundResultViewModel.RoundProgressText), "Status: {0}"),
-                BoundLabel(nameof(RoundResultViewModel.RoundCompletionText), "{0}"),
                 puttingSg,
+                totalPutts,
+                expectedPutts,
+                threePuttRate,
+                puttingReference,
+                totalSg,
                 approachSg,
                 aroundGreenSg,
-                averagePuttDistance,
                 averageApproachDistance,
                 averageAroundGreenDistance,
-                totalPutts,
-                targetPutts,
                 totalApproachShots,
                 totalAroundGreenShots,
-                threePuttRate,
-                bestHole,
-                worstHole,
                 bestApproachHole,
                 worstApproachHole,
                 bestAroundGreenHole,
@@ -227,7 +241,7 @@ public sealed class RoundResultPage : ContentPage
         }));
         notes.SetBinding(BindableLayout.ItemsSourceProperty, nameof(RoundResultViewModel.Analysis));
 
-        return Card(new VerticalStackLayout
+        var panel = Card(new VerticalStackLayout
         {
             Spacing = 6,
             Children =
@@ -241,6 +255,8 @@ public sealed class RoundResultPage : ContentPage
                 notes
             }
         });
+        panel.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.HasAnalysis));
+        return panel;
     }
 
     private View PuttingDistancePanel()
@@ -256,9 +272,15 @@ public sealed class RoundResultPage : ContentPage
             {
                 new Label
                 {
-                    Text = "Putting-overblik",
+                    Text = "Hvor vandt og tabte du slag?",
                     FontAttributes = FontAttributes.Bold,
                     TextColor = TextColor
+                },
+                new Label
+                {
+                    Text = "Fordelt efter første putt-afstand. SG omfatter alle putts på disse huller. Plus er vundne slag, minus er tabte slag mod PGA-reference.",
+                    FontSize = 13,
+                    TextColor = MutedTextColor
                 },
                 buckets
             }
@@ -358,6 +380,27 @@ public sealed class RoundResultPage : ContentPage
                 VerticalTextAlignment = TextAlignment.Center
             };
             sg.SetBinding(Label.TextProperty, nameof(PuttingDistanceBucketItemViewModel.StrokesGainedText));
+            sg.TextColor = MutedTextColor;
+            sg.Triggers.Add(new DataTrigger(typeof(Label))
+            {
+                Binding = new Binding(nameof(PuttingDistanceBucketItemViewModel.IsGain)),
+                Value = true,
+                Setters = { new Setter { Property = Label.TextColorProperty, Value = PrimaryGreen } }
+            });
+
+            sg.Triggers.Add(new DataTrigger(typeof(Label))
+            {
+                Binding = new Binding(nameof(PuttingDistanceBucketItemViewModel.IsLoss)),
+                Value = true,
+                Setters = { new Setter { Property = Label.TextColorProperty, Value = GolfTheme.Colors.DangerText } }
+            });
+            var outcome = new Label
+            {
+                FontSize = 12,
+                TextColor = MutedTextColor,
+                HorizontalTextAlignment = TextAlignment.End
+            };
+            outcome.SetBinding(Label.TextProperty, nameof(PuttingDistanceBucketItemViewModel.OutcomeText));
 
             return new Grid
             {
@@ -374,7 +417,11 @@ public sealed class RoundResultPage : ContentPage
                         Spacing = 1,
                         Children = { name, range, detail }
                     }.Column(0),
-                    sg.Column(1)
+                    new VerticalStackLayout
+                    {
+                        VerticalOptions = LayoutOptions.Center,
+                        Children = { sg, outcome }
+                    }.Column(1)
                 }
             };
         });

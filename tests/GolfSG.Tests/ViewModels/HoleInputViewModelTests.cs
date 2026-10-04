@@ -10,6 +10,48 @@ namespace GolfSG.Tests;
 public sealed class HoleInputViewModelTests
 {
     [TestMethod]
+    public void GirSelectionSurvivesEditingAndCanBeCleared()
+    {
+        var model = new HoleInputViewModel(1);
+        model.Load(StrokesGainedCalculator.BuildHole(1, 3, 2));
+        Assert.IsNull(model.GreenInRegulation);
+        model.GreenInRegulation = true;
+        var restored = new HoleInputViewModel(1);
+        restored.Load(model.ToHole());
+        Assert.IsTrue(restored.GreenInRegulation);
+        restored.IncreasePutts();
+        Assert.IsTrue(restored.ToHole().GreenInRegulation);
+        restored.GreenInRegulation = false;
+        Assert.IsFalse(restored.ToHole().GreenInRegulation);
+        restored.GreenInRegulation = null;
+        Assert.IsNull(restored.ToHole().GreenInRegulation);
+    }
+
+    [TestMethod]
+    public void HigherPuttCountsArePreservedAndScored()
+    {
+        var viewModel = new HoleInputViewModel(1);
+        viewModel.FirstPuttDistanceMeters = 3;
+        viewModel.SetPutts(6);
+        viewModel.IncreasePutts();
+
+        var hole = viewModel.ToHole();
+        Assert.AreEqual(7, viewModel.Putts);
+        Assert.AreEqual(7, hole.Putts);
+        Assert.AreEqual(StrokesGainedCalculator.GetExpectedPutts(3) - 7,
+            hole.StrokesGainedPutting, 0.001);
+
+        var restored = new HoleInputViewModel(1);
+        restored.Load(hole);
+        restored.IncreasePutts();
+        Assert.AreEqual(8, restored.Putts);
+
+        viewModel.SetPutts(0);
+        viewModel.DecreasePutts();
+        Assert.AreEqual(0, viewModel.Putts);
+    }
+
+    [TestMethod]
     public void AddAnotherAroundGreenShotKeepsPreviousShotVisibleAsSummary()
     {
         var viewModel = new HoleInputViewModel(1);

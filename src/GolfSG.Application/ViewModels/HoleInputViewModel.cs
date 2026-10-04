@@ -6,6 +6,24 @@ namespace GolfSG.Application.ViewModels;
 
 public sealed partial class HoleInputViewModel : ViewModelBase
 {
+    private bool? greenInRegulation;
+    public bool? GreenInRegulation
+    {
+        get => greenInRegulation;
+        set
+        {
+            if (SetProperty(ref greenInRegulation, value))
+            {
+                OnPropertyChanged(nameof(DetailText));
+                OnPropertyChanged(nameof(IsGirChecked));
+            }
+        }
+    }
+    public bool IsGirChecked
+    {
+        get => GreenInRegulation == true;
+        set => GreenInRegulation = value;
+    }
     private const double MaxFirstPuttDistanceMeters = 30;
     private const double MaxApproachDistanceMeters = 250;
     private const double MaxAroundGreenDistanceMeters = 50;
@@ -168,7 +186,7 @@ public sealed partial class HoleInputViewModel : ViewModelBase
         get => putts;
         set
         {
-            if (SetProperty(ref putts, Math.Clamp(value, 0, 5)))
+            if (SetProperty(ref putts, Math.Max(value, 0)))
             {
                 OnPropertyChanged(nameof(CanAdvancePuttingStep));
                 Recalculate();
@@ -867,11 +885,12 @@ public sealed partial class HoleInputViewModel : ViewModelBase
             0,
             IsApproachInputVisible ? BuildApproachShot() : null,
             null,
-            BuildAroundGreenShots());
+            BuildAroundGreenShots()) with { GreenInRegulation = GreenInRegulation };
     }
 
     public void Load(HolePuttingData hole)
     {
+        GreenInRegulation = hole.GreenInRegulation;
         distanceText = hole.FirstPuttDistanceMeters > 0 ? FormatPuttingInputDistance(hole.FirstPuttDistanceMeters, 1) : string.Empty;
         approachDistanceText = hole.ApproachDistanceMeters > 0 ? FormatStoredDistance(hole.ApproachDistanceMeters, 1) : string.Empty;
         approachStartDistanceText = hole.ApproachStartDistanceYards > 0 ? FormatStoredDistance(YardsToMeters(hole.ApproachStartDistanceYards), 1) : string.Empty;
