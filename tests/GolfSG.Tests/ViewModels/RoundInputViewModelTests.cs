@@ -8,6 +8,28 @@ namespace GolfSG.Tests;
 public sealed class RoundInputViewModelTests
 {
     [TestMethod]
+    public void LastTrackingCategoryCannotBeDeselected()
+    {
+        var model = new RoundInputViewModel(new SuccessfulRoundRepository());
+        Assert.IsFalse(model.CanToggleTrackPutting);
+        model.TrackPutting = false;
+        Assert.IsTrue(model.TrackPutting);
+
+        model.TrackApproach = true;
+        Assert.IsTrue(model.CanToggleTrackPutting);
+        model.TrackPutting = false;
+        Assert.IsFalse(model.CanToggleTrackApproach);
+        model.TrackApproach = false;
+        Assert.IsTrue(model.TrackApproach);
+
+        model.TrackAroundGreen = true;
+        model.TrackApproach = false;
+        Assert.IsFalse(model.CanToggleTrackAroundGreen);
+        model.TrackAroundGreen = false;
+        Assert.IsTrue(model.TrackAroundGreen);
+    }
+
+    [TestMethod]
     public void TrackingTogglesBatchRoundSummaryNotifications()
     {
         var viewModel = new RoundInputViewModel(new SuccessfulRoundRepository());

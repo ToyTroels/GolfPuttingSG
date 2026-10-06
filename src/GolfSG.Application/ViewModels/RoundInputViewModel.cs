@@ -115,7 +115,8 @@ public sealed class RoundInputViewModel : ViewModelBase
         {
             if (!value && !TrackApproach && !TrackAroundGreen)
             {
-                value = true;
+                OnPropertyChanged(nameof(TrackPutting));
+                return;
             }
 
             if (SetProperty(ref trackPutting, value))
@@ -134,7 +135,8 @@ public sealed class RoundInputViewModel : ViewModelBase
         {
             if (!value && !TrackPutting && !TrackAroundGreen)
             {
-                value = true;
+                OnPropertyChanged(nameof(TrackApproach));
+                return;
             }
 
             if (SetProperty(ref trackApproach, value))
@@ -153,7 +155,8 @@ public sealed class RoundInputViewModel : ViewModelBase
         {
             if (!value && !TrackPutting && !TrackApproach)
             {
-                value = true;
+                OnPropertyChanged(nameof(TrackAroundGreen));
+                return;
             }
 
             if (SetProperty(ref trackAroundGreen, value))
@@ -164,6 +167,10 @@ public sealed class RoundInputViewModel : ViewModelBase
             }
         }
     }
+
+    public bool CanToggleTrackPutting => !TrackPutting || TrackApproach || TrackAroundGreen;
+    public bool CanToggleTrackApproach => !TrackApproach || TrackPutting || TrackAroundGreen;
+    public bool CanToggleTrackAroundGreen => !TrackAroundGreen || TrackPutting || TrackApproach;
 
     public string TotalSgText => UiFormat.Sg(
         (TrackPutting ? summary.TotalStrokesGainedPutting : 0) +
@@ -518,6 +525,9 @@ public sealed class RoundInputViewModel : ViewModelBase
 
     private void OnTrackingPropertiesChanged()
     {
+        OnPropertyChanged(nameof(CanToggleTrackPutting));
+        OnPropertyChanged(nameof(CanToggleTrackApproach));
+        OnPropertyChanged(nameof(CanToggleTrackAroundGreen));
         OnPropertyChanged(nameof(TrackPutting));
         OnPropertyChanged(nameof(TrackApproach));
         OnPropertyChanged(nameof(TrackAroundGreen));

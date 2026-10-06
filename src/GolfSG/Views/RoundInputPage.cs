@@ -1,3 +1,4 @@
+using GolfSG.Application.Services;
 using GolfSG.Application.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls.Shapes;
@@ -13,6 +14,7 @@ public sealed partial class RoundInputPage : ContentPage
     private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
 
     private readonly RoundInputViewModel viewModel;
+    private readonly List<View> betaTrackingRows = [];
 
     public RoundInputPage(RoundInputViewModel viewModel)
     {
@@ -64,6 +66,22 @@ public sealed partial class RoundInputPage : ContentPage
         }
     }
     public Task FlushActiveRoundAsync() => viewModel.FlushAutosaveAsync();
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        foreach (var row in betaTrackingRows)
+        {
+            row.IsVisible = FeatureSettings.EnableBetaFeatures;
+        }
+
+        if (viewModel.IsSetupVisible && !FeatureSettings.EnableBetaFeatures)
+        {
+            viewModel.TrackPutting = true;
+            viewModel.TrackApproach = false;
+            viewModel.TrackAroundGreen = false;
+        }
+    }
 
     protected override bool OnBackButtonPressed()
     {
@@ -154,7 +172,7 @@ public sealed partial class RoundInputPage : ContentPage
                 {
                     title,
                     error,
-                    HoleCountPanel().Margin(new Thickness(0, 12, 0, 0)),
+                    HoleCountPanel(showQuickSelection: true).Margin(new Thickness(0, 12, 0, 0)),
                     TrackingPanel(),
                     startButton.Margin(new Thickness(0, 8, 0, 0))
                 }
@@ -307,7 +325,7 @@ public sealed partial class RoundInputPage : ContentPage
         });
     }
 
-    private View HoleCountPanel()
+    private View HoleCountPanel(bool showQuickSelection = false)
     {
         var holeCount = new Label
         {
@@ -327,7 +345,7 @@ public sealed partial class RoundInputPage : ContentPage
         var plus = StepperButton("+");
         plus.Clicked += (_, _) => viewModel.IncreaseHoleCount();
 
-        return Card(new VerticalStackLayout
+        var panel = new VerticalStackLayout
         {
             Spacing = 12,
             Children =
@@ -358,7 +376,65 @@ public sealed partial class RoundInputPage : ContentPage
                     Children = { minus, holeCount, plus }
                 }
             }
-        });
+        };
+        if (showQuickSelection)
+        {
+            panel.Children.Add(new Grid
+            {
+                ColumnSpacing = 10,
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Star)
+                },
+                Children = { QuickHoleButton(9).Column(0), QuickHoleButton(18).Column(1) }
+            });
+        }
+
+        return Card(panel);
+    }
+
+    private Button QuickHoleButton(int targetCount)
+    {
+        var button = new Button
+        {
+            Text = $"{targetCount} huller",
+            HeightRequest = 48,
+            CornerRadius = 8,
+            BackgroundColor = GolfTheme.Colors.SoftGreen,
+            BorderColor = PrimaryGreen,
+            BorderWidth = 1,
+            TextColor = PrimaryGreen,
+            FontAttributes = FontAttributes.Bold,
+            Padding = new Thickness(8, 0)
+        };
+        button.Accessible($"round.setup.holes-{targetCount}", $"Vælg {targetCount} huller");
+        var selected = new DataTrigger(typeof(Button))
+        {
+            Binding = new Binding(nameof(RoundInputViewModel.HoleCount)),
+            Value = targetCount
+        };
+        selected.Setters.Add(new Setter { Property = Button.BackgroundColorProperty, Value = PrimaryGreen });
+        selected.Setters.Add(new Setter { Property = Button.TextColorProperty, Value = Colors.White });
+        button.Triggers.Add(selected);
+        button.Clicked += (_, _) =>
+        {
+            while (viewModel.HoleCount < targetCount)
+            {
+                viewModel.IncreaseHoleCount();
+            }
+
+            while (viewModel.HoleCount > targetCount)
+            {
+                var before = viewModel.HoleCount;
+                viewModel.DecreaseHoleCount();
+                if (viewModel.HoleCount == before)
+                {
+                    break;
+                }
+            }
+        };
+        return button;
     }
 
     private View RoundProgressPanel()
@@ -369,6 +445,19 @@ public sealed partial class RoundInputPage : ContentPage
             TextColor = TextColor
         };
         progress.SetBinding(Label.TextProperty, nameof(RoundInputViewModel.RoundProgressText));
+
+        Label CategoryScore(string title, string scoreProperty, string trackingProperty)
+        {
+            var score = new Label
+            {
+                FontSize = 20,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = PrimaryGreen
+            };
+            score.SetBinding(Label.TextProperty, new Binding(scoreProperty, stringFormat: title + ": {0}"));
+            score.SetBinding(IsVisibleProperty, trackingProperty);
+            return score;
+        }
 
         return Card(new VerticalStackLayout
         {
@@ -382,6 +471,17 @@ public sealed partial class RoundInputPage : ContentPage
                     TextColor = TextColor
                 },
                 progress,
+                new VerticalStackLayout
+                {
+                    Spacing = 4,
+                    Margin = new Thickness(0, 4, 0, 4),
+                    Children =
+                    {
+                        CategoryScore("SG Putting", nameof(RoundInputViewModel.TotalPuttingSgText), nameof(RoundInputViewModel.TrackPutting)),
+                        CategoryScore("SG Approach", nameof(RoundInputViewModel.TotalApproachSgText), nameof(RoundInputViewModel.TrackApproach)),
+                        CategoryScore("SG Omkring green", nameof(RoundInputViewModel.TotalAroundGreenSgText), nameof(RoundInputViewModel.TrackAroundGreen))
+                    }
+                },
                 new Label
                 {
                     Text = "Ikke-registrerede huller tæller ikke som nul-resultater.",
@@ -401,6 +501,7 @@ public sealed partial class RoundInputPage : ContentPage
         };
         putting.Accessible(UiAutomationIds.TrackPutting, "Track putting");
         putting.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackPutting), BindingMode.TwoWay);
+        putting.SetBinding(IsEnabledProperty, nameof(RoundInputViewModel.CanToggleTrackPutting));
 
         var approach = new Switch
         {
@@ -409,6 +510,7 @@ public sealed partial class RoundInputPage : ContentPage
         };
         approach.Accessible(UiAutomationIds.TrackApproach, "Track approachslag");
         approach.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackApproach), BindingMode.TwoWay);
+        approach.SetBinding(IsEnabledProperty, nameof(RoundInputViewModel.CanToggleTrackApproach));
 
         var aroundGreen = new Switch
         {
@@ -417,6 +519,7 @@ public sealed partial class RoundInputPage : ContentPage
         };
         aroundGreen.Accessible(UiAutomationIds.TrackAroundGreen, "Track slag omkring green");
         aroundGreen.SetBinding(Switch.IsToggledProperty, nameof(RoundInputViewModel.TrackAroundGreen), BindingMode.TwoWay);
+        aroundGreen.SetBinding(IsEnabledProperty, nameof(RoundInputViewModel.CanToggleTrackAroundGreen));
 
         return Card(new VerticalStackLayout
         {
@@ -443,8 +546,8 @@ public sealed partial class RoundInputPage : ContentPage
                     }
                 },
                 TrackingRow("Putting", "Første putt-afstand og antal putts", putting),
-                TrackingRow("Approach", "Start, slutposition og strafslag", approach),
-                TrackingRow("Omkring green", "Chip, pitch, bunker og problemlie ved green", aroundGreen)
+                BetaTrackingRow("Approach", "Start, slutposition og strafslag", approach),
+                BetaTrackingRow("Omkring green", "Chip, pitch, bunker og problemlie ved green", aroundGreen)
             }
         });
     }
@@ -510,8 +613,26 @@ public sealed partial class RoundInputPage : ContentPage
         });
     }
 
+    private View BetaTrackingRow(string title, string subtitle, Switch toggle)
+    {
+        var row = TrackingRow($"{title} · Beta", subtitle, toggle);
+        row.IsVisible = FeatureSettings.EnableBetaFeatures;
+        betaTrackingRows.Add(row);
+        return row;
+    }
+
     private static View TrackingRow(string title, string subtitle, Switch toggle)
     {
+        // Keep the native switch fully measured and independent of theme switch states.
+        toggle.Style = new Style(typeof(Switch));
+        toggle.WidthRequest = 64;
+        toggle.HeightRequest = 48;
+        toggle.HorizontalOptions = LayoutOptions.Center;
+        toggle.VerticalOptions = LayoutOptions.Center;
+        toggle.OnColor = GolfTheme.Colors.CardStroke;
+        toggle.ThumbColor = toggle.IsToggled ? PrimaryGreen : MutedTextColor;
+        toggle.Toggled += (_, args) => toggle.ThumbColor = args.Value ? PrimaryGreen : MutedTextColor;
+
         return new Grid
         {
             ColumnDefinitions =

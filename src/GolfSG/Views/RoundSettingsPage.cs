@@ -1,3 +1,4 @@
+using GolfSG.Application.Services;
 using GolfSG.Application.ViewModels;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Layouts;
@@ -14,6 +15,7 @@ public sealed class RoundSettingsPage : ContentPage
 
     private readonly RoundInputViewModel viewModel;
     private readonly int minimumHoleCount;
+    private readonly List<View> betaTrackingRows = [];
 
     public RoundSettingsPage(RoundInputViewModel viewModel, int minimumHoleCount = 1)
     {
@@ -23,6 +25,15 @@ public sealed class RoundSettingsPage : ContentPage
         Title = "Rundeindstillinger";
         BackgroundColor = PageBackground;
         BuildLayout();
+    }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        foreach (var row in betaTrackingRows)
+        {
+            row.IsVisible = FeatureSettings.EnableBetaFeatures;
+        }
     }
 
     private void BuildLayout()
@@ -204,8 +215,8 @@ public sealed class RoundSettingsPage : ContentPage
             {
                 SectionHeader("Registrering", "Vælg hvilke dele af runden du vil tracke"),
                 TrackingRow("Putting", "Første putt-afstand og antal putts", putting),
-                TrackingRow("Approach", "Start, slutposition og strafslag", approach),
-                TrackingRow("Omkring green", "Chip, pitch, bunker og problemlie ved green", aroundGreen)
+                BetaTrackingRow("Approach", "Start, slutposition og strafslag", approach),
+                BetaTrackingRow("Omkring green", "Chip, pitch, bunker og problemlie ved green", aroundGreen)
             }
         });
     }
@@ -218,6 +229,7 @@ public sealed class RoundSettingsPage : ContentPage
             ThumbColor = Colors.White
         };
         toggle.SetBinding(Switch.IsToggledProperty, bindingPath, BindingMode.TwoWay);
+        toggle.SetBinding(IsEnabledProperty, $"CanToggle{bindingPath}");
         return toggle;
     }
 
@@ -242,6 +254,14 @@ public sealed class RoundSettingsPage : ContentPage
                 }
             }
         };
+    }
+
+    private View BetaTrackingRow(string title, string subtitle, Switch toggle)
+    {
+        var row = TrackingRow($"{title} · Beta", subtitle, toggle);
+        row.IsVisible = FeatureSettings.EnableBetaFeatures;
+        betaTrackingRows.Add(row);
+        return row;
     }
 
     private static View TrackingRow(string title, string subtitle, Switch toggle)

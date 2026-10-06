@@ -66,7 +66,7 @@ public sealed class PuttingBenchmarkPage : ContentPage
             });
             benchmarkOptions.Children.Add(new Label
             {
-                Text = "Ladder benchmark",
+                Text = "Ladder benchmark · Beta",
                 TextColor = GolfTheme.Colors.MutedText,
                 FontAttributes = FontAttributes.Bold
             });

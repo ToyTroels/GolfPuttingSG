@@ -10,6 +10,9 @@ public sealed class StartPage : ContentPage
     private readonly StartViewModel viewModel;
     private readonly IServiceProvider services;
     private Button? evaluationButton;
+    private Button? statisticsButton;
+    private View? betaNotice;
+    private View? betaActions;
 
     public StartPage(StartViewModel viewModel, IServiceProvider services)
     {
@@ -35,6 +38,18 @@ public sealed class StartPage : ContentPage
         if (evaluationButton is not null)
         {
             evaluationButton.IsVisible = FeatureSettings.EnableBetaFeatures;
+        }
+        if (statisticsButton is not null)
+        {
+            statisticsButton.IsVisible = FeatureSettings.EnableBetaFeatures;
+        }
+        if (betaNotice is not null)
+        {
+            betaNotice.IsVisible = FeatureSettings.EnableBetaFeatures;
+        }
+        if (betaActions is not null)
+        {
+            betaActions.IsVisible = FeatureSettings.EnableBetaFeatures;
         }
 
 
@@ -70,8 +85,9 @@ public sealed class StartPage : ContentPage
         historyButton.Clicked += async (_, _) =>
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>()));
 
-        evaluationButton = AppViews.SecondaryButton("SG evaluering beta");
-        var statisticsButton = AppViews.SecondaryButton("Statistik (beta)");
+        evaluationButton = AppViews.SecondaryButton("SG-evaluering · Beta");
+        statisticsButton = AppViews.SecondaryButton("Statistik · Beta");
+        statisticsButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         statisticsButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         statisticsButton.Clicked += async (_, _) =>
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<StatisticsPage>()));
@@ -79,6 +95,31 @@ public sealed class StartPage : ContentPage
         evaluationButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         evaluationButton.Clicked += async (_, _) =>
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<EvaluationPage>()));
+
+        foreach (var button in new[] { statisticsButton, evaluationButton })
+        {
+            button.BackgroundColor = GolfTheme.Colors.WarningBackground;
+            button.BorderColor = GolfTheme.Colors.WarningStroke;
+            button.TextColor = GolfTheme.Colors.WarningText;
+        }
+        betaActions = new VerticalStackLayout
+        {
+            IsVisible = FeatureSettings.EnableBetaFeatures,
+            Spacing = 10,
+            Margin = new Thickness(0, 6, 0, 0),
+            Children =
+            {
+                new Label
+                {
+                    Text = "Beta-funktioner",
+                    FontSize = 14,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = GolfTheme.Colors.WarningText
+                },
+                statisticsButton,
+                evaluationButton
+            }
+        };
 
         var warning = new Border
         {
@@ -114,6 +155,22 @@ public sealed class StartPage : ContentPage
 
         var activeRound = ActiveRoundCard();
 
+        betaNotice = new Border
+        {
+            IsVisible = FeatureSettings.EnableBetaFeatures,
+            BackgroundColor = GolfTheme.Colors.WarningBackground,
+            Stroke = GolfTheme.Colors.WarningStroke,
+            StrokeShape = new RoundRectangle { CornerRadius = 8 },
+            Padding = 12,
+            Margin = new Thickness(0, 8, 0, 0),
+            Content = new Label
+            {
+                Text = "BETA · Beta-funktioner er aktiveret. Funktioner mærket Beta er under udvikling.",
+                FontSize = 14,
+                TextColor = GolfTheme.Colors.WarningText
+            }
+        };
+
         var insights = InsightDashboard();
         insights.SetBinding(IsVisibleProperty, nameof(StartViewModel.HasInsights));
 
@@ -129,6 +186,7 @@ public sealed class StartPage : ContentPage
                     warning,
                     error,
                     AppViews.PageTitle("Putting SG", 34),
+                    betaNotice,
                     new Label
                     {
                         Text = "Registrer strokes gained putting mod en generel referencebaseline",
@@ -139,7 +197,7 @@ public sealed class StartPage : ContentPage
                     new VerticalStackLayout
                     {
                         Spacing = 10,
-                        Children = { newRoundButton, puttingGameButton, historyButton, statisticsButton, evaluationButton }
+                        Children = { newRoundButton, puttingGameButton, historyButton, betaActions }
                     }.Margin(new Thickness(0, 16, 0, 18)),
                     insights,
                     new Label
