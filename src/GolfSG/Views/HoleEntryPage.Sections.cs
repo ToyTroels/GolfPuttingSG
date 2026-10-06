@@ -130,7 +130,7 @@ public sealed partial class HoleEntryPage
             ("Sand", () => viewModel.SelectApproachEndLie("Sand")),
             ("I hul", () => viewModel.SelectApproachEndLie("I hul")));
 
-        var approachEndDistance = ExpandingDistanceSlider(MaxFirstPuttDistanceMeters, MaxFinishDistanceMeters, SgDistanceInputPresets.FinishMeters);
+        var approachEndDistance = DistanceSlider(MaxFinishDistanceMeters, SgDistanceInputPresets.FinishMeters);
         approachEndDistance.SetBinding(Slider.ValueProperty, nameof(HoleInputViewModel.ApproachEndDistance), BindingMode.TwoWay);
 
         var approachEndDistanceValue = DistanceValueLabel();
@@ -234,7 +234,7 @@ public sealed partial class HoleEntryPage
             ("Sand", () => viewModel.SelectAroundGreenEndLie("Sand")),
             ("I hul", () => viewModel.SelectAroundGreenEndLie("I hul")));
 
-        var aroundGreenEndDistance = ExpandingDistanceSlider(MaxFirstPuttDistanceMeters, MaxFinishDistanceMeters, SgDistanceInputPresets.FinishMeters);
+        var aroundGreenEndDistance = DistanceSlider(MaxFinishDistanceMeters, SgDistanceInputPresets.FinishMeters);
         aroundGreenEndDistance.SetBinding(Slider.ValueProperty, nameof(HoleInputViewModel.AroundGreenEndDistance), BindingMode.TwoWay);
         aroundGreenEndDistance.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsAroundGreenFinishDistanceVisible));
 

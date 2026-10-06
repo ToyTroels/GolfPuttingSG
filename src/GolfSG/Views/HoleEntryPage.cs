@@ -16,9 +16,9 @@ public sealed partial class HoleEntryPage : ContentPage
     private static readonly Color TextColor = GolfTheme.Colors.Text;
     private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
     private const double MaxFirstPuttDistanceMeters = 30;
-    private const double MaxApproachDistanceMeters = 250;
+    private const double MaxApproachDistanceMeters = 300;
     private const double MaxAroundGreenDistanceMeters = 50;
-    private const double MaxFinishDistanceMeters = 250;
+    private const double MaxFinishDistanceMeters = 300;
 
 
     private static readonly IReadOnlyList<DistanceQuickPick> ApproachQuickPicks =
@@ -33,7 +33,10 @@ public sealed partial class HoleEntryPage : ContentPage
     private readonly RoundInputViewModel roundViewModel;
     private HoleInputViewModel viewModel;
     private Button? nextHoleButton;
+    private Button? overviewButton;
     private ScrollView? holeScrollView;
+    private Action? openFirstVisibleInputSection;
+    private Func<HoleEntryStep, Task>? openNextInputPaneAsync;
     private Label? holeConfirmation;
     private int holeFeedbackVersion;
     private (bool Putting, bool Approach, bool AroundGreen) layoutTracking;
@@ -55,9 +58,11 @@ public sealed partial class HoleEntryPage : ContentPage
         this.roundViewModel = roundViewModel;
         this.viewModel = viewModel;
         useGuidedInput = FeatureSettings.UseGuidedHoleEntry;
+        UsageDiagnostics.BeginVisit(viewModel);
         BindingContext = viewModel;
         Title = viewModel.Title;
         BackgroundColor = PageBackground;
+        HideSoftInputOnTapped = true;
         Shell.SetBackgroundColor(this, PageBackground);
         Shell.SetForegroundColor(this, PrimaryGreen);
         Shell.SetTitleColor(this, PrimaryGreen);
@@ -164,6 +169,8 @@ public sealed partial class HoleEntryPage : ContentPage
         };
         done.Accessible(UiAutomationIds.CompleteHole, "Gem input for hullet og gå til oversigten");
         done.Clicked += async (_, _) => await GoToOverviewAsync();
+        overviewButton = done;
+        done.IsVisible = nextHole is not null;
 
         var next = new Button
         {
@@ -177,10 +184,13 @@ public sealed partial class HoleEntryPage : ContentPage
         next.Accessible(UiAutomationIds.NextHole, "Gem input og gå til næste hul");
         nextHoleButton = next;
         next.Clicked += async (_, _) => await GoToNextHoleOrOverviewAsync();
+        Grid.SetColumn(next, nextHole is null ? 0 : 1);
+        Grid.SetColumnSpan(next, nextHole is null ? 2 : 1);
 
         if (useGuidedInput)
         {
             BuildGuidedContent(approachSection, aroundGreenSection, puttingSection);
+            AttachUsageCounters(this);
             return;
         }
 
@@ -197,12 +207,7 @@ public sealed partial class HoleEntryPage : ContentPage
             {
                 (holeScrollView = new ScrollView
                 {
-                    Content = new VerticalStackLayout
-                    {
-                        Spacing = 16,
-                        Padding = new Thickness(0, 0, 0, 20),
-                        Children = { approachSection, aroundGreenSection, puttingSection }
-                    }
+                    Content = CollapsibleInputSections(approachSection, aroundGreenSection, puttingSection)
                 }).Row(0).Margin(new Thickness(0, 0, 0, 12)),
                 new Grid
                 {
@@ -216,12 +221,13 @@ public sealed partial class HoleEntryPage : ContentPage
                     Children =
                     {
                         done.Column(0),
-                        next.Column(1)
+                        next
                     }
                 }.Row(1)
             }
         };
 
+        AttachUsageCounters(this);
     }
 
     private void BuildGuidedContent(

@@ -4,10 +4,66 @@ namespace GolfSG.Views;
 
 public sealed partial class HoleEntryPage
 {
-    private async Task AdvanceGuidedPuttingAfterQuickActionAsync()
+    private async Task<bool> PauseBeforeAutomaticPaneChangeAsync()
     {
         CancelGuidedAutoAdvance();
-        await Task.Yield();
+        guidedAutoAdvanceCts = new CancellationTokenSource();
+        var token = guidedAutoAdvanceCts.Token;
+        var hole = viewModel;
+        try
+        {
+            await Task.Delay(350, token);
+            return !token.IsCancellationRequested && ReferenceEquals(hole, viewModel);
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+    }
+
+    private async Task AdvanceAfterAroundGreenDistanceAsync()
+    {
+        if (!viewModel.CanAdvanceAroundGreenStep || !viewModel.IsPuttingInputVisible ||
+            viewModel.CanAddAnotherAroundGreenShot) return;
+        if (!await PauseBeforeAutomaticPaneChangeAsync()) return;
+        if (!viewModel.CanAdvanceAroundGreenStep || !viewModel.IsPuttingInputVisible ||
+            viewModel.CanAddAnotherAroundGreenShot) return;
+        if (useGuidedInput)
+        {
+            if (activeStep != HoleEntryStep.AroundGreen) return;
+            activeStep = HoleEntryStep.Putting;
+            UpdateGuidedStepVisibility();
+            await ScrollInputToTopAsync(animated: true);
+        }
+        else if (openNextInputPaneAsync is not null)
+        {
+            await openNextInputPaneAsync(HoleEntryStep.AroundGreen);
+        }
+    }
+
+    private async Task AdvanceAfterApproachDistanceAsync()
+    {
+        if (!viewModel.CanAdvanceApproachStep) return;
+        if (!await PauseBeforeAutomaticPaneChangeAsync() || !viewModel.CanAdvanceApproachStep) return;
+        if (useGuidedInput)
+        {
+            var steps = GetVisibleSteps();
+            if (activeStep == HoleEntryStep.Approach && steps.Count > 1)
+            {
+                activeStep = steps[1];
+                UpdateGuidedStepVisibility();
+                await ScrollInputToTopAsync(animated: true);
+            }
+        }
+        else if (openNextInputPaneAsync is not null)
+        {
+            await openNextInputPaneAsync(HoleEntryStep.Approach);
+        }
+    }
+
+    private async Task AdvanceGuidedPuttingAfterQuickActionAsync()
+    {
+        if (!await PauseBeforeAutomaticPaneChangeAsync()) return;
         if (activeStep == HoleEntryStep.Putting &&
             viewModel.CanAdvancePuttingStep &&
             !suppressGuidedAutoAdvanceAfterBack)
@@ -59,6 +115,10 @@ public sealed partial class HoleEntryPage
         if (guidedStepLabel is not null)
         {
             guidedStepLabel.Text = $"{index + 1} / {visibleSteps.Count} - {GetStepLabel(activeStep)}";
+            if (GolfSG.Application.Services.FeatureSettings.EnableBetaFeatures && activeStep != HoleEntryStep.Putting)
+            {
+                guidedStepLabel.Text += " · Beta";
+            }
         }
 
         if (guidedBackButton is not null)
@@ -165,6 +225,7 @@ public sealed partial class HoleEntryPage
             activeStep = visibleSteps[index - 1];
             suppressGuidedAutoAdvanceAfterBack = true;
             UpdateGuidedStepVisibility();
+            await ScrollInputToTopAsync();
             return;
         }
 
@@ -180,6 +241,7 @@ public sealed partial class HoleEntryPage
         {
             activeStep = visibleSteps[index + 1];
             UpdateGuidedStepVisibility();
+            await ScrollInputToTopAsync();
             return;
         }
 
@@ -218,6 +280,16 @@ public sealed partial class HoleEntryPage
         };
     }
 
+    private async Task ScrollInputToTopAsync(bool animated = false)
+    {
+        // Let the newly opened section update its layout before resetting the offset.
+        await Task.Yield();
+        if (holeScrollView?.Handler is not null)
+        {
+            await holeScrollView.ScrollToAsync(0, 0, animated);
+        }
+    }
+
     private async Task GoToNextHoleOrOverviewAsync()
     {
         var nextHole = GetNextHole();
@@ -252,11 +324,12 @@ public sealed partial class HoleEntryPage
             return;
         }
 
-        await this.RunNavigationOnceAsync(() =>
+        await this.RunNavigationOnceAsync(async () =>
         {
             CancelGuidedAutoAdvance();
             var previousHoleNumber = viewModel.HoleNumber;
             var previousInput = viewModel.ToHole();
+            GolfSG.Application.Services.UsageDiagnostics.FinishVisit(viewModel);
             var inputRegistered = !IsPreviousHole(hole) &&
                 (previousInput.IsCompleted || previousInput.IsApproachCompleted || previousInput.IsAroundGreenCompleted);
             suppressGuidedAutoAdvanceAfterBack = useGuidedInput && IsPreviousHole(hole);
@@ -268,12 +341,20 @@ public sealed partial class HoleEntryPage
             // Rebind the existing controls rather than constructing and navigating to
             // another large native control tree for every hole.
             viewModel = hole;
+            GolfSG.Application.Services.UsageDiagnostics.BeginVisit(hole);
             BindingContext = hole;
             Title = hole.Title;
             SemanticProperties.SetDescription(this, $"Input for hul {hole.HoleNumber}");
             if (nextHoleButton is not null)
             {
-                nextHoleButton.Text = GetNextHole() is null ? "Til oversigt" : "Næste hul";
+                var isLastHole = GetNextHole() is null;
+                nextHoleButton.Text = isLastHole ? "Til oversigt" : "Næste hul";
+                Grid.SetColumn(nextHoleButton, isLastHole ? 0 : 1);
+                Grid.SetColumnSpan(nextHoleButton, isLastHole ? 2 : 1);
+                if (overviewButton is not null)
+                {
+                    overviewButton.IsVisible = !isLastHole;
+                }
             }
             var visibleSteps = GetVisibleSteps();
             activeStep = visibleSteps.Count > 0 ? visibleSteps[0] : HoleEntryStep.Putting;
@@ -282,9 +363,13 @@ public sealed partial class HoleEntryPage
                 viewModel.PropertyChanged += OnHoleInputPropertyChanged;
             }
             UpdateGuidedStepVisibility();
+            if (!useGuidedInput)
+            {
+                openFirstVisibleInputSection?.Invoke();
+            }
             roundViewModel.SetCurrentHole(hole.HoleNumber);
             ShowHoleFeedback(previousHoleNumber, inputRegistered);
-            return Task.CompletedTask;
+            await ScrollInputToTopAsync();
         });
     }
 
@@ -294,6 +379,8 @@ public sealed partial class HoleEntryPage
         await this.RunNavigationOnceAsync(async () =>
         {
             await roundViewModel.FlushAutosaveAsync();
+
+            GolfSG.Application.Services.UsageDiagnostics.FinishVisit(viewModel);
 
             // Remove any older hole pages so a single pop always reveals the overview.
             foreach (var page in Navigation.NavigationStack.TakeWhile(page => page != this)
