@@ -10,6 +10,89 @@ namespace GolfSG.Tests;
 public sealed class HoleInputViewModelTests
 {
     [TestMethod]
+    public void DecimalGreenFinishCanChangeToEveryOtherLieAndBack()
+    {
+        foreach (var lie in new[] { "Kortklippet", "Rough", "Sand" })
+        {
+            var model = new HoleInputViewModel(1);
+            model.SetTracking(new RoundTrackingOptions(true, true, true));
+            model.ApproachStartDistanceYards = 183;
+            model.ApproachEndDistanceText = "2,6";
+            model.SelectApproachEndLie(lie);
+            Assert.AreEqual(2.6, model.ApproachEndDistance, 0.001);
+            Assert.IsTrue(double.IsFinite(model.ToHole().StrokesGainedApproach));
+            model.SelectApproachEndLie("Green");
+            Assert.AreEqual("2,6 m", model.ApproachEndDistanceDisplayText);
+        }
+    }
+
+    [TestMethod]
+    public void ApproachFinishCanChangeFromGreenToShortCutAtFortyOneMeters()
+    {
+        var model = new HoleInputViewModel(1);
+        model.SetTracking(new RoundTrackingOptions(true, true, true));
+        model.ApproachStartDistanceYards = 183;
+        model.ApproachEndDistance = 41;
+        model.SelectApproachEndLie("Kortklippet");
+        model.ApproachEndDistance = 41;
+
+        var hole = model.ToHole();
+        Assert.AreEqual(ShotLie.FairwayCut, hole.ApproachEndLie);
+        Assert.IsTrue(double.IsFinite(hole.ExpectedApproachFinishStrokes));
+        var expected = StrokesGainedCalculator.ApproachService.GetApproachExpectedStrokes(
+            hole.ApproachEndDistance, hole.ApproachEndDistanceUnit, ShotLie.Fairway);
+        Assert.AreEqual(expected, hole.ExpectedApproachFinishStrokes, 0.001);
+
+        var restored = new HoleInputViewModel(1);
+        restored.SetTracking(new RoundTrackingOptions(true, true, true));
+        restored.Load(hole);
+        Assert.AreEqual(hole.StrokesGainedApproach, restored.ToHole().StrokesGainedApproach, 0.001);
+    }
+
+    [TestMethod]
+    public void ApproachDistancesAllowValuesUpToThreeHundredMeters()
+    {
+        var model = new HoleInputViewModel(1);
+        model.SelectApproachEndLie("Rough");
+        model.ApproachStartDistanceYards = 275;
+        model.ApproachEndDistance = 275;
+        Assert.AreEqual(275, model.ApproachStartDistanceYards, 0.001);
+        Assert.AreEqual(275, model.ApproachEndDistance, 0.001);
+        model.ApproachStartDistanceYards = 305;
+        model.ApproachEndDistance = 305;
+        Assert.AreEqual(300, model.ApproachStartDistanceYards, 0.001);
+        Assert.AreEqual(300, model.ApproachEndDistance, 0.001);
+    }
+
+    [TestMethod]
+    public void OversizedFinishDistanceIsLimitedForApproachAndAroundGreen()
+    {
+        var model = new HoleInputViewModel(1);
+        model.SelectApproachEndLie("Rough");
+        model.SelectAroundGreenEndLie("Rough");
+        model.ApproachEndDistanceText = "999999999999999999999";
+        model.AroundGreenEndDistanceText = "999999999999999999999";
+
+        Assert.AreEqual(300, model.ApproachEndDistance, 0.001);
+        Assert.AreEqual(300, model.AroundGreenEndDistance, 0.001);
+        Assert.AreEqual("300", model.ApproachEndDistanceText);
+        Assert.IsTrue(double.IsFinite(model.ToHole().ExpectedApproachFinishStrokes));
+    }
+
+    [TestMethod]
+    public void NonFiniteDistanceInputIsIgnored()
+    {
+        foreach (var text in new[] { "1e999", "Infinity", "NaN" })
+        {
+            Assert.IsFalse(DistanceInputParser.TryParse(text, out _));
+            var model = new HoleInputViewModel(1);
+            model.ApproachEndDistanceText = text;
+            Assert.AreEqual(0, model.ApproachEndDistance);
+            Assert.IsTrue(double.IsFinite(model.ToHole().ExpectedApproachFinishStrokes));
+        }
+    }
+
+    [TestMethod]
     public void GirSelectionSurvivesEditingAndCanBeCleared()
     {
         var model = new HoleInputViewModel(1);
@@ -103,7 +186,7 @@ public sealed class HoleInputViewModelTests
         viewModel.ApproachEndDistance = 2.6;
 
         Assert.AreEqual("2.6", viewModel.ApproachEndDistanceText);
-        Assert.AreEqual("2,6 m", viewModel.ApproachEndDistanceDisplayText);
+        Assert.AreEqual("3 m", viewModel.ApproachEndDistanceDisplayText);
     }
 
     [TestMethod]
@@ -196,7 +279,7 @@ public sealed class HoleInputViewModelTests
 
         Assert.AreEqual(137.4, viewModel.ApproachStartDistanceYards, 0.001);
         Assert.AreEqual("137.4", viewModel.ApproachStartDistanceText);
-        Assert.AreEqual("137,4 m", viewModel.ApproachStartDistanceDisplayText);
+        Assert.AreEqual("137 m", viewModel.ApproachStartDistanceDisplayText);
     }
 
     [TestMethod]
@@ -296,6 +379,7 @@ public sealed class HoleInputViewModelTests
         viewModel.ApproachEndDistance = 4;
         Assert.IsTrue(viewModel.CanAdvanceApproachStep);
 
+        Assert.IsFalse(viewModel.IsAroundGreenInputVisible);
         Assert.IsFalse(viewModel.CanAdvanceAroundGreenStep);
         viewModel.SelectApproachEndLie("Rough");
         viewModel.ApproachEndDistance = 6;

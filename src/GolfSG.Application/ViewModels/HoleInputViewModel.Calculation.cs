@@ -55,13 +55,13 @@ public sealed partial class HoleInputViewModel
     private string FormatApproachDistance()
     {
         var distance = ParseDistance(ApproachDistanceText);
-        return distance > 0 ? UiFormat.Meters(distance) : "-";
+        return distance > 0 ? UiFormat.WholeMeters(distance) : "-";
     }
 
     private string FormatApproachStartDistance()
     {
         var distance = ParseDistance(ApproachStartDistanceText);
-        return distance > 0 ? UiFormat.Meters(distance) : "-";
+        return distance > 0 ? UiFormat.WholeMeters(distance) : "-";
     }
 
     private string FormatApproachEndDistance()
@@ -79,13 +79,13 @@ public sealed partial class HoleInputViewModel
 
         return ParseLie(ApproachEndLieText) == ShotLie.Green
             ? UiFormat.PuttingDistance(distance, PuttingDistanceUnit)
-            : UiFormat.Meters(distance);
+            : UiFormat.WholeMeters(distance);
     }
 
     private string FormatApproachEndDistanceToGreenEdge()
     {
         var distance = ParseDistance(ApproachEndDistanceToGreenEdgeText);
-        return distance > 0 ? UiFormat.Meters(distance) : "-";
+        return distance > 0 ? UiFormat.WholeMeters(distance) : "-";
     }
 
     private GolfShot BuildApproachShot()
@@ -249,6 +249,7 @@ public sealed partial class HoleInputViewModel
             }
         });
 
+        OnPropertyChanged(nameof(IsAroundGreenStartCarriedFromApproach));
         NotifyPuttingDistanceCarryForwardChanged();
     }
 
@@ -364,9 +365,23 @@ public sealed partial class HoleInputViewModel
     private double ParsePuttingDistance(string text) =>
         UiFormat.FromPreferredPuttingDistance(ParseDistance(text), PuttingDistanceUnit);
 
-    private double ParseFinishDistance(string text, ShotLie lie) => lie == ShotLie.Green
-        ? ParsePuttingDistance(text)
-        : ParseDistance(text);
+    private double ParseFinishDistance(string text, ShotLie lie) => Math.Clamp(
+        lie == ShotLie.Green ? ParsePuttingDistance(text) : ParseDistance(text),
+        0, MaxFinishDistanceMeters);
+
+    private string NormalizeFinishDistanceInput(string? text, ShotLie lie)
+    {
+        var normalized = DistanceInputParser.NormalizeDecimalSeparator(text);
+        var maximum = lie == ShotLie.Green
+            ? UiFormat.ToPreferredPuttingDistance(MaxFinishDistanceMeters, PuttingDistanceUnit)
+            : MaxFinishDistanceMeters;
+        if (DistanceInputParser.TryParse(normalized, out var value) && value > maximum)
+        {
+            return FormatFinishInputDistance(MaxFinishDistanceMeters, lie, 1);
+        }
+
+        return normalized;
+    }
 
     private string FormatPuttingInputDistance(double distanceMeters, int decimals) =>
         DistanceInputParser.FormatSlider(UiFormat.ToPreferredPuttingDistance(distanceMeters, PuttingDistanceUnit), decimals);

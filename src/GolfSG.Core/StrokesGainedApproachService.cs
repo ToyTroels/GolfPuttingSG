@@ -152,6 +152,12 @@ public sealed class StrokesGainedApproachService : IStrokesGainedApproachService
     {
         ArgumentOutOfRangeException.ThrowIfNegative(distance);
 
+        // Short-cut grass uses the fairway approach baseline beyond the around-green range.
+        if (lie == ShotLie.FairwayCut)
+        {
+            lie = ShotLie.Fairway;
+        }
+
         if (!ApproachBaseline.TryGetValue(lie, out var baseline))
         {
             throw new ArgumentOutOfRangeException(nameof(lie), lie, "Approach expected strokes require a tee, fairway, rough, sand, or recovery lie.");

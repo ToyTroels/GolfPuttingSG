@@ -19,7 +19,7 @@ public static class DistanceInputParser
             NormalizeDecimalSeparator(text),
             NumberStyles.Float,
             InvariantCulture,
-            out distance);
+            out distance) && double.IsFinite(distance);
     }
 
     public static string FormatStored(double value, int decimals)

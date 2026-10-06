@@ -25,9 +25,9 @@ public sealed partial class HoleInputViewModel : ViewModelBase
         set => GreenInRegulation = value;
     }
     private const double MaxFirstPuttDistanceMeters = 30;
-    private const double MaxApproachDistanceMeters = 250;
+    private const double MaxApproachDistanceMeters = 300;
     private const double MaxAroundGreenDistanceMeters = 50;
-    private const double MaxFinishDistanceMeters = 250;
+    private const double MaxFinishDistanceMeters = 300;
     private const double FirstPuttDistanceStepMeters = 0.1;
     private const double ApproachDistanceStepMeters = 0.1;
     private const double AroundGreenDistanceStepMeters = 1;
@@ -286,7 +286,8 @@ public sealed partial class HoleInputViewModel : ViewModelBase
         get => approachEndDistanceText;
         set
         {
-            if (SetProperty(ref approachEndDistanceText, value ?? string.Empty))
+            var normalized = NormalizeFinishDistanceInput(value, ParseLie(ApproachEndLieText));
+            if (SetProperty(ref approachEndDistanceText, normalized))
             {
                 OnPropertyChanged(nameof(ApproachEndDistance));
                 OnPropertyChanged(nameof(ApproachEndDistanceDisplayText));
@@ -347,11 +348,21 @@ public sealed partial class HoleInputViewModel : ViewModelBase
         get => approachEndLieText;
         set
         {
+            if (approachEndLieText == value)
+            {
+                return;
+            }
+
+            var distanceMeters = ApproachEndDistance;
+            approachEndDistanceText = FormatFinishInputDistance(distanceMeters, ParseLie(value), 1);
             if (SetProperty(ref approachEndLieText, value))
             {
                 ApproachHoled = ParseLie(value) == ShotLie.Holed;
                 OnPropertyChanged(nameof(IsApproachFinishDistanceVisible));
                 OnPropertyChanged(nameof(ApproachEndDistanceUnitText));
+                OnPropertyChanged(nameof(ApproachEndDistanceText));
+                OnPropertyChanged(nameof(ApproachEndDistance));
+                OnPropertyChanged(nameof(ApproachEndDistanceDisplayText));
                 OnPropertyChanged(nameof(CanAdvanceApproachStep));
                 OnFlowVisibilityChanged();
                 ApplyApproachCarryForward();
@@ -477,12 +488,16 @@ public sealed partial class HoleInputViewModel : ViewModelBase
 
     public string AroundGreenStartDistanceDisplayText => FormatAroundGreenStartDistance();
 
+    public bool IsAroundGreenStartCarriedFromApproach =>
+        carriedAroundGreenStartDistanceFromApproachMeters is > 0 &&
+        !string.IsNullOrWhiteSpace(carriedAroundGreenStartLieFromApproach);
+
     public string AroundGreenEndDistanceText
     {
         get => aroundGreenEndDistanceText;
         set
         {
-            var normalized = DistanceInputParser.NormalizeDecimalSeparator(value);
+            var normalized = NormalizeFinishDistanceInput(value, ParseLie(AroundGreenEndLieText));
             if (SetProperty(ref aroundGreenEndDistanceText, normalized))
             {
                 OnPropertyChanged(nameof(AroundGreenEndDistance));
