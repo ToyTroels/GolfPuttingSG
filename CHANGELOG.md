@@ -8,7 +8,35 @@ The project follows semantic versioning where practical. Alpha releases may cont
 
 ### Changed
 
-- Continue development beyond the 0.2.0 alpha release candidate.
+- Continue development beyond the 0.3.0 alpha release candidate.
+
+## [0.3.0-alpha] - 2026-10-06
+
+### Added
+
+- Collapsible hole-input sections with per-category scores and scrolling to the selected header.
+- Centered approach distances with 1 m and 5 m adjustments and a popup for exact input.
+- Optional local usage summaries with export and deletion controls.
+- Per-category running scores in round status and 9/18-hole shortcuts in setup.
+
+### Changed
+
+- Approach and Around Green configuration is available through beta features.
+- Approach distances support up to 300 metres; distance popup input is selected for replacement on Android.
+- Approach controls use neutral buttons; green finish distances retain decimal precision.
+- Around-green distances use matching exact-input controls, and configured starts collapse to an editable summary.
+- Confirming a completed finish distance opens the next visible pane after a 350 ms pause with animated scrolling.
+- Opening another hole expands its first visible input pane and scrolls to the top.
+- Around Green is hidden when an approach finishes on Green or in the hole.
+
+### Fixed
+
+- Crash when an approach finishes on Kortklippet beyond the around-green range, including 41 m.
+- Oversized and non-finite distance input handling and unstable finish-slider range updates.
+- Tracking selection cannot deselect the final category.
+- Removed duplicate final-hole overview buttons and improved tracking-switch visibility.
+- Distance fields release focus on Done, and tapping outside dismisses the keyboard.
+- Changing an approach finish lie refreshes distance and units together.
 
 ## [0.2.0-alpha] - Unreleased
 

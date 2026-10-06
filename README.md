@@ -94,7 +94,7 @@ The version is maintained centrally in `Directory.Build.props`:
 .\scripts\Set-AppVersion.ps1 -Bump Patch
 ```
 
-Release history is maintained in [CHANGELOG.md](CHANGELOG.md). The current release-note draft is [v0.2.0-alpha](docs/release-notes/v0.2.0-alpha.md). Use the [release checklist](docs/RELEASE_CHECKLIST.md) before tagging or distributing a package.
+Release history is maintained in [CHANGELOG.md](CHANGELOG.md). The current release notes are [v0.3.0-alpha](docs/release-notes/v0.3.0-alpha.md). Use the [release checklist](docs/RELEASE_CHECKLIST.md) before tagging or distributing a package.
 
 ## Product documentation
 
