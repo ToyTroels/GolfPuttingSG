@@ -6,7 +6,7 @@ using Microsoft.Maui.Controls.Shapes;
 
 namespace GolfSG.Views;
 
-public sealed class SettingsPage : ContentPage
+public sealed partial class SettingsPage : ContentPage
 {
     private static readonly Color PageBackground = GolfTheme.Colors.PageBackground;
     private static readonly Color CardStroke = GolfTheme.Colors.CardStroke;
@@ -117,6 +117,7 @@ public sealed class SettingsPage : ContentPage
                         "Lagring",
                         "Vis aktiv filsti og antal gemte runder",
                         () => new StorageDiagnosticsPage(repository)),
+                    UsageDiagnosticsItem(),
                     new Label
                     {
                         Text = "App",

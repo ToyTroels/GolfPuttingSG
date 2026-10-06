@@ -4,7 +4,7 @@ title: GolfSG Privacy Policy
 
 # GolfSG Privacy Policy
 
-Last updated: 2026-09-27
+Last updated: 2026-10-05
 
 GolfSG is an offline-first golf training application. This policy describes the behavior of the current alpha version.
 
@@ -23,6 +23,12 @@ This data is stored as JSON and preferences in the application's platform-manage
 ## How data is used
 
 GolfSG uses locally stored data to calculate scores and strokes-gained values, display round history, progress and benchmark results, resume an unfinished round, and remember your settings. These functions run on your device.
+
+## Optional local usage diagnostics
+
+Usage diagnostics are disabled by default and can be enabled in Settings. They store aggregate counters for button presses per completed hole, correction visits, distance input methods, configured categories, input flow, app version, and foreground sessions. No entered distances, scores, round identifiers, names, or location data are included in these summaries. Unexpected session endings may be crashes, force-stops, or operating-system termination and are not a confirmed crash rate.
+
+Nothing is transmitted automatically. You can stop collection, export a summary through the system share sheet, or delete the local counters in Settings. Disabling collection preserves existing counters. Cached exported copies and copies you share must be deleted separately. These counters do not expire automatically.
 
 ## Security
 

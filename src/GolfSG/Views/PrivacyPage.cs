@@ -22,6 +22,9 @@ public sealed class PrivacyPage : ContentPage
                         "Data p\u00e5 enheden",
                         "GolfSG gemmer runder, hulinput, putting-spil, benchmarks og indstillinger i appens lokale dataomr\u00e5de. Appen kr\u00e6ver ingen konto og sender ikke disse data til GolfSG eller en analysetjeneste."),
                     Section(
+                        "Valgfri brugsstatistik",
+                        "Lokal brugsstatistik er slået fra som standard. Når den aktiveres under Indstillinger, gemmes tællere for knaptryk, færdige huller, rettelser, afstandsinput og sessionsafslutninger. Indtastede værdier og personlige oplysninger gemmes ikke i oversigten. Data sendes ikke automatisk. Du kan stoppe registrering, eksportere eller slette tællerne under Indstillinger."),
+                    Section(
                         "Backup og eksport",
                         "GolfSG har ingen cloud-synkronisering. Android-cloudbackup er deaktiveret. Operativsystemets enhedsbackup eller enhedsoverf\u00f8rsel kan stadig h\u00e5ndteres af platformen. En eksport indeholder hele rundehistorikken og deles kun, n\u00e5r du selv v\u00e6lger det."),
                     Section(
