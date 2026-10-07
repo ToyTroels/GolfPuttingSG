@@ -8,7 +8,11 @@ The project follows semantic versioning where practical. Alpha releases may cont
 
 ### Changed
 
-- Continue development beyond the 0.3.0 alpha release candidate.
+- Android build number increased to 4 for the internal-testing startup fix.
+
+### Fixed
+
+- Disable Android Release marshal-method generation to avoid a missing native MAUI startup callback (`MauiApplication.n_onCreate`) observed in the Google Play build.
 
 ## [0.3.0-alpha] - 2026-10-06
 

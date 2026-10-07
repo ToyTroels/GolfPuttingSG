@@ -8,7 +8,7 @@
     <!-- Release versioning. Use scripts\Set-AppVersion.ps1 to update these. -->
     <VersionPrefix>0.3.0</VersionPrefix>
     <VersionSuffix>alpha</VersionSuffix>
-    <ApplicationBuildNumber>3</ApplicationBuildNumber>
+    <ApplicationBuildNumber>4</ApplicationBuildNumber>
     <Version>$(VersionPrefix)</Version>
     <Version Condition="'$(VersionSuffix)' != ''">$(VersionPrefix)-$(VersionSuffix)</Version>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>

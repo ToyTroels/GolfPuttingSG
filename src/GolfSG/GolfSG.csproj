@@ -52,6 +52,11 @@
 	</PropertyGroup>
 
 	<!-- Keep local Android debugging separate from the Google Play installation. -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<!-- Avoid missing MAUI startup JNI callbacks in Play-installed Release bundles. -->
+		<AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
+	</PropertyGroup>
+
 	<PropertyGroup Condition="'$(Configuration)' == 'Debug' and $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
 		<ApplicationId>com.GolfSG.myapp.debug</ApplicationId>
 		<ApplicationTitle>GolfSG Dev</ApplicationTitle>
