@@ -116,6 +116,7 @@ public sealed class RoundResultPage : ContentPage
                                 }
                             },
                             SummaryPanel(),
+                            ExpectedBirdiesPanel(),
                             PuttingDistancePanel(),
                             AnalysisPanel(),
                             holes
@@ -145,6 +146,30 @@ public sealed class RoundResultPage : ContentPage
         }
     }
 
+    private View ExpectedBirdiesPanel()
+    {
+        var panel = AppViews.Card(new VerticalStackLayout
+        {
+            Spacing = 8,
+            Children =
+            {
+                new Label { Text = "Expected birdies", FontSize = 20,
+                    FontAttributes = FontAttributes.Bold, TextColor = TextColor },
+                BoundLabel(nameof(RoundResultViewModel.ExpectedBirdiesCoverageText), "{0}"),
+                BoundLabel(nameof(RoundResultViewModel.GirExpectedPuttsText), "Forventede birdies: {0}"),
+                BoundLabel(nameof(RoundResultViewModel.GirActualPuttsText), "Birdies på GIR: {0}"),
+                BoundLabel(nameof(RoundResultViewModel.ExpectedBirdiesDifferenceText), "Over/under forventet: {0}", true),
+                new Label
+                {
+                    Text = "Forventede birdies er summen af sandsynlighederne for at hole første putt på GIR, baseret på en tilnærmet afstandsreference. Ét putt på GIR tæller som en birdie. Over/under er birdies minus forventede birdies. Kun færdige puttingregistreringer markeret som GIR tæller med.",
+                    FontSize = 12, TextColor = MutedTextColor
+                }
+            }
+        });
+        panel.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.ShowExpectedBirdies));
+        return panel;
+    }
+
     private View SummaryPanel()
     {
         var puttingSg = BoundLabel(nameof(RoundResultViewModel.TotalPuttingSgText), "SG Putning: {0}", true);
@@ -168,19 +193,19 @@ public sealed class RoundResultPage : ContentPage
         var threePuttRate = BoundLabel(nameof(RoundResultViewModel.ThreePuttRateText), "3-putt-andel: {0}");
         threePuttRate.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackPutting));
 
-        var approachSg = BoundLabel(nameof(RoundResultViewModel.TotalApproachSgText), "SG Indspil: {0}");
+        var approachSg = BoundLabel(nameof(RoundResultViewModel.TotalApproachSgText), "SG Approach: {0}");
         approachSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
-        var averageApproachDistance = BoundLabel(nameof(RoundResultViewModel.AverageApproachDistanceText), "Gns. indspilsafstand: {0}");
+        var averageApproachDistance = BoundLabel(nameof(RoundResultViewModel.AverageApproachDistanceText), "Gns. approachafstand: {0}");
         averageApproachDistance.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
-        var totalApproachShots = BoundLabel(nameof(RoundResultViewModel.TotalApproachShotsText), "Indspil: {0}");
+        var totalApproachShots = BoundLabel(nameof(RoundResultViewModel.TotalApproachShotsText), "Approach: {0}");
         totalApproachShots.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
-        var bestApproachHole = BoundLabel(nameof(RoundResultViewModel.BestApproachHoleText), "Bedste indspilshul: {0}");
+        var bestApproachHole = BoundLabel(nameof(RoundResultViewModel.BestApproachHoleText), "Bedste approachhul: {0}");
         bestApproachHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
-        var worstApproachHole = BoundLabel(nameof(RoundResultViewModel.WorstApproachHoleText), "Værste indspilshul: {0}");
+        var worstApproachHole = BoundLabel(nameof(RoundResultViewModel.WorstApproachHoleText), "Værste approachhul: {0}");
         worstApproachHole.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundResultViewModel.TrackApproach));
 
         var aroundGreenSg = BoundLabel(nameof(RoundResultViewModel.TotalAroundGreenSgText), "SG Omkring green: {0}");

@@ -94,7 +94,7 @@ public sealed class RoundListItemViewModel : ViewModelBase
 
             if (trackingOptions.TrackApproach)
             {
-                parts.Add($"{summary.TotalApproachShots} indspil");
+                parts.Add($"{summary.TotalApproachShots} approachslag");
             }
 
             if (trackingOptions.TrackAroundGreen)

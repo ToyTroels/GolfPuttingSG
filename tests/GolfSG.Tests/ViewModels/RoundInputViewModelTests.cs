@@ -8,6 +8,22 @@ namespace GolfSG.Tests;
 public sealed class RoundInputViewModelTests
 {
     [TestMethod]
+    public void ExpectedBirdiesUpdatesWhenGirAndPuttsChange()
+    {
+        var model = new RoundInputViewModel(new SuccessfulRoundRepository());
+        var hole = model.Holes[0];
+        hole.DistanceText = "3";
+        hole.Putts = 1;
+        StringAssert.Contains(model.ExpectedBirdiesText, "ingen GIR");
+        hole.GreenInRegulation = true;
+        StringAssert.Contains(model.ExpectedBirdiesText, "Birdies: 1");
+        hole.Putts = 3;
+        StringAssert.Contains(model.ExpectedBirdiesText, "Birdies: 0");
+        hole.GreenInRegulation = false;
+        StringAssert.Contains(model.ExpectedBirdiesText, "ingen GIR");
+    }
+
+    [TestMethod]
     public void LastTrackingCategoryCannotBeDeselected()
     {
         var model = new RoundInputViewModel(new SuccessfulRoundRepository());

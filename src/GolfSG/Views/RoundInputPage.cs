@@ -567,7 +567,7 @@ public sealed partial class RoundInputPage : ContentPage
         puttingSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
 
         var approachSg = new Label { TextColor = TextColor };
-        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachSgText), stringFormat: "SG Indspil: {0}"));
+        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachSgText), stringFormat: "SG Approach: {0}"));
         approachSg.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackApproach));
 
         var aroundGreenSg = new Label { TextColor = TextColor };
@@ -578,8 +578,15 @@ public sealed partial class RoundInputPage : ContentPage
         totalPutts.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalPuttsText), stringFormat: "Putts i alt: {0}"));
         totalPutts.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
 
+        var expectedBirdies = new Label { TextColor = TextColor, FontAttributes = FontAttributes.Bold };
+        expectedBirdies.SetBinding(Label.TextProperty, nameof(RoundInputViewModel.ExpectedBirdiesText));
+        expectedBirdies.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
+        var girPuttsComparison = new Label { TextColor = MutedTextColor, FontSize = 13 };
+        girPuttsComparison.SetBinding(Label.TextProperty, nameof(RoundInputViewModel.GirPuttsComparisonText));
+        girPuttsComparison.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackPutting));
+
         var totalApproachShots = new Label { TextColor = TextColor };
-        totalApproachShots.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachShotsText), stringFormat: "Indspil: {0}"));
+        totalApproachShots.SetBinding(Label.TextProperty, new Binding(nameof(RoundInputViewModel.TotalApproachShotsText), stringFormat: "Approach: {0}"));
         totalApproachShots.SetBinding(VisualElement.IsVisibleProperty, nameof(RoundInputViewModel.TrackApproach));
 
         var totalAroundGreenShots = new Label { TextColor = TextColor };
@@ -606,6 +613,8 @@ public sealed partial class RoundInputPage : ContentPage
                 approachSg,
                 aroundGreenSg,
                 totalPutts,
+                expectedBirdies,
+                girPuttsComparison,
                 totalApproachShots,
                 totalAroundGreenShots,
                 breakdown

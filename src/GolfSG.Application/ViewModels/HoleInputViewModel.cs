@@ -88,7 +88,7 @@ public sealed partial class HoleInputViewModel : ViewModelBase
         ["Green", "Kortklippet", "Rough", "Sand", "Problemlie", "I hul"];
 
     public IReadOnlyList<string> ApproachStartLieOptions { get; } =
-        ["Fairway", "Rough", "Sand", "Problemlie"];
+        ["Tee", "Fairway", "Rough", "Sand", "Problemlie"];
 
     public IReadOnlyList<string> ApproachEndLieOptions { get; } =
         ["Green", "Fairway", "Rough", "Sand", "Problemlie", "Kortklippet", "I hul"];
@@ -247,10 +247,14 @@ public sealed partial class HoleInputViewModel : ViewModelBase
         {
             if (SetProperty(ref approachIsTeeShot, value))
             {
-                if (value && ApproachPar == 3 && ApproachStartLieText != "Tee")
+                if (value && ApproachStartLieText != "Tee")
                 {
                     ApproachStartLieText = "Tee";
                     OnPropertyChanged(nameof(ApproachStartLieText));
+                }
+                else if (!value && ApproachStartLieText == "Tee")
+                {
+                    ApproachStartLieText = "Fairway";
                 }
 
                 Recalculate();
@@ -338,6 +342,12 @@ public sealed partial class HoleInputViewModel : ViewModelBase
         {
             if (SetProperty(ref approachStartLieText, value))
             {
+                var isTee = ParseLie(value) == ShotLie.Tee;
+                if (approachIsTeeShot != isTee)
+                {
+                    approachIsTeeShot = isTee;
+                    OnPropertyChanged(nameof(ApproachIsTeeShot));
+                }
                 Recalculate();
             }
         }
@@ -439,7 +449,7 @@ public sealed partial class HoleInputViewModel : ViewModelBase
 
     private string CarriedPuttingDistanceSourceText => carriedPuttingDistanceFromAroundGreenMeters is not null
         ? "omkring green"
-        : "indspil";
+        : "approach";
 
     public bool CanAdvanceApproachStep => IsApproachInputVisible &&
         ParseDistance(ApproachStartDistanceText) > 0 &&
@@ -712,7 +722,7 @@ public sealed partial class HoleInputViewModel : ViewModelBase
             var parts = new List<string>();
             if (IsApproachInputVisible)
             {
-                parts.Add($"Indspil {FormatApproachStartDistance()} {ApproachStartLieText.ToLowerInvariant()} ({StrokesGainedApproachText})");
+                parts.Add($"Approach {FormatApproachStartDistance()} {ApproachStartLieText.ToLowerInvariant()} ({StrokesGainedApproachText})");
             }
 
             if (IsAroundGreenInputVisible)

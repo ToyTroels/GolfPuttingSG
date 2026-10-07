@@ -99,15 +99,46 @@ public sealed partial class HoleEntryPage
         }
 
         var approachSg = SgLabel();
-        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedApproachText), stringFormat: "SG Indspil {0}"));
+        approachSg.SetBinding(Label.TextProperty, new Binding(nameof(HoleInputViewModel.StrokesGainedApproachText), stringFormat: "SG Approach {0}"));
 
         var approachStartLie = QuickChoicePanel(
             "Startleje",
             nameof(HoleInputViewModel.ApproachStartLieText),
+            ("Tee", () => viewModel.SelectApproachStartLie("Tee")),
             ("Fairway", () => viewModel.SelectApproachStartLie("Fairway")),
             ("Rough", () => viewModel.SelectApproachStartLie("Rough")),
             ("Sand", () => viewModel.SelectApproachStartLie("Sand")),
             ("Problemlie", () => viewModel.SelectApproachStartLie("Problemlie")));
+
+        var parPicker = new Picker
+        {
+            Title = "Hullets par",
+            ItemsSource = new[] { 3, 4, 5 },
+            TextColor = TextColor
+        };
+        parPicker.SetBinding(Picker.SelectedItemProperty, nameof(HoleInputViewModel.ApproachPar), BindingMode.TwoWay);
+        SemanticProperties.SetDescription(parPicker, "Hullets par for teeslaget");
+        var teeDetails = new VerticalStackLayout
+        {
+            Spacing = 6,
+            Children =
+            {
+                new Label { Text = "Hullets par", TextColor = TextColor },
+                parPicker,
+                new Label
+                {
+                    Text = "Teeslag på par 3 tæller som SG Approach. På par 4 og 5 hører teeslaget til SG fra tee, som endnu ikke registreres.",
+                    FontSize = 13,
+                    TextColor = MutedTextColor
+                }
+            }
+        };
+        teeDetails.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.ApproachIsTeeShot));
+        var approachStartPosition = new VerticalStackLayout
+        {
+            Spacing = 10,
+            Children = { approachStartLie, teeDetails }
+        };
 
         var approachStartDistance = DistanceSlider(MaxApproachDistanceMeters, SgDistanceInputPresets.ApproachMeters);
         approachStartDistance.SetBinding(Slider.ValueProperty, nameof(HoleInputViewModel.ApproachStartDistanceYards), BindingMode.TwoWay);
@@ -175,7 +206,7 @@ public sealed partial class HoleEntryPage
         approachPenaltyPlus.Clicked += (_, _) => viewModel.IncreaseApproachPenaltyStrokes();
 
         var approachSection = ApproachSection(
-            approachStartLie,
+            approachStartPosition,
             approachStartDistance,
             approachStartDistanceValue,
             approachStartDistanceMinus,

@@ -37,10 +37,10 @@ public sealed partial class HoleEntryPage : ContentPage
     private ScrollView? holeScrollView;
     private Action? openFirstVisibleInputSection;
     private Func<HoleEntryStep, Task>? openNextInputPaneAsync;
-    private Label? holeConfirmation;
-    private int holeFeedbackVersion;
     private (bool Putting, bool Approach, bool AroundGreen) layoutTracking;
-    private readonly bool useGuidedInput;
+    private bool useGuidedInput;
+    private PuttingDistanceUnitPreference layoutDistanceUnit;
+    private bool layoutRecordGir;
     private HoleEntryStep activeStep;
     private View? approachSectionView;
     private View? aroundGreenSectionView;
@@ -93,9 +93,15 @@ public sealed partial class HoleEntryPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        if (layoutTracking != (viewModel.TrackPutting, viewModel.TrackApproach, viewModel.TrackAroundGreen))
+        if (layoutTracking != (viewModel.TrackPutting, viewModel.TrackApproach, viewModel.TrackAroundGreen) ||
+            useGuidedInput != FeatureSettings.UseGuidedHoleEntry ||
+            layoutDistanceUnit != viewModel.PuttingDistanceUnitPreference ||
+            layoutRecordGir != FeatureSettings.RecordGreenInRegulation)
         {
+            var previousStep = activeStep;
+            useGuidedInput = FeatureSettings.UseGuidedHoleEntry;
             BuildLayout();
+            activeStep = previousStep;
         }
         if (useGuidedInput && !isViewModelSubscribed)
         {
@@ -107,11 +113,6 @@ public sealed partial class HoleEntryPage : ContentPage
 
     protected override void OnDisappearing()
     {
-        holeFeedbackVersion++;
-        if (holeConfirmation is not null)
-        {
-            holeConfirmation.IsVisible = false;
-        }
         CancelGuidedAutoAdvance();
         if (isViewModelSubscribed)
         {
@@ -139,6 +140,8 @@ public sealed partial class HoleEntryPage : ContentPage
     private void BuildLayout()
     {
         layoutTracking = (viewModel.TrackPutting, viewModel.TrackApproach, viewModel.TrackAroundGreen);
+        layoutDistanceUnit = viewModel.PuttingDistanceUnitPreference;
+        layoutRecordGir = FeatureSettings.RecordGreenInRegulation;
         var nextHole = GetNextHole();
         var puttingQuickPickDistances = SgDistanceInputPresets.GetPuttingQuickPickMeters(
             viewModel.PuttingDistanceUnitPreference);
@@ -350,15 +353,6 @@ public sealed partial class HoleEntryPage : ContentPage
                     await GoToHoleAsync(hole);
                 }
             })));
-        holeConfirmation = new Label
-        {
-            FontSize = 13,
-            TextColor = PrimaryGreen,
-            FontAttributes = FontAttributes.Bold,
-            VerticalOptions = LayoutOptions.Center,
-            HorizontalTextAlignment = TextAlignment.Start,
-            IsVisible = false
-        };
         return new Grid
         {
             ColumnDefinitions =
@@ -369,43 +363,10 @@ public sealed partial class HoleEntryPage : ContentPage
             ColumnSpacing = 10,
             Children =
             {
-                new VerticalStackLayout
-                {
-                    Spacing = 0,
-                    VerticalOptions = LayoutOptions.Center,
-                    Children = { title, holeConfirmation }
-                }.Column(0),
+                title.Column(0),
                 closeRound.Column(1)
             }
         };
-    }
-
-    private void ShowHoleFeedback(int previousHoleNumber, bool inputRegistered)
-    {
-        var version = ++holeFeedbackVersion;
-        if (holeConfirmation is not null)
-        {
-            holeConfirmation.Text = inputRegistered
-                ? $"✓ Hul {previousHoleNumber} registreret"
-                : string.Empty;
-            holeConfirmation.IsVisible = inputRegistered;
-        }
-
-        // Queue scrolling after rebinding/layout, without holding up hole navigation.
-        Dispatcher.Dispatch(async () =>
-        {
-            if (version == holeFeedbackVersion && holeScrollView is { } scroll)
-            {
-                await scroll.ScrollToAsync(0, 0, animated: false);
-            }
-        });
-        Dispatcher.DispatchDelayed(TimeSpan.FromSeconds(3), () =>
-        {
-            if (version == holeFeedbackVersion && holeConfirmation is not null)
-            {
-                holeConfirmation.IsVisible = false;
-            }
-        });
     }
 
     private void OnHoleInputPropertyChanged(object? sender, PropertyChangedEventArgs args)

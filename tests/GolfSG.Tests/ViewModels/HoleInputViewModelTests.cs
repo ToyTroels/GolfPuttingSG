@@ -10,6 +10,42 @@ namespace GolfSG.Tests;
 public sealed class HoleInputViewModelTests
 {
     [TestMethod]
+    public void TeeSelectionPreservesShotClassificationThroughSaveAndEdit()
+    {
+        var model = new HoleInputViewModel(1);
+        model.SetTracking(new RoundTrackingOptions(true, true, true));
+        model.SelectApproachStartLie("Tee");
+        model.ApproachPar = 3;
+        model.ApproachStartDistanceText = "155";
+        model.ApproachEndDistanceText = "3";
+        model.ApproachShots = 1;
+
+        Assert.IsTrue(model.ApproachIsTeeShot);
+        var saved = model.ToHole();
+        Assert.AreEqual(ShotLie.Tee, saved.ApproachStartLie);
+        Assert.IsTrue(saved.ApproachIsTeeShot);
+        Assert.AreEqual(3, saved.ApproachPar);
+        var edited = new HoleInputViewModel(1);
+        edited.SetTracking(new RoundTrackingOptions(true, true, true));
+        edited.Load(saved);
+        Assert.AreEqual("Tee", edited.ApproachStartLieText);
+        Assert.IsTrue(edited.ApproachIsTeeShot);
+        edited.SelectApproachStartLie("Rough");
+        Assert.IsFalse(edited.ApproachIsTeeShot);
+        Assert.IsFalse(edited.ToHole().ApproachIsTeeShot);
+    }
+
+    [TestMethod]
+    public void TeeFlagAndStartLieStayAlignedWhenToggled()
+    {
+        var model = new HoleInputViewModel(1) { ApproachPar = 4 };
+        model.ApproachIsTeeShot = true;
+        Assert.AreEqual("Tee", model.ApproachStartLieText);
+        model.ApproachIsTeeShot = false;
+        Assert.AreEqual("Fairway", model.ApproachStartLieText);
+    }
+
+    [TestMethod]
     public void DecimalGreenFinishCanChangeToEveryOtherLieAndBack()
     {
         foreach (var lie in new[] { "Kortklippet", "Rough", "Sand" })
@@ -551,7 +587,7 @@ public sealed class HoleInputViewModelTests
         Assert.IsTrue(viewModel.HasCarriedPuttingDistance);
         Assert.IsFalse(viewModel.IsPuttingDistanceInputVisible);
         StringAssert.Contains(viewModel.CarriedPuttingDistanceText, "4");
-        StringAssert.Contains(viewModel.CarriedPuttingDistanceText, "indspil");
+        StringAssert.Contains(viewModel.CarriedPuttingDistanceText, "approach");
 
         viewModel.EditCarriedPuttingDistance();
 

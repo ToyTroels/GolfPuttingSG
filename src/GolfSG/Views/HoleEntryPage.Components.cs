@@ -529,13 +529,13 @@ public sealed partial class HoleEntryPage
             or nameof(HoleInputViewModel.ApproachDistanceText)
             or nameof(HoleInputViewModel.AroundGreenStartDistanceText)
             or nameof(HoleInputViewModel.AroundGreenEndDistanceText);
-        if (isApproach)
+        if (isApproach || distanceTextBindingPath == nameof(HoleInputViewModel.DistanceText))
         {
             distanceValue.TextColor = TextColor;
             distanceValue.MinimumHeightRequest = 44;
             SemanticProperties.SetDescription(distanceValue, $"{title}. Tryk for at indtaste afstand.");
             var editDistance = new TapGestureRecognizer();
-            editDistance.Tapped += async (_, _) => await EditApproachDistanceAsync(
+            editDistance.Tapped += async (_, _) => await EditDistanceAsync(
                 distanceValue, title, distanceTextBindingPath, selectDistance);
             distanceValue.GestureRecognizers.Add(editDistance);
         }
@@ -711,7 +711,7 @@ public sealed partial class HoleEntryPage
         };
     }
 
-    private static async Task EditApproachDistanceAsync(
+    private static async Task EditDistanceAsync(
         Label value, string title, string bindingPath, Action<double> selectDistance)
     {
         Element? ancestor = value;
@@ -729,6 +729,7 @@ public sealed partial class HoleEntryPage
         {
             var text = bindingPath switch
             {
+                nameof(HoleInputViewModel.DistanceText) => model.DistanceText,
                 nameof(HoleInputViewModel.ApproachStartDistanceText) => model.ApproachStartDistanceText,
                 nameof(HoleInputViewModel.ApproachEndDistanceText) => model.ApproachEndDistanceText,
                 nameof(HoleInputViewModel.ApproachEndDistanceToGreenEdgeText) => model.ApproachEndDistanceToGreenEdgeText,
@@ -738,14 +739,18 @@ public sealed partial class HoleEntryPage
             };
             var unit = bindingPath switch
             {
+                nameof(HoleInputViewModel.DistanceText) => model.PuttingDistanceUnitText,
                 nameof(HoleInputViewModel.ApproachEndDistanceText) => model.ApproachEndDistanceUnitText,
                 nameof(HoleInputViewModel.AroundGreenEndDistanceText) => model.AroundGreenEndDistanceUnitText,
                 _ => "m"
             };
-            var maximum = unit == "ft"
-                ? GolfSG.Core.DistanceConversions.MetersToFeet(MaxFinishDistanceMeters)
+            var maximumMeters = bindingPath == nameof(HoleInputViewModel.DistanceText)
+                ? MaxFirstPuttDistanceMeters
                 : bindingPath == nameof(HoleInputViewModel.AroundGreenStartDistanceText)
                     ? MaxAroundGreenDistanceMeters : MaxApproachDistanceMeters;
+            var maximum = unit == "ft"
+                ? GolfSG.Core.DistanceConversions.MetersToFeet(maximumMeters)
+                : maximumMeters;
             var message = $"Indtast afstand i {unit} (0–{Math.Floor(maximum):0} {unit}).";
             while (true)
             {

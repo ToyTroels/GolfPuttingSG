@@ -73,6 +73,10 @@ public sealed class StrokesGainedApproachService : IStrokesGainedApproachService
             ]
         };
 
+    public static IReadOnlyList<LieReferencePoint> Reference { get; } =
+        Array.AsReadOnly(ApproachBaseline.SelectMany(baseline => baseline.Value.Select(point =>
+            new LieReferencePoint(baseline.Key, point.DistanceYards, point.ExpectedStrokes))).ToArray());
+
     private readonly IStrokesGainedPuttingService puttingService;
     private readonly IStrokesGainedAroundGreenService aroundGreenService;
 

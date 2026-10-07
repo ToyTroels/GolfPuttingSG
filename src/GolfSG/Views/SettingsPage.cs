@@ -88,18 +88,20 @@ public sealed partial class SettingsPage : ContentPage
                             StrokesGainedCalculator.PuttingReference,
                             useDecimalDistance: true)),
                     ReferenceItem(
-                        "Indspil",
-                        "Forventede slag pr. indspilsafstand",
-                        () => new StrokesGainedReferencePage(
-                            "Indspilsreference",
-                            "Afstand",
-                            "Forventede slag",
-                            StrokesGainedCalculator.ApproachReference,
-                            useDecimalDistance: false)),
+                        "Approach",
+                        "Forventede slag pr. afstand og leje",
+                        () => new LieReferencePage(
+                            "Approach-reference",
+                            StrokesGainedApproachService.Reference,
+                            distanceUnitSettings.PuttingDistanceUnit)),
                     ReferenceItem(
                         "Omkring green",
                         "Forventede slag pr. afstand og leje",
-                        () => new AroundGreenReferencePage(StrokesGainedCalculator.AroundGreenReference)),
+                        () => new LieReferencePage(
+                            "Omkring green-reference",
+                            StrokesGainedAroundGreenService.Reference.Select(point =>
+                                new LieReferencePoint(point.Lie, point.DistanceYards, point.ExpectedShots)).ToList(),
+                            distanceUnitSettings.PuttingDistanceUnit)),
                     new Label
                     {
                         Text = "Data",

@@ -327,11 +327,7 @@ public sealed partial class HoleEntryPage
         await this.RunNavigationOnceAsync(async () =>
         {
             CancelGuidedAutoAdvance();
-            var previousHoleNumber = viewModel.HoleNumber;
-            var previousInput = viewModel.ToHole();
             GolfSG.Application.Services.UsageDiagnostics.FinishVisit(viewModel);
-            var inputRegistered = !IsPreviousHole(hole) &&
-                (previousInput.IsCompleted || previousInput.IsApproachCompleted || previousInput.IsAroundGreenCompleted);
             suppressGuidedAutoAdvanceAfterBack = useGuidedInput && IsPreviousHole(hole);
             if (isViewModelSubscribed)
             {
@@ -368,7 +364,6 @@ public sealed partial class HoleEntryPage
                 openFirstVisibleInputSection?.Invoke();
             }
             roundViewModel.SetCurrentHole(hole.HoleNumber);
-            ShowHoleFeedback(previousHoleNumber, inputRegistered);
             await ScrollInputToTopAsync();
         });
     }

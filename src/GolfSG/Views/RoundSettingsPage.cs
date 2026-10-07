@@ -2,6 +2,8 @@ using GolfSG.Application.Services;
 using GolfSG.Application.ViewModels;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Layouts;
+using Microsoft.Extensions.DependencyInjection;
+using GolfSG.Core.Models;
 
 namespace GolfSG.Views;
 
@@ -16,6 +18,8 @@ public sealed class RoundSettingsPage : ContentPage
     private readonly RoundInputViewModel viewModel;
     private readonly int minimumHoleCount;
     private readonly List<View> betaTrackingRows = [];
+    private List<(HoleInputViewModel Input, HolePuttingData Data)>? appSettingsSnapshot;
+    private PuttingDistanceUnitPreference appSettingsDistanceUnit;
 
     public RoundSettingsPage(RoundInputViewModel viewModel, int minimumHoleCount = 1)
     {
@@ -30,6 +34,17 @@ public sealed class RoundSettingsPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+        if (appSettingsSnapshot is { } snapshot)
+        {
+            appSettingsSnapshot = null;
+            if (snapshot.Count > 0 && snapshot[0].Input.PuttingDistanceUnitPreference != appSettingsDistanceUnit)
+            {
+                foreach (var (input, data) in snapshot)
+                {
+                    input.Load(data);
+                }
+            }
+        }
         foreach (var row in betaTrackingRows)
         {
             row.IsVisible = FeatureSettings.EnableBetaFeatures;
@@ -63,7 +78,8 @@ public sealed class RoundSettingsPage : ContentPage
                                 TextColor = TextColor
                             },
                             HoleCountPanel(),
-                            TrackingPanel()
+                            TrackingPanel(),
+                            AppSettingsButton()
                         }
                     }
                 }.Row(0),
@@ -262,6 +278,29 @@ public sealed class RoundSettingsPage : ContentPage
         row.IsVisible = FeatureSettings.EnableBetaFeatures;
         betaTrackingRows.Add(row);
         return row;
+    }
+
+    private Button AppSettingsButton()
+    {
+        var button = new Button
+        {
+            Text = "Appindstillinger",
+            BackgroundColor = Colors.White,
+            TextColor = PrimaryGreen,
+            BorderColor = PrimaryGreen,
+            BorderWidth = 1,
+            CornerRadius = 8,
+            HeightRequest = 52
+        };
+        SemanticProperties.SetDescription(button, "Åbn appindstillinger og vend tilbage til runden");
+        button.Clicked += async (_, _) => await this.RunNavigationOnceAsync(async () =>
+        {
+            await viewModel.FlushAutosaveAsync();
+            appSettingsSnapshot = viewModel.Holes.Select(hole => (hole, hole.ToHole())).ToList();
+            appSettingsDistanceUnit = viewModel.Holes.FirstOrDefault()?.PuttingDistanceUnitPreference ?? default;
+            await Navigation.PushAsync(Handler!.MauiContext!.Services.GetRequiredService<SettingsPage>());
+        });
+        return button;
     }
 
     private static View TrackingRow(string title, string subtitle, Switch toggle)

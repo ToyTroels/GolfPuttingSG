@@ -184,6 +184,13 @@ public sealed class RoundInputViewModel : ViewModelBase
     public string TotalAroundGreenSgText => UiFormat.Sg(summary.TotalStrokesGainedAroundGreen);
 
     public string TotalPuttsText => summary.TotalPutts.ToString();
+    public string ExpectedBirdiesText => expectedBirdies.GirHoleCount == 0
+        ? "Expected birdies: — (ingen GIR-huller med registrerede putts)"
+        : $"Expected birdies: {expectedBirdies.ExpectedBirdies.ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("da-DK"))} · Birdies: {expectedBirdies.ActualBirdies}";
+    public string GirPuttsComparisonText => expectedBirdies.GirHoleCount == 0
+        ? "Markér GIR ved hulinput for at se sammenligningen."
+        : $"Over/under forventet: {UiFormat.Sg(expectedBirdies.Difference)}";
+    private ExpectedBirdiesSummary expectedBirdies = new(0, 0, 0);
 
     public string TotalApproachShotsText => summary.TotalApproachShots.ToString();
 
@@ -492,6 +499,9 @@ public sealed class RoundInputViewModel : ViewModelBase
     private void RefreshSummary()
     {
         summary = roundApplicationService.Summarize(BuildDraft());
+        expectedBirdies = ExpectedBirdiesSummary.Calculate(Holes.Select(hole => hole.ToHole()));
+        OnPropertyChanged(nameof(ExpectedBirdiesText));
+        OnPropertyChanged(nameof(GirPuttsComparisonText));
         OnPropertyChanged(nameof(TotalSgText));
         OnPropertyChanged(nameof(TotalPuttingSgText));
         OnPropertyChanged(nameof(TotalApproachSgText));

@@ -2,6 +2,9 @@
 
 ## User-perspective improvement backlog
 
+- [ ] Explore bogey avoidance as a round insight: define how to measure expected versus actual bogey-or-worse outcomes using hole par, strokes used to reach the green, putting distance, putts, and penalties. Consider separate GIR and missed-green views, show the insight in the round overview and recap, and handle incomplete or older rounds without implying unavailable score data.
+- [ ] Extend expected-birdie calculations to account for eagles and reaching the green one stroke earlier than GIR (in par minus 3 strokes). The current calculation assumes every GIR-marked hole starts with a birdie putt and counts a one-putt as a birdie; it does not distinguish eagle putts or birdies made with two putts after an early green hit. Record strokes used to reach the green and hole par so expected and actual birdies/eagles can be classified correctly. Keep expected birdies capped at one per hole and add tests for normal GIR, early green hits, eagle outcomes, and compatibility with existing rounds.
+- [ ] Let the player enter the course name when starting a round. Keep it with the active round through autosave/resume and persist it in saved history, editing, import/export, results, and round summaries. Show the course name consistently wherever the round is identified, preserve it when editing, and allow rounds without a course name for compatibility with existing data. Coordinate this with the optional pre-round conditions form below.
 - [ ] Suggest a default putt count from the entered first-putt distance, including distances carried from approach or around-green shots. For example, default to 1 putt when the ball finishes close enough that a one-putt is expected. Keep the suggestion clearly editable, preserve any putt count the player has already entered, and require confirmation before treating the suggestion as the actual result. Define the distance thresholds using the selected putting benchmark.
 - [ ] Add a scoreboard button at the top of the hole-entry screen so players can review the active round without leaving their input flow. Open a compact scoreboard showing registered holes, running SG for each configured category, and per-hole scores; keep unfinished holes clearly marked. Closing the scoreboard should return to the same hole and input section with entered values preserved.
 - [ ] Add a beta pre-round conditions form with optional inputs for the course being played, wind speed/direction, green speed, weather/temperature, and course/green firmness or wetness. Save these conditions with the round and show them when reviewing or editing it, providing context for performance comparisons.
@@ -179,10 +182,10 @@ See [docs/ARCHITECTURE_CLEANUP.md](docs/ARCHITECTURE_CLEANUP.md) for scope, sequ
 
 ## Reference tables by lie
 
-- [ ] Add lie-based expected-shots listings to reference tables where the baseline depends on lie, including approach and around-the-green tables.
-- [ ] Show distance, lie, and expected shots in a scan-friendly table layout.
-- [ ] Keep the displayed units consistent with the app distance setting once configurable units are implemented.
-- [ ] Add tests that verify exposed reference rows match the calculation baselines for each lie.
+- [x] Add lie-based expected-shots listings to reference tables where the baseline depends on lie, including approach and around-the-green tables.
+- [x] Show distance, lie, and expected shots in a scan-friendly table layout.
+- [x] Keep the displayed units consistent with the app distance setting once configurable units are implemented.
+- [x] Add tests that verify exposed reference rows match the calculation baselines for each lie.
 
 ## Add semi-rough lie type
 

@@ -283,7 +283,7 @@ public sealed class RoundResultViewModelTests
         Assert.IsTrue(viewModel.TrackApproach);
         Assert.IsTrue(viewModel.TrackAroundGreen);
         Assert.IsTrue(viewModel.ShowTotalSg);
-        StringAssert.Contains(viewModel.HoleResults[0].Detail, "Indspil");
+        StringAssert.Contains(viewModel.HoleResults[0].Detail, "Approach");
         StringAssert.Contains(viewModel.HoleResults[0].Detail, "Omkring green");
         Assert.IsNotEmpty(viewModel.Analysis);
     }

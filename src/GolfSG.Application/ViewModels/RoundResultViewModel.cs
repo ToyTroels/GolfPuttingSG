@@ -12,6 +12,7 @@ public sealed class RoundResultViewModel : ViewModelBase
     private readonly IDistanceUnitSettings distanceUnitSettings;
     private Round? round;
     private RoundSummary? summary;
+    private ExpectedBirdiesSummary expectedBirdies = new(0, 0, 0);
     private RoundTrackingOptions trackingOptions = RoundTrackingOptions.PuttingOnly;
 
     public RoundResultViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
@@ -48,6 +49,14 @@ public sealed class RoundResultViewModel : ViewModelBase
     public string AverageApproachDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(summary.AverageApproachDistance);
     public string AverageAroundGreenDistanceText => summary is null ? UiFormat.WholeMeters(0) : UiFormat.WholeMeters(YardsToMeters(summary.AverageAroundGreenDistance));
     public string TotalPuttsText => summary?.TotalPutts.ToString() ?? "0";
+    public bool ShowExpectedBirdies => TrackPutting && !IsPuttingGame;
+    public string ExpectedBirdiesCoverageText => expectedBirdies.GirHoleCount > 0
+        ? $"{expectedBirdies.GirHoleCount} GIR-huller med registrerede putts"
+        : "Ingen GIR-huller med registrerede putts. Markér GIR ved hulinput for at se sammenligningen.";
+    public string GirExpectedPuttsText => expectedBirdies.GirHoleCount == 0 ? "—"
+        : expectedBirdies.ExpectedBirdies.ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("da-DK"));
+    public string GirActualPuttsText => expectedBirdies.GirHoleCount == 0 ? "—" : expectedBirdies.ActualBirdies.ToString();
+    public string ExpectedBirdiesDifferenceText => expectedBirdies.GirHoleCount == 0 ? "—" : UiFormat.Sg(expectedBirdies.Difference);
     public string ExpectedPuttsText => ((summary?.TotalPutts ?? 0) + (summary?.TotalStrokesGainedPutting ?? 0))
         .ToString("0.00", System.Globalization.CultureInfo.GetCultureInfo("da-DK"));
     public bool ShowTotalSg => new[] { TrackPutting, TrackApproach, TrackAroundGreen }.Count(tracked => tracked) > 1;
@@ -100,6 +109,7 @@ public sealed class RoundResultViewModel : ViewModelBase
         round = result.Round;
         trackingOptions = result.TrackingOptions;
         summary = result.Summary;
+        expectedBirdies = ExpectedBirdiesSummary.Calculate(round.Holes);
         HoleResults.Clear();
         foreach (var hole in round.Holes.Where(round.IsTrackedHoleCompleted))
         {
@@ -155,15 +165,15 @@ public sealed class RoundResultViewModel : ViewModelBase
         {
             if (summary.TotalStrokesGainedApproach > 0)
             {
-                yield return "Dine indspil var bedre end referencebaseline.";
+                yield return "Dine approachslag var bedre end referencebaseline.";
             }
             else if (summary.TotalStrokesGainedApproach >= -2)
             {
-                yield return "Dine indspil var tæt på referencebaseline.";
+                yield return "Dine approachslag var tæt på referencebaseline.";
             }
             else
             {
-                yield return "Du tabte især slag på indspil.";
+                yield return "Du tabte især slag på approach.";
             }
         }
 
@@ -201,6 +211,11 @@ public sealed class RoundResultViewModel : ViewModelBase
         OnPropertyChanged(nameof(AverageApproachDistanceText));
         OnPropertyChanged(nameof(AverageAroundGreenDistanceText));
         OnPropertyChanged(nameof(TotalPuttsText));
+        OnPropertyChanged(nameof(ShowExpectedBirdies));
+        OnPropertyChanged(nameof(ExpectedBirdiesCoverageText));
+        OnPropertyChanged(nameof(GirExpectedPuttsText));
+        OnPropertyChanged(nameof(GirActualPuttsText));
+        OnPropertyChanged(nameof(ExpectedBirdiesDifferenceText));
         OnPropertyChanged(nameof(ExpectedPuttsText));
         OnPropertyChanged(nameof(ShowTotalSg));
         OnPropertyChanged(nameof(TargetPuttsText));
@@ -261,8 +276,8 @@ public sealed class HoleResultItemViewModel
         if (trackingOptions.TrackApproach && hole.Approach is not null)
         {
             details.Add(hole.Approach.Shot is not null
-                ? $"Indspil {UiFormat.WholeMeters(YardsToMeters(hole.Approach.Shot.StartDistanceToPin))} {ShotLieLabels.Format(hole.Approach.Shot.StartLie).ToLowerInvariant()}"
-                : $"{UiFormat.WholeMeters(hole.Approach.DistanceMeters)} - {hole.Approach.Shots} indspil");
+                ? $"Approach {UiFormat.WholeMeters(YardsToMeters(hole.Approach.Shot.StartDistanceToPin))} {ShotLieLabels.Format(hole.Approach.Shot.StartLie).ToLowerInvariant()}"
+                : $"{UiFormat.WholeMeters(hole.Approach.DistanceMeters)} - {hole.Approach.Shots} approachslag");
             sg += hole.Approach.StrokesGained;
         }
 
