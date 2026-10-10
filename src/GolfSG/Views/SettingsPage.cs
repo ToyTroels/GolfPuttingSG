@@ -3,6 +3,7 @@ using GolfSG.Core;
 using GolfSG.Application.Services;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Shapes;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GolfSG.Views;
 
@@ -15,11 +16,13 @@ public sealed partial class SettingsPage : ContentPage
     private static readonly Color MutedTextColor = GolfTheme.Colors.MutedText;
     private readonly IRoundRepository repository;
     private readonly IDistanceUnitSettings distanceUnitSettings;
+    private readonly IServiceProvider services;
 
-    public SettingsPage(IRoundRepository repository, IDistanceUnitSettings distanceUnitSettings)
+    public SettingsPage(IRoundRepository repository, IDistanceUnitSettings distanceUnitSettings, IServiceProvider services)
     {
         this.repository = repository;
         this.distanceUnitSettings = distanceUnitSettings;
+        this.services = services;
         Title = "Indstillinger";
         BackgroundColor = PageBackground;
         this.Accessible(UiAutomationIds.SettingsPage, "Indstillinger");
@@ -120,6 +123,11 @@ public sealed partial class SettingsPage : ContentPage
                         "Vis aktiv filsti og antal gemte runder",
                         () => new StorageDiagnosticsPage(repository)),
                     UsageDiagnosticsItem(),
+                    ReferenceItem(
+                        "Produkter",
+                        "Hent produkter fra serveren",
+                        () => services.GetRequiredService<ProductsPage>(),
+                        UiAutomationIds.ProductsEntry),
                     new Label
                     {
                         Text = "App",

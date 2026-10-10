@@ -37,6 +37,14 @@ public static class UiAutomationIds
     public const string HistoryList = "history.list";
 
     public const string SettingsPage = "settings.page";
+    public const string ProductsEntry = "settings.products";
+    public const string ProductsPage = "products.page";
+    public const string ProductsServerAddress = "products.server-address";
+    public const string ProductsSaveAddress = "products.save-address";
+    public const string ProductsRefresh = "products.refresh";
+    public const string ProductsList = "products.list";
+    public const string ProductsError = "products.error";
+    public const string ProductsEmpty = "products.empty";
     public const string DistanceUnit = "settings.distance-unit";
     public const string PrivacyEntry = "settings.privacy";
     public const string PrivacyPage = "privacy.page";

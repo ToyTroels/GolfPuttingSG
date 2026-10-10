@@ -5,6 +5,9 @@ using GolfSG.Core;
 using GolfSG.Infrastructure.Persistence;
 using GolfSG.Application.Services;
 using GolfSG.Application.ViewModels;
+using GolfSG.Application.Products;
+using GolfSG.Infrastructure.Products;
+using GolfSG.Services;
 using GolfSG.Views;
 using Microsoft.Extensions.Logging;
 
@@ -41,6 +44,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<IStrokesGainedAroundGreenService, StrokesGainedAroundGreenService>();
         builder.Services.AddSingleton<IStrokesGainedApproachService, StrokesGainedApproachService>();
         builder.Services.AddSingleton<AppShell>();
+        builder.Services.AddSingleton<IProductsApiSettings, PreferenceProductsApiSettings>();
+        builder.Services.AddSingleton(_ => ProductsHttpClientFactory.Create());
+        builder.Services.AddSingleton<IProductsApiService, ProductsApiService>();
+        builder.Services.AddTransient<ProductsViewModel>();
+        builder.Services.AddTransient<ProductsPage>();
         builder.Services.AddTransient<StartViewModel>();
         builder.Services.AddTransient(serviceProvider => new RoundInputViewModel(
             serviceProvider.GetRequiredService<IRoundApplicationService>(),

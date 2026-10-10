@@ -5,7 +5,7 @@
       "golfsg.application": {
         "type": "Project",
         "dependencies": {
-          "GolfSG.Core": "[0.2.0-alpha, )"
+          "GolfSG.Core": "[0.3.0-alpha, )"
         }
       },
       "golfsg.core": {
