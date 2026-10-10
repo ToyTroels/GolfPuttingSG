@@ -13,6 +13,7 @@ public sealed class StartPage : ContentPage
     private Button? statisticsButton;
     private View? betaNotice;
     private View? betaActions;
+    private Button? resumePuttingGameButton;
 
     public StartPage(StartViewModel viewModel, IServiceProvider services)
     {
@@ -56,6 +57,8 @@ public sealed class StartPage : ContentPage
         try
         {
             await viewModel.LoadAsync();
+            if (resumePuttingGameButton is not null)
+                resumePuttingGameButton.IsVisible = await services.GetRequiredService<IActivePuttingGameRepository>().GetAsync() is not null;
         }
         catch (Exception)
         {
@@ -78,6 +81,22 @@ public sealed class StartPage : ContentPage
         puttingGameButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
         puttingGameButton.Clicked += async (_, _) =>
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<PuttingGamesPage>()));
+
+        resumePuttingGameButton = AppViews.PrimaryButton("Fortsæt putting-spil");
+        resumePuttingGameButton.IsVisible = false;
+        resumePuttingGameButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
+        resumePuttingGameButton.Clicked += async (_, _) => await this.RunNavigationOnceAsync(async () =>
+        {
+            try
+            {
+                var session = await services.GetRequiredService<IActivePuttingGameRepository>().GetAsync();
+                if (session is null) { resumePuttingGameButton.IsVisible = false; return; }
+                var page = services.GetRequiredService<PuttingGamePage>();
+                page.Resume(session);
+                await Navigation.PushAsync(page);
+            }
+            catch { await DisplayAlertAsync("Spillet kunne ikke åbnes", "Prøv igen, eller tjek lagring under Indstillinger.", "OK"); }
+        });
 
         var historyButton = AppViews.SecondaryButton("Historik")
             .Accessible(UiAutomationIds.History, "Åbn gemte runder og spil");
@@ -197,7 +216,7 @@ public sealed class StartPage : ContentPage
                     new VerticalStackLayout
                     {
                         Spacing = 10,
-                        Children = { newRoundButton, puttingGameButton, historyButton, betaActions }
+                        Children = { newRoundButton, resumePuttingGameButton, puttingGameButton, historyButton, betaActions }
                     }.Margin(new Thickness(0, 16, 0, 18)),
                     insights,
                     new Label

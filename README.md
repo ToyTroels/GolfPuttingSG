@@ -12,6 +12,8 @@ GolfSG is an offline-first .NET MAUI app for tracking golf putting performance w
 - Calculates strokes gained per hole and for the complete round or session.
 - Supports partial rounds and configurable round lengths.
 - Provides putting games and benchmark sessions, including ladder-style practice.
+- Automatically saves unfinished putting games and offers resume from the start page or putting-games menu, retaining shot order and entered results.
+- Supports undo of the last submitted practice putt and review/edit of recorded putts during a game or from its completion screen.
 - Stores round and practice history locally as JSON.
 - Provides history, filtering, editing, recovery, and import/export support.
 - Import files one at a time to merge round history. Rounds are matched by ID; existing saved versions are kept, and repeated imports do not add duplicates. Copies with different IDs are treated as separate rounds.

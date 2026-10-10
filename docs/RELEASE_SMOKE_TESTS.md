@@ -26,6 +26,20 @@ Run these journeys against the packaged application, not only a debugger build. 
 5. Export data, delete or replace local data, import the export, and verify all entries.
 6. Validate recovery from a corrupt active file and a valid backup.
 
+## Putting-game recovery
+
+1. Start a training game, tour round, randomized bell-curve benchmark, and ladder benchmark in turn. Record several results, adjust the current putt count, force-close, and relaunch. Resume from Start or Putting Games; verify the original distances/order, progress, current input, score, and benchmark metadata.
+2. Use Save and Close, resume again, and verify the same state. Cancel a discard/replacement prompt and verify the saved game remains. Confirm discard and verify it no longer resumes.
+3. Finish a resumed game; verify one history entry and no remaining resume action after relaunch. Repeat the final save and verify no duplicate history entry.
+4. With storage unavailable, verify a save failure leaves the current putt and recorded results intact, offers retry, and does not report a successful save-and-close.
+
+## Practice-result corrections
+
+1. During training, tour, randomized bell-curve, and ladder sessions, submit several results, undo the latest, and confirm it becomes current with its recorded count. Resubmit and verify progress, distances/order, totals, and SG without duplicated results.
+2. Open "Se og ret registrerede putts", edit an earlier count, and verify totals/SG update while the current putt input and shot order stay unchanged. Cancel an edit and verify nothing changes.
+3. Relaunch after an undo or edit and resume; verify the corrected state. Finish the game, edit from the completion screen, and verify one history entry with the original date and benchmark metadata, with no new unfinished game.
+4. Simulate storage failures during undo/edit and verify the earlier state remains visible and can be retried. Rapid repeated taps must not submit or correct multiple results unintentionally.
+
 ## Preferences and accessibility
 
 1. Switch between meters and feet and verify entry, results, and history formatting while stored calculations remain consistent.

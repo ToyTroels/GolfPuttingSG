@@ -26,25 +26,31 @@ public interface IPuttingGameSessionService
     void StartBenchmark(string benchmark, PuttingDistanceOrder order);
     void StartLadderBenchmark(string benchmark);
     Task<PuttingGameSubmission> SubmitAsync(int puttsUsed);
+    Task<int?> UndoLastAsync();
+    Task<bool> EditAsync(int index, int puttsUsed, int currentPuttsUsed);
+    ActivePuttingGameSession Capture(int puttsUsed);
+    void Restore(ActivePuttingGameSession session);
 }
 
 public sealed class PuttingGameSessionService : IPuttingGameSessionService
 {
     private readonly IRoundRepository repository;
+    private readonly IActivePuttingGameRepository activeRepository;
     private readonly AsyncActionGate submitGate = new();
     private readonly List<HolePuttingData> completedPutts = [];
     private IReadOnlyList<double> distances = [];
     private bool distancesAreMeters;
     private int currentIndex;
 
-    public PuttingGameSessionService(IRoundRepository repository)
+    public PuttingGameSessionService(IRoundRepository repository, IActivePuttingGameRepository? activeRepository = null)
     {
         this.repository = repository;
+        this.activeRepository = activeRepository ?? NullActivePuttingGameRepository.Instance;
         RoundId = Guid.NewGuid().ToString("N");
         Start(PuttingGame.LadderMode);
     }
 
-    public string RoundId { get; }
+    public string RoundId { get; private set; }
     public string Mode { get; private set; } = PuttingGame.LadderMode;
     public PuttingGameDefinition Definition { get; private set; } = PuttingGame.GetDefinition(PuttingGame.LadderMode);
     public IReadOnlyList<double> Distances => distances;
@@ -132,14 +138,15 @@ public sealed class PuttingGameSessionService : IPuttingGameSessionService
             completedPutts.Add(putt);
             currentIndex++;
 
-            if (!IsComplete)
-            {
-                return new PuttingGameSubmission(false, null);
-            }
-
             try
             {
+                if (!IsComplete)
+                {
+                    await activeRepository.SaveAsync(Capture(2));
+                    return new PuttingGameSubmission(false, null);
+                }
                 await repository.SaveRoundAsync(BuildRound());
+                await activeRepository.DeleteAsync();
                 return new PuttingGameSubmission(true, RoundId);
             }
             catch
@@ -165,6 +172,59 @@ public sealed class PuttingGameSessionService : IPuttingGameSessionService
             false,
             PuttingGame.CreateRoundGameInfo(Definition));
 
+    public async Task<int?> UndoLastAsync()
+    {
+        var execution = await submitGate.RunAsync<int?>(async () =>
+        {
+            if (IsComplete || completedPutts.Count == 0) return null;
+            var previous = completedPutts[^1];
+            completedPutts.RemoveAt(completedPutts.Count - 1);
+            currentIndex--;
+            try
+            {
+                await activeRepository.SaveAsync(Capture(previous.Putts));
+                return previous.Putts;
+            }
+            catch
+            {
+                completedPutts.Add(previous);
+                currentIndex++;
+                throw;
+            }
+        });
+        return execution.Executed ? execution.Value : null;
+    }
+
+    public async Task<bool> EditAsync(int index, int puttsUsed, int currentPuttsUsed)
+    {
+        if (puttsUsed is < 1 or > 5) throw new ArgumentOutOfRangeException(nameof(puttsUsed));
+        if (currentPuttsUsed is < 1 or > 5) throw new ArgumentOutOfRangeException(nameof(currentPuttsUsed));
+        var execution = await submitGate.RunAsync(async () =>
+        {
+            if (index < 0 || index >= completedPutts.Count) throw new ArgumentOutOfRangeException(nameof(index));
+            var previous = completedPutts[index];
+            completedPutts[index] = distancesAreMeters
+                ? PuttingGame.BuildPutt(index + 1, distances[index], puttsUsed)
+                : PuttingGame.BuildPutt(index + 1, (int)distances[index], puttsUsed, Mode);
+            try
+            {
+                if (IsComplete)
+                {
+                    var savedRound = await repository.GetRoundAsync(RoundId)
+                        ?? throw new InvalidOperationException("The saved game no longer exists.");
+                    await repository.SaveRoundAsync(savedRound with { Holes = completedPutts.ToArray() });
+                }
+                else await activeRepository.SaveAsync(Capture(currentPuttsUsed));
+            }
+            catch
+            {
+                completedPutts[index] = previous;
+                throw;
+            }
+        });
+        return execution;
+    }
+
     private void StartMeters(PuttingGameDefinition definition, IReadOnlyList<double> puttingDistances)
     {
         Mode = PuttingGame.LadderMode;
@@ -176,8 +236,27 @@ public sealed class PuttingGameSessionService : IPuttingGameSessionService
 
     private void ResetProgress()
     {
+        RoundId = Guid.NewGuid().ToString("N");
         completedPutts.Clear();
         currentIndex = 0;
+    }
+
+    public ActivePuttingGameSession Capture(int puttsUsed) => new(
+        RoundId, Mode, Definition, distances.ToArray(), distancesAreMeters,
+        completedPutts.ToArray(), puttsUsed, DateTimeOffset.UtcNow);
+
+    public void Restore(ActivePuttingGameSession session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        if (!session.IsValid) throw new InvalidDataException("Invalid unfinished putting game.");
+        RoundId = session.RoundId;
+        Mode = session.Mode;
+        Definition = session.Definition;
+        distances = session.Distances.ToArray();
+        distancesAreMeters = session.DistancesAreMeters;
+        completedPutts.Clear();
+        completedPutts.AddRange(session.CompletedPutts);
+        currentIndex = completedPutts.Count;
     }
 
     private void EnsureActive()

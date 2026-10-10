@@ -34,6 +34,19 @@ public sealed partial class PuttingGamePage : ContentPage
         Title = viewModel.GameTitle;
     }
 
+    public void Resume(GolfSG.Application.Putting.ActivePuttingGameSession session)
+    {
+        viewModel.Resume(session);
+        Title = viewModel.GameTitle;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        try { await viewModel.FlushAutosaveAsync(); }
+        catch { await DisplayAlertAsync("Spillet kunne ikke gemmes", viewModel.ErrorMessage, "OK"); }
+    }
+
     protected override bool OnBackButtonPressed()
     {
         _ = NavigateBackAsync();
@@ -65,6 +78,21 @@ public sealed partial class PuttingGamePage : ContentPage
         var completePanel = CompletePanel();
         completePanel.SetBinding(VisualElement.IsVisibleProperty, nameof(PuttingGameViewModel.IsComplete));
 
+        var undo = AppViews.SecondaryButton("Fortryd seneste putt");
+        undo.SetBinding(IsVisibleProperty, nameof(PuttingGameViewModel.IsActive));
+        undo.SetBinding(IsEnabledProperty, nameof(PuttingGameViewModel.CanUndo));
+        undo.Accessible("practice-undo", "Fortryd det senest registrerede putt");
+        undo.Clicked += async (_, _) => await this.RunActionOnceAsync(async () =>
+        {
+            await viewModel.UndoLastAsync();
+            if (viewModel.HasError) await DisplayAlertAsync("Resultatet kunne ikke fortrydes", viewModel.ErrorMessage, "OK");
+        });
+        var review = AppViews.SecondaryButton("Se og ret registrerede putts");
+        review.SetBinding(IsVisibleProperty, nameof(PuttingGameViewModel.HasRecordedPutts));
+        review.SetBinding(IsEnabledProperty, nameof(PuttingGameViewModel.CanReview));
+        review.Accessible("practice-review", "Se og ret tidligere putt-resultater");
+        review.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new PuttingGameReviewPage(viewModel)));
+
         var error = new Border
         {
             BackgroundColor = GolfTheme.Colors.DangerBackground,
@@ -93,6 +121,8 @@ public sealed partial class PuttingGamePage : ContentPage
                     error,
                     setupPanel,
                     activePanel,
+                    undo,
+                    review,
                     completePanel
                 }
             }
@@ -157,7 +187,12 @@ public sealed partial class PuttingGamePage : ContentPage
             HeightRequest = 52,
             FontAttributes = FontAttributes.Bold
         };
-        start.Clicked += (_, _) => viewModel.StartConfiguredGame();
+        start.Clicked += async (_, _) => await this.RunActionOnceAsync(async () =>
+        {
+            if (!viewModel.StartConfiguredGame()) return;
+            try { await viewModel.FlushAutosaveAsync(); }
+            catch { await DisplayAlertAsync("Spillet kunne ikke gemmes", viewModel.ErrorMessage, "OK"); }
+        });
 
         return AppViews.FormCard(new VerticalStackLayout
         {
@@ -217,9 +252,11 @@ public sealed partial class PuttingGamePage : ContentPage
         distance.SetBinding(Label.TextProperty, nameof(PuttingGameViewModel.CurrentDistanceText));
 
         var minus = AppViews.StepperButton("-");
+        minus.SetBinding(IsEnabledProperty, nameof(PuttingGameViewModel.CanSubmit));
         minus.Clicked += (_, _) => viewModel.DecreasePutts();
 
         var plus = AppViews.StepperButton("+");
+        plus.SetBinding(IsEnabledProperty, nameof(PuttingGameViewModel.CanSubmit));
         plus.Clicked += (_, _) => viewModel.IncreasePutts();
 
         var putts = new Label

@@ -6,8 +6,15 @@ The project follows semantic versioning where practical. Alpha releases may cont
 
 ## [Unreleased]
 
+### Added
+
+- Undo the latest submitted practice putt and review/edit earlier results in training games, tour rounds, and benchmarks. Corrections retain shot order and update scores; edits from the completion screen update the existing saved result.
+- Automatic local saving and resume for unfinished training games, tour rounds, and benchmarks, including the original distance order, recorded results, and current putt count.
+- Continue-game actions on the start page and putting-games menu, with explicit discard before replacing an unfinished game.
+
 ### Changed
 
+- Leaving a putting game offers save-and-close or confirmed discard instead of losing progress.
 - Android build number increased to 4 for the internal-testing startup fix.
 
 ### Fixed

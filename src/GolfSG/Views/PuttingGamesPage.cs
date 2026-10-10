@@ -7,10 +7,21 @@ namespace GolfSG.Views;
 public sealed class PuttingGamesPage : ContentPage
 {
     private readonly IServiceProvider services;
+    private readonly IActivePuttingGameRepository activeRepository;
+    private readonly Button resumeButton = AppViews.PrimaryButton("Fortsæt putting-spil");
+    private readonly Button discardButton = AppViews.SecondaryButton("Kassér igangværende spil");
 
     public PuttingGamesPage(IServiceProvider services)
     {
         this.services = services;
+        activeRepository = services.GetRequiredService<IActivePuttingGameRepository>();
+        resumeButton.IsVisible = discardButton.IsVisible = false;
+        resumeButton.Clicked += async (_, _) => await OpenResumeAsync();
+        discardButton.Clicked += async (_, _) => await this.RunActionOnceAsync(async () =>
+        {
+            try { await ConfirmReplaceAsync(); await RefreshResumeAsync(); }
+            catch { await ShowStorageErrorAsync(); }
+        });
         Title = "Putting-spil";
         BackgroundColor = GolfTheme.Colors.PageBackground;
         BuildLayout();
@@ -27,6 +38,8 @@ public sealed class PuttingGamesPage : ContentPage
                 Children =
                 {
                     AppViews.PageTitle("Putting-spil"),
+                    resumeButton,
+                    discardButton,
                     GameItem(
                         "Træningsspil",
                         "Vælg antal putts og afstandsinterval.",
@@ -50,22 +63,82 @@ public sealed class PuttingGamesPage : ContentPage
 
     private async Task OpenConfiguredGameAsync()
     {
-        var page = services.GetRequiredService<PuttingGamePage>();
-        page.Start(PuttingGame.LadderMode);
-        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
+        await this.RunNavigationOnceAsync(async () =>
+        {
+            try
+            {
+                if (!await ConfirmReplaceAsync()) return;
+                var page = services.GetRequiredService<PuttingGamePage>();
+                page.Start(PuttingGame.LadderMode);
+                await Navigation.PushAsync(page);
+            }
+            catch { await ShowStorageErrorAsync(); }
+        });
     }
 
     private async Task OpenTourRoundAsync()
     {
-        var page = services.GetRequiredService<PuttingGamePage>();
-        page.Start(PuttingGame.TourRoundMode);
-        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
+        await this.RunNavigationOnceAsync(async () =>
+        {
+            try
+            {
+                if (!await ConfirmReplaceAsync()) return;
+                var page = services.GetRequiredService<PuttingGamePage>();
+                page.Start(PuttingGame.TourRoundMode);
+                await Navigation.PushAsync(page);
+            }
+            catch { await ShowStorageErrorAsync(); }
+        });
     }
 
     private async Task OpenBenchmarkAsync()
     {
-        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new PuttingBenchmarkPage(services)));
+        await this.RunNavigationOnceAsync(async () =>
+        {
+            try
+            {
+                if (await ConfirmReplaceAsync()) await Navigation.PushAsync(new PuttingBenchmarkPage(services));
+            }
+            catch { await ShowStorageErrorAsync(); }
+        });
     }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        try { await RefreshResumeAsync(); }
+        catch { await ShowStorageErrorAsync(); }
+    }
+
+    private async Task RefreshResumeAsync()
+    {
+        var session = await activeRepository.GetAsync();
+        resumeButton.IsVisible = discardButton.IsVisible = session is not null;
+        if (session is not null) resumeButton.Text = $"Fortsæt {session.Definition.DisplayName} · {session.CompletedPutts.Count}/{session.Distances.Count}";
+    }
+
+    private async Task<bool> ConfirmReplaceAsync()
+    {
+        if (await activeRepository.GetAsync() is null) return true;
+        if (!await DisplayAlertAsync("Kassér igangværende spil?", "Fortsæt dit gemte spil, eller kassér det før et nyt spil.", "Kassér", "Annuller")) return false;
+        await activeRepository.DeleteAsync();
+        return true;
+    }
+
+    private async Task OpenResumeAsync() => await this.RunNavigationOnceAsync(async () =>
+    {
+        try
+        {
+            var session = await activeRepository.GetAsync();
+            if (session is null) { await RefreshResumeAsync(); return; }
+            var page = services.GetRequiredService<PuttingGamePage>();
+            page.Resume(session);
+            await Navigation.PushAsync(page);
+        }
+        catch { await ShowStorageErrorAsync(); }
+    });
+
+    private Task ShowStorageErrorAsync() => DisplayAlertAsync("Spillet kunne ikke indlæses eller gemmes", "Prøv igen, eller tjek lagring under Indstillinger.", "OK");
 
     private async Task OpenBenchmarkHistoryAsync()
     {

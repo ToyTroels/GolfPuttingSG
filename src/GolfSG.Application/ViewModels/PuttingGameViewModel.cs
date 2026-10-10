@@ -2,6 +2,7 @@ using GolfSG.Application.Putting;
 using GolfSG.Core;
 using GolfSG.Core.Models;
 using GolfSG.Application.Services;
+using System.Collections.ObjectModel;
 
 namespace GolfSG.Application.ViewModels;
 
@@ -25,22 +26,33 @@ public sealed class PuttingGameViewModel : ViewModelBase
     private bool isBusy;
     private string errorMessage = string.Empty;
 
-    public PuttingGameViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
-        : this(new PuttingGameSessionService(repository), distanceUnitSettings)
+    private readonly IActivePuttingGameRepository activeRepository;
+    private Task pendingAutosave = Task.CompletedTask;
+    private bool autosaveFailed;
+
+    public PuttingGameViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null, IActivePuttingGameRepository? activeRepository = null)
+        : this(new PuttingGameSessionService(repository, activeRepository), distanceUnitSettings, activeRepository)
     {
     }
 
     public PuttingGameViewModel(
         IPuttingGameSessionService sessionService,
-        IDistanceUnitSettings? distanceUnitSettings = null)
+        IDistanceUnitSettings? distanceUnitSettings = null,
+        IActivePuttingGameRepository? activeRepository = null)
     {
         this.sessionService = sessionService;
+        this.activeRepository = activeRepository ?? NullActivePuttingGameRepository.Instance;
         this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
         minimumDistanceMetersText = FormatPuttingInputDistance(PuttingGame.DefaultMinimumDistanceMeters, 0);
         maximumDistanceMetersText = FormatPuttingInputDistance(PuttingGame.DefaultMaximumDistanceMeters, 0);
     }
 
     public string GameTitle => sessionService.Definition.DisplayName;
+
+    public ObservableCollection<PracticePuttResult> RecordedPutts { get; } = [];
+    public bool HasRecordedPutts => !IsSetup && RecordedPutts.Count > 0;
+    public bool CanReview => HasRecordedPutts && !IsBusy;
+    public bool CanUndo => IsActive && RecordedPutts.Count > 0 && !IsBusy;
 
     public bool IsBusy
     {
@@ -51,6 +63,8 @@ public sealed class PuttingGameViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(CanSubmit));
                 OnPropertyChanged(nameof(PrimaryActionText));
+                OnPropertyChanged(nameof(CanReview));
+                OnPropertyChanged(nameof(CanUndo));
             }
         }
     }
@@ -192,11 +206,13 @@ public sealed class PuttingGameViewModel : ViewModelBase
         get => puttsUsed;
         set
         {
+            if (IsBusy) return;
             if (SetProperty(ref puttsUsed, Math.Clamp(value, 1, 5)))
             {
                 OnPropertyChanged(nameof(PuttsUsedText));
                 OnPropertyChanged(nameof(CurrentResultText));
                 OnPropertyChanged(nameof(CurrentResultValueText));
+                if (IsActive && !IsBusy) QueueAutosave();
             }
         }
     }
@@ -305,6 +321,7 @@ public sealed class PuttingGameViewModel : ViewModelBase
         IsSetup = sessionService.Mode != PuttingGame.TourRoundMode;
         gameTargetText = sessionService.TargetPutts.ToString("0.#");
         RefreshAll();
+        if (IsActive) QueueAutosave();
     }
 
     public bool StartConfiguredGame()
@@ -370,6 +387,7 @@ public sealed class PuttingGameViewModel : ViewModelBase
         ErrorMessage = string.Empty;
         try
         {
+            await PersistPendingAutosaveAsync();
             var result = await sessionService.SubmitAsync(PuttsUsed);
             if (result.IsComplete)
             {
@@ -378,7 +396,7 @@ public sealed class PuttingGameViewModel : ViewModelBase
                 return result.RoundId;
             }
 
-            PuttsUsed = 2;
+            puttsUsed = 2;
             RefreshAll();
             return null;
         }
@@ -405,6 +423,16 @@ public sealed class PuttingGameViewModel : ViewModelBase
 
     private void RefreshAll()
     {
+        RecordedPutts.Clear();
+        foreach (var putt in sessionService.CompletedPutts)
+            RecordedPutts.Add(new PracticePuttResult(
+                putt.HoleNumber - 1,
+                $"Putt {putt.HoleNumber} · {FormatDistance(Distances[putt.HoleNumber - 1])}",
+                putt.Putts,
+                $"{putt.Putts} putts · {UiFormat.Sg(putt.StrokesGainedPutting)} SG"));
+        OnPropertyChanged(nameof(HasRecordedPutts));
+        OnPropertyChanged(nameof(CanReview));
+        OnPropertyChanged(nameof(CanUndo));
         OnPropertyChanged(nameof(IsComplete));
         OnPropertyChanged(nameof(IsSetup));
         OnPropertyChanged(nameof(IsActive));
@@ -531,5 +559,108 @@ public sealed class PuttingGameViewModel : ViewModelBase
         IsComplete = false;
         IsSetup = false;
         RefreshAll();
+        QueueAutosave();
+    }
+
+    public void Resume(ActivePuttingGameSession session)
+    {
+        sessionService.Restore(session);
+        IsSetup = true;
+        PuttsUsed = session.PuttsUsed;
+        IsComplete = false;
+        IsSetup = false;
+        gameTargetText = sessionService.TargetPutts.ToString("0.#");
+        RefreshAll();
+    }
+
+    private void QueueAutosave()
+    {
+        var snapshot = sessionService.Capture(PuttsUsed);
+        pendingAutosave = SaveAfterAsync(pendingAutosave, snapshot);
+    }
+
+    private async Task SaveAfterAsync(Task previous, ActivePuttingGameSession snapshot)
+    {
+        await previous;
+        try
+        {
+            await activeRepository.SaveAsync(snapshot);
+            autosaveFailed = false;
+        }
+        catch
+        {
+            autosaveFailed = true;
+            ErrorMessage = "Spillet kunne ikke gemmes automatisk. Prøv igen, før du lukker spillet.";
+        }
+    }
+
+    public async Task FlushAutosaveAsync()
+    {
+        if (IsBusy) return;
+        IsBusy = true;
+        try { await PersistPendingAutosaveAsync(); }
+        finally { IsBusy = false; }
+    }
+
+    private async Task PersistPendingAutosaveAsync()
+    {
+        if (IsActive) QueueAutosave();
+        await pendingAutosave;
+        if (autosaveFailed) throw new IOException(ErrorMessage);
+        ErrorMessage = string.Empty;
+    }
+
+    public async Task DiscardAsync()
+    {
+        if (IsBusy) throw new InvalidOperationException("Wait for the current game action to finish.");
+        IsBusy = true;
+        try
+        {
+            await pendingAutosave;
+            await activeRepository.DeleteAsync();
+            IsSetup = true;
+        }
+        finally { IsBusy = false; RefreshAll(); }
+    }
+
+    public async Task<bool> UndoLastAsync()
+    {
+        if (!CanUndo) return false;
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
+        {
+            await PersistPendingAutosaveAsync();
+            var restoredPutts = await sessionService.UndoLastAsync();
+            if (restoredPutts is null) return false;
+            puttsUsed = restoredPutts.Value;
+            return true;
+        }
+        catch
+        {
+            ErrorMessage = "Resultatet kunne ikke fortrydes. Prøv igen; den registrerede score er bevaret.";
+            return false;
+        }
+        finally { IsBusy = false; RefreshAll(); }
+    }
+
+    public async Task<bool> EditPuttAsync(int index, int correctedPutts)
+    {
+        if (!CanReview) return false;
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        try
+        {
+            if (IsActive) await PersistPendingAutosaveAsync();
+            return await sessionService.EditAsync(index, correctedPutts, PuttsUsed);
+        }
+        catch
+        {
+            ErrorMessage = "Rettelsen kunne ikke gemmes. Prøv igen; det tidligere resultat er bevaret.";
+            return false;
+        }
+        finally { IsBusy = false; RefreshAll(); }
     }
 }
+
+public sealed record PracticePuttResult(int Index, string Title, int Putts, string Detail);

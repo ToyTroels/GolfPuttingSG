@@ -101,8 +101,16 @@ public sealed class PuttingBenchmarkPage : ContentPage
         button.SetBinding(Button.TextProperty, bindingPath);
         button.Clicked += async (_, _) =>
         {
-            startBenchmark();
-            await OpenBenchmarkGameAsync();
+            await this.RunNavigationOnceAsync(async () =>
+            {
+                try
+                {
+                    startBenchmark();
+                    await viewModel.FlushAutosaveAsync();
+                    await OpenBenchmarkGameAsync();
+                }
+                catch { await DisplayAlertAsync("Spillet kunne ikke gemmes", "Prøv igen, før du starter spillet.", "OK"); }
+            });
         };
         return button;
     }
@@ -117,7 +125,7 @@ public sealed class PuttingBenchmarkPage : ContentPage
     private async Task OpenBenchmarkGameAsync()
     {
         var page = new PuttingGamePage(viewModel);
-        await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));
+        await Navigation.PushAsync(page);
         if (Navigation.NavigationStack.Contains(this))
         {
             Navigation.RemovePage(this);

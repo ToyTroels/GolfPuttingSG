@@ -28,6 +28,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<IRoundRepository>(_ => new FileRoundRepository(FileSystem.AppDataDirectory));
         builder.Services.AddSingleton<IActiveRoundSessionRepository>(_ => new FileActiveRoundSessionRepository(FileSystem.AppDataDirectory));
+        builder.Services.AddSingleton<IActivePuttingGameRepository>(_ => new FileActivePuttingGameRepository(FileSystem.AppDataDirectory));
         builder.Services.AddTransient<IRoundApplicationService, RoundApplicationService>();
         builder.Services.AddTransient<IPuttingGameSessionService, PuttingGameSessionService>();
         builder.Services.AddSingleton<IDistanceUnitSettings, PreferenceDistanceUnitSettings>();
@@ -42,7 +43,8 @@ public static class MauiProgram
             serviceProvider.GetRequiredService<IActiveRoundSessionRepository>()));
         builder.Services.AddTransient(serviceProvider => new PuttingGameViewModel(
             serviceProvider.GetRequiredService<IPuttingGameSessionService>(),
-            serviceProvider.GetRequiredService<IDistanceUnitSettings>()));
+            serviceProvider.GetRequiredService<IDistanceUnitSettings>(),
+            serviceProvider.GetRequiredService<IActivePuttingGameRepository>()));
         builder.Services.AddTransient<RoundResultViewModel>();
         builder.Services.AddTransient<RoundHistoryViewModel>();
         builder.Services.AddTransient<StatisticsViewModel>();
