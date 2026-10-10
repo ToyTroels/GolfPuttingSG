@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using GolfSG.Application.Queries;
+using GolfSG.Application.Rounds.Sync;
 using GolfSG.Application.Services;
 
 namespace GolfSG.Application.ViewModels;
@@ -26,6 +27,8 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     private readonly IRoundRepository repository;
     private readonly IRoundHistoryQueryService historyQueryService;
     private readonly IDistanceUnitSettings distanceUnitSettings;
+    private readonly IRoundSyncService? syncService;
+    private string syncMessage = "Runder gemmes på enheden. Tryk på Synkroniser for at sende og hente gemte runder.";
     private readonly List<RoundListItemViewModel> allRoundItems = [];
     private bool showRecoveredFromBackupWarning;
     private bool isBusy;
@@ -36,11 +39,13 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     private string selectedHistorySort = HistorySortNewestFirst;
     private string historyComparisonText = string.Empty;
 
-    public RoundHistoryViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null)
+    public RoundHistoryViewModel(IRoundRepository repository, IDistanceUnitSettings? distanceUnitSettings = null,
+        IRoundSyncService? syncService = null)
     {
         this.repository = repository;
         historyQueryService = new RoundHistoryQueryService(repository);
         this.distanceUnitSettings = distanceUnitSettings ?? FixedDistanceUnitSettings.Meters;
+        this.syncService = syncService;
     }
 
     public ObservableCollection<RoundListItemViewModel> Rounds { get; } = [];
@@ -178,6 +183,40 @@ public sealed class RoundHistoryViewModel : ViewModelBase
 
     public bool CanInteract => !IsBusy;
 
+    public bool HasSync => syncService is not null;
+
+    public string SyncMessage
+    {
+        get => syncMessage;
+        private set => SetProperty(ref syncMessage, value);
+    }
+
+    public async Task SyncAsync(CancellationToken cancellationToken = default)
+    {
+        if (IsBusy || syncService is null) return;
+        IsBusy = true;
+        ErrorMessage = string.Empty;
+        SyncMessage = "Synkroniserer gemte runder…";
+        try
+        {
+            var result = await syncService.SyncAsync(cancellationToken);
+            SyncMessage = $"Synkroniseret: {result.Uploaded} sendt, {result.Downloaded} hentet, {result.Deleted} slettet.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        { SyncMessage = "Synkronisering blev afbrudt. Tryk på Synkroniser for at fortsætte."; }
+        catch (RoundSyncException ex)
+        { SyncMessage = ex.Message; }
+        catch (Exception)
+        { SyncMessage = "Synkronisering kunne ikke fuldføres. Dine lokale runder er bevaret. Prøv igen senere."; }
+        finally
+        {
+            // Some writes may have succeeded before an interruption; always refresh the local view.
+            try { await LoadHistoryCoreAsync(); }
+            catch (Exception) { ErrorMessage = "Historik kunne ikke indlæses. Prøv igen, eller tjek lagring under Indstillinger."; }
+            IsBusy = false;
+        }
+    }
+
     public string ErrorMessage
     {
         get => errorMessage;
@@ -212,16 +251,7 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         ErrorMessage = string.Empty;
         try
         {
-            var history = await historyQueryService.LoadAsync();
-            ShowRecoveredFromBackupWarning = history.WasRecoveredFromBackup;
-            var rounds = history.Rounds;
-            var loadedItems = rounds
-                .Select(round => new RoundListItemViewModel(round, distanceUnitSettings))
-                .ToList();
-
-            allRoundItems.Clear();
-            allRoundItems.AddRange(loadedItems);
-            ApplyHistoryFilters();
+            await LoadHistoryCoreAsync();
         }
         catch (Exception)
         {
@@ -231,6 +261,16 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    private async Task LoadHistoryCoreAsync()
+    {
+        var history = await historyQueryService.LoadAsync();
+        ShowRecoveredFromBackupWarning = history.WasRecoveredFromBackup;
+        var loadedItems = history.Rounds.Select(round => new RoundListItemViewModel(round, distanceUnitSettings)).ToList();
+        allRoundItems.Clear();
+        allRoundItems.AddRange(loadedItems);
+        ApplyHistoryFilters();
     }
 
     public async Task<bool> DeleteRoundAsync(RoundListItemViewModel round)

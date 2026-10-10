@@ -4,7 +4,9 @@ Open **Settings → Products** (in the Danish UI: **Indstillinger → Produkter*
 The page loads products automatically, supports pull-to-refresh and an **Opdater**
 button, and shows loading, empty and error states. **Gem og hent** saves a new
 server address on the device and loads from it. Products are read from the API;
-the app's golf rounds and practice sessions continue to use their existing storage.
+the app's golf rounds and practice sessions continue to use their existing local storage.
+Saved history also supports manual round sync using this same server address; see
+[Round sync setup](ROUND_SYNC_SETUP.md).
 
 ## Run locally
 

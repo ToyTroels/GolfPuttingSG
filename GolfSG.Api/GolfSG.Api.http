@@ -9,3 +9,8 @@ GET {{GolfSG.Api_HostAddress}}/api/products
 Accept: application/json
 
 ###
+
+GET {{GolfSG.Api_HostAddress}}/api/rounds
+Accept: application/json
+
+###

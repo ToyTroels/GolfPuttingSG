@@ -7,6 +7,8 @@ using GolfSG.Application.Services;
 using GolfSG.Application.ViewModels;
 using GolfSG.Application.Products;
 using GolfSG.Infrastructure.Products;
+using GolfSG.Application.Rounds.Sync;
+using GolfSG.Infrastructure.Rounds;
 using GolfSG.Services;
 using GolfSG.Views;
 using Microsoft.Extensions.Logging;
@@ -30,7 +32,10 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
-        builder.Services.AddSingleton<IRoundRepository>(_ => new FileRoundRepository(FileSystem.AppDataDirectory));
+        builder.Services.AddSingleton(_ => new RoundSyncStateStore(FileSystem.AppDataDirectory));
+        builder.Services.AddSingleton(serviceProvider => new SyncingRoundRepository(
+            new FileRoundRepository(FileSystem.AppDataDirectory), serviceProvider.GetRequiredService<RoundSyncStateStore>()));
+        builder.Services.AddSingleton<IRoundRepository>(serviceProvider => serviceProvider.GetRequiredService<SyncingRoundRepository>());
         builder.Services.AddSingleton<IActiveRoundSessionRepository>(_ => new FileActiveRoundSessionRepository(FileSystem.AppDataDirectory));
         builder.Services.AddSingleton<IActivePuttingGameRepository>(_ => new FileActivePuttingGameRepository(FileSystem.AppDataDirectory));
         builder.Services.AddSingleton<ICoursePracticeRepository>(_ => new FileCoursePracticeRepository(FileSystem.AppDataDirectory));
@@ -47,6 +52,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IProductsApiSettings, PreferenceProductsApiSettings>();
         builder.Services.AddSingleton(_ => ProductsHttpClientFactory.Create());
         builder.Services.AddSingleton<IProductsApiService, ProductsApiService>();
+        builder.Services.AddSingleton<IRoundsApiService, RoundsApiService>();
+        builder.Services.AddSingleton<IRoundSyncService, RoundSyncService>();
         builder.Services.AddTransient<ProductsViewModel>();
         builder.Services.AddTransient<ProductsPage>();
         builder.Services.AddTransient<StartViewModel>();

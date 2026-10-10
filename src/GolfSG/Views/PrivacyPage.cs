@@ -20,16 +20,16 @@ public sealed class PrivacyPage : ContentPage
                     AppViews.PageTitle("Privatliv"),
                     Section(
                         "Data p\u00e5 enheden",
-                        "GolfSG gemmer runder, hulinput, putting-spil, benchmarks og indstillinger i appens lokale dataomr\u00e5de. Appen kr\u00e6ver ingen konto og sender ikke disse data til GolfSG eller en analysetjeneste."),
+                        "GolfSG gemmer runder, hulinput, putting-spil, benchmarks og indstillinger i appens lokale dataområde. Appen kræver ingen konto. Gemte runder sendes kun til den valgte server, når du trykker på Synkroniser i Historik."),
                     Section(
                         "Valgfri brugsstatistik",
                         "Lokal brugsstatistik er slået fra som standard. Når den aktiveres under Indstillinger, gemmes tællere for knaptryk, færdige huller, rettelser, afstandsinput og sessionsafslutninger. Indtastede værdier og personlige oplysninger gemmes ikke i oversigten. Data sendes ikke automatisk. Du kan stoppe registrering, eksportere eller slette tællerne under Indstillinger."),
                     Section(
                         "Backup og eksport",
-                        "GolfSG har ingen cloud-synkronisering. Android-cloudbackup er deaktiveret. Operativsystemets enhedsbackup eller enhedsoverf\u00f8rsel kan stadig h\u00e5ndteres af platformen. En eksport indeholder hele rundehistorikken og deles kun, n\u00e5r du selv v\u00e6lger det."),
+                        "Synkroniser i Historik sender gemte runder og henter serverens runder via HTTPS. Serveradressen vælges under Indstillinger → Produkter. Synkronisering er manuel. Android-cloudbackup er deaktiveret. En eksport indeholder hele rundehistorikken og deles kun, når du selv vælger det."),
                     Section(
                         "Sletning",
-                        "Gemte runder har ingen automatisk udl\u00f8bsdato. Slet individuelle runder i Historik. Lokale gendannelseskopier og cachelagrede eksporter kan stadig indeholde tidligere slettede data. Du kan fjerne alle lokale GolfSG-data via enhedens nulstil appdata- eller afinstallationsfunktion. Eksporterede kopier skal slettes separat."),
+                        "Gemte runder har ingen automatisk udløbsdato. Slet individuelle runder i Historik, og synkroniser for også at slette rundens indhold på serveren. Serveren beholder rundens id og versionsnummer for at undgå gendannelse på andre enheder. Lokale gendannelseskopier, eksporter og serverbackups kan stadig indeholde tidligere slettede data. Nulstilling eller afinstallation fjerner lokale data og sender ikke sletninger til serveren."),
                     Section(
                         "Kontakt",
                         "Privatlivssp\u00f8rgsm\u00e5l og fejl kan rapporteres i projektets offentlige GitHub-repository."),

@@ -14,6 +14,7 @@ public sealed class RoundHistoryPage : ContentPage
 
     private readonly RoundHistoryViewModel viewModel;
     private readonly IServiceProvider services;
+    private CancellationTokenSource? syncCancellation;
 
     public RoundHistoryPage(RoundHistoryViewModel viewModel, IServiceProvider services)
     {
@@ -40,6 +41,21 @@ public sealed class RoundHistoryPage : ContentPage
                 "Pr\u00f8v igen, eller tjek lagring under Indstillinger.",
                 "OK");
         }
+    }
+
+    protected override void OnDisappearing()
+    {
+        syncCancellation?.Cancel();
+        base.OnDisappearing();
+    }
+
+    private async Task SyncAsync()
+    {
+        if (syncCancellation is not null) return;
+        using var cancellation = new CancellationTokenSource();
+        syncCancellation = cancellation;
+        try { await viewModel.SyncAsync(cancellation.Token); }
+        finally { syncCancellation = null; }
     }
 
     private void BuildLayout()
@@ -105,6 +121,23 @@ public sealed class RoundHistoryPage : ContentPage
         BindableLayout.SetItemTemplate(rounds, RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync));
         rounds.SetBinding(BindableLayout.ItemsSourceProperty, nameof(RoundHistoryViewModel.Rounds));
 
+        var sync = AppViews.SecondaryButton("Synkroniser")
+            .Accessible(UiAutomationIds.HistorySync, "Synkroniser gemte runder med serveren");
+        sync.SetBinding(IsEnabledProperty, nameof(RoundHistoryViewModel.CanInteract));
+        sync.Clicked += async (_, _) => await SyncAsync();
+        var syncStatus = new Label { FontSize = 13, TextColor = MutedTextColor }
+            .Accessible(UiAutomationIds.HistorySyncStatus, "Status for synkronisering");
+        syncStatus.SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.SyncMessage));
+        var progress = new ActivityIndicator { Color = PrimaryGreen };
+        progress.SetBinding(ActivityIndicator.IsRunningProperty, nameof(RoundHistoryViewModel.IsBusy));
+        progress.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.IsBusy));
+        var syncPanel = new VerticalStackLayout { Spacing = 6, Margin = new Thickness(0, 0, 0, 12),
+            Children = { sync, progress, syncStatus } };
+        syncPanel.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.HasSync));
+        var error = new Label { FontSize = 13, TextColor = GolfTheme.Colors.WarningText };
+        error.SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.ErrorMessage));
+        error.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.HasError));
+
         Content = new ScrollView
         {
             Content = new VerticalStackLayout
@@ -127,6 +160,8 @@ public sealed class RoundHistoryPage : ContentPage
                         TextColor = MutedTextColor,
                         Margin = new Thickness(0, 0, 0, 10)
                     },
+                    syncPanel,
+                    error,
                     FilterPanel(type, category, period, sort),
                     summary,
                     ComparisonPanel(),

@@ -6,6 +6,7 @@ namespace GolfSG.Api.Data;
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<SavedRound> SavedRounds => Set<SavedRound>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -18,5 +19,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         product.Property(p => p.Id).HasColumnName("id").UseSerialColumn();
         product.Property(p => p.Name).HasColumnName("name")
             .HasColumnType("character varying(100)").HasMaxLength(100).IsRequired();
+
+        var round = modelBuilder.Entity<SavedRound>();
+        round.ToTable("saved_rounds");
+        round.HasKey(r => r.Id);
+        round.Property(r => r.Id).HasColumnName("id").HasMaxLength(100);
+        round.Property(r => r.Version).HasColumnName("version");
+        round.Property(r => r.Payload).HasColumnName("payload").HasColumnType("jsonb");
+        round.Property(r => r.UpdatedAt).HasColumnName("updated_at");
     }
 }

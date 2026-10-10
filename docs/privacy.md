@@ -4,7 +4,7 @@ title: GolfSG Privacy Policy
 
 # GolfSG Privacy Policy
 
-Last updated: 2026-10-05
+Last updated: 2026-10-10
 
 GolfSG is an offline-first golf training application. This policy describes the behavior of the current alpha version.
 
@@ -18,7 +18,7 @@ GolfSG may store:
 - App settings such as distance preferences and selected tracking options.
 - Temporary active-round or active-session state.
 
-This data is stored as JSON and preferences in the application's platform-managed local data directory. It is not uploaded to a GolfSG service.
+This data is stored as JSON and preferences in the application's platform-managed local data directory. Saved round history is also sent to the configured HTTPS server when you choose **Sync** in History. Saving a round does not automatically upload it.
 
 ## How data is used
 
@@ -30,6 +30,12 @@ Usage diagnostics are disabled by default and can be enabled in Settings. They s
 
 Nothing is transmitted automatically. You can stop collection, export a summary through the system share sheet, or delete the local counters in Settings. Disabling collection preserves existing counters. Cached exported copies and copies you share must be deleted separately. These counters do not expire automatically.
 
+## Manual round synchronization
+
+The server address is configured under Settings → Products. Choosing Sync in History sends saved rounds, hole and shot data, dates, scores, game and benchmark details, and completed course-practice results to that server. It also downloads saved rounds and applies deletions. Active unfinished sessions, course setup and image files, preferences and usage diagnostics are not uploaded. Rounds remain available offline, and interrupted sync can be retried.
+
+The current development API has no sign-in or separation by user: devices connected to the same server share the same history. The server operator controls access to its database and backups. Local HTTPS development certificates are accepted only for supported local addresses in Debug builds; Release builds require a normally trusted certificate.
+
 ## Security
 
 GolfSG stores its data in the application's platform-managed private data directory and uses operating-system preferences for settings. Access protection relies on the operating system's app isolation and device security. GolfSG does not add its own encryption to its JSON files or exported files. When you export data, protection of the resulting copy depends on the destination you choose.
@@ -39,7 +45,6 @@ GolfSG stores its data in the application's platform-managed private data direct
 The current alpha does not include:
 
 - User accounts or sign-in.
-- GolfSG cloud synchronization.
 - Advertising.
 - Hosted analytics or crash-reporting services.
 - Sale or sharing of personal data.
@@ -58,7 +63,9 @@ Saved rounds have no automatic expiry and remain in the active history until you
 
 Deleting an individual round removes it from the active history. The app keeps a previous version of the history as a local recovery backup, which may still contain deleted rounds until that backup is replaced. Preserved recovery files and cached exports may also contain older data and have no app-managed expiry. These local recovery copies are separate from Android cloud backup.
 
-To remove all locally stored GolfSG data, including local recovery files and cached exports, use the platform's app-data reset or uninstall controls. Exported copies outside the app and platform-managed backups must be deleted separately. GolfSG has no user accounts or server-side round storage.
+When you synchronize after deleting a round, its saved content is removed from the server's active round table. The server retains its ID, version and deletion timestamp so another device does not restore the deleted record. Server backups can retain older content until the operator removes them.
+
+To remove all locally stored GolfSG data, including local recovery files and cached exports, use the platform's app-data reset or uninstall controls. This does not send deletions to the server. Exported copies outside the app, platform-managed backups and server backups must be deleted separately.
 
 ## Future changes
 

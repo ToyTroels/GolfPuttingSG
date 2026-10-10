@@ -35,6 +35,8 @@ public static class UiAutomationIds
     public const string HistoryPeriod = "history.filter.period";
     public const string HistorySort = "history.filter.sort";
     public const string HistoryList = "history.list";
+    public const string HistorySync = "history.sync";
+    public const string HistorySyncStatus = "history.sync-status";
 
     public const string SettingsPage = "settings.page";
     public const string ProductsEntry = "settings.products";
