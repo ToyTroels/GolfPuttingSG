@@ -1,0 +1,11 @@
+@GolfSG.Api_HostAddress = https://localhost:7151
+
+GET {{GolfSG.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+GET {{GolfSG.Api_HostAddress}}/api/products
+Accept: application/json
+
+###
