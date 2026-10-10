@@ -26,6 +26,12 @@ jobs:
       - name: Run Release tests
         run: dotnet test tests/GolfSG.Tests/GolfSG.Tests.csproj -c Release --no-restore
 
+      - name: Restore page interaction tests
+        run: dotnet restore tests/GolfSG.PageTests/GolfSG.PageTests.csproj --locked-mode
+
+      - name: Run page interaction tests
+        run: dotnet test tests/GolfSG.PageTests/GolfSG.PageTests.csproj -c Release --no-restore
+
       - name: Check test dependencies for known vulnerabilities
         shell: bash
         run: |

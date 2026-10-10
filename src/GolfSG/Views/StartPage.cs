@@ -105,6 +105,10 @@ public sealed class StartPage : ContentPage
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<RoundHistoryPage>()));
 
         evaluationButton = AppViews.SecondaryButton("SG-evaluering · Beta");
+        var courseRoundButton = AppViews.SecondaryButton("Banerunde på billede · Beta")
+            .Accessible(UiAutomationIds.CoursePractice, "Åbn menuen for banerunder på billede, beta");
+        courseRoundButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
+        courseRoundButton.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<CoursePracticeMenuPage>()));
         statisticsButton = AppViews.SecondaryButton("Statistik · Beta");
         statisticsButton.IsVisible = FeatureSettings.EnableBetaFeatures;
         statisticsButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
@@ -136,7 +140,8 @@ public sealed class StartPage : ContentPage
                     TextColor = GolfTheme.Colors.WarningText
                 },
                 statisticsButton,
-                evaluationButton
+                evaluationButton,
+                courseRoundButton
             }
         };
 
@@ -348,6 +353,11 @@ public sealed class StartPage : ContentPage
     {
         try
         {
+            if (item.Round.CoursePractice is not null)
+            {
+                await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new CoursePracticeResultPage(item.Round)));
+                return;
+            }
             var page = services.GetRequiredService<RoundResultPage>();
             await page.LoadAsync(item.Id, openedFromHistory: true);
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));

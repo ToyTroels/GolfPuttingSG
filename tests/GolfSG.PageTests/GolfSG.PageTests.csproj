@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MSTest" Version="4.0.2" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+    <Using Include="Microsoft.Maui" />
+    <Using Include="Microsoft.Maui.Controls" />
+    <Using Include="Microsoft.Maui.Graphics" />
+    <Using Include="Microsoft.Maui.Storage" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/GolfSG.Application/GolfSG.Application.csproj" />
+    <ProjectReference Include="../../src/GolfSG.Core/GolfSG.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Compile the actual page and controls so event-handler state regressions are covered. -->
+    <Compile Include="../../src/GolfSG/Views/CoursePlayPage.cs" Link="Views/CoursePlayPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/CourseMapView.cs" Link="Views/CourseMapView.cs" />
+    <Compile Include="../../src/GolfSG/Views/CourseSetupPage.cs" Link="Views/CourseSetupPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/CoursePracticeImages.cs" Link="Views/CoursePracticeImages.cs" />
+    <Compile Include="../../src/GolfSG/Views/CoursePracticeResultPage.cs" Link="Views/CoursePracticeResultPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/CoursePracticeViews.cs" Link="Views/CoursePracticeViews.cs" />
+    <Compile Include="../../src/GolfSG/Views/AppViews.cs" Link="Views/AppViews.cs" />
+    <Compile Include="../../src/GolfSG/Views/GolfTheme.cs" Link="Views/GolfTheme.cs" />
+    <Compile Include="../../src/GolfSG/Views/ViewExtensions.cs" Link="Views/ViewExtensions.cs" />
+    <Compile Include="../../src/GolfSG/Views/PageActionGuardExtensions.cs" Link="Views/PageActionGuardExtensions.cs" />
+    <Compile Include="../GolfSG.Tests/Infrastructure/TestDoubles/TestRoundRepository.cs" Link="TestDoubles/TestRoundRepository.cs" />
+  </ItemGroup>
+</Project>

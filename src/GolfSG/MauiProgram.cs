@@ -1,4 +1,5 @@
 using GolfSG.Application.Putting;
+using GolfSG.Application.Courses;
 using GolfSG.Application.Rounds;
 using GolfSG.Core;
 using GolfSG.Infrastructure.Persistence;
@@ -29,6 +30,10 @@ public static class MauiProgram
         builder.Services.AddSingleton<IRoundRepository>(_ => new FileRoundRepository(FileSystem.AppDataDirectory));
         builder.Services.AddSingleton<IActiveRoundSessionRepository>(_ => new FileActiveRoundSessionRepository(FileSystem.AppDataDirectory));
         builder.Services.AddSingleton<IActivePuttingGameRepository>(_ => new FileActivePuttingGameRepository(FileSystem.AppDataDirectory));
+        builder.Services.AddSingleton<ICoursePracticeRepository>(_ => new FileCoursePracticeRepository(FileSystem.AppDataDirectory));
+        builder.Services.AddSingleton<CoursePracticeService>();
+        builder.Services.AddTransient<CoursePracticeMenuPage>();
+        builder.Services.AddTransient<CourseSetupPage>();
         builder.Services.AddTransient<IRoundApplicationService, RoundApplicationService>();
         builder.Services.AddTransient<IPuttingGameSessionService, PuttingGameSessionService>();
         builder.Services.AddSingleton<IDistanceUnitSettings, PreferenceDistanceUnitSettings>();

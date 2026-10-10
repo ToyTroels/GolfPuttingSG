@@ -44,10 +44,10 @@ public sealed class RoundListItemViewModel : ViewModelBase
     public bool IsBenchmark => IsPuttingGame &&
         (string.Equals(Round.GameInfo?.Type, "PuttingBenchmark", StringComparison.Ordinal) ||
             IsLegacyBenchmarkMode(trackingOptions.PuttingGameMode));
-    public string HistoryTypeText => IsBenchmark
+    public string HistoryTypeText => Round.CoursePractice is not null ? "Banetræning · Beta" : IsBenchmark
         ? "Benchmark"
         : IsPuttingGame ? "Putting-spil" : "Runde";
-    public string Date => IsPuttingGame
+    public string Date => Round.CoursePractice is { } practice ? $"{UiFormat.Date(Round.Date)} - {practice.Course.Name} · Beta" : IsPuttingGame
         ? $"{UiFormat.Date(Round.Date)} - {PuttingGameTitle}"
         : UiFormat.Date(Round.Date);
     public double PuttingSg { get; }
@@ -68,6 +68,7 @@ public sealed class RoundListItemViewModel : ViewModelBase
     {
         get
         {
+            if (Round.CoursePractice is { } practice) return $"{practice.Results.Count} planlagte slag · {practice.Course.Name} · Beta";
             if (IsPuttingGame)
             {
                 var puttingGameParts = new List<string> { PuttingGameTitle };

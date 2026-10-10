@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GolfSG.Application.Courses;
 using GolfSG.Core.Models;
 
 namespace GolfSG.Infrastructure.Persistence;
@@ -82,6 +83,7 @@ public sealed class RoundFileStore
 
     public async Task SaveRoundAsync(Round round)
     {
+        ValidateCoursePracticeRound(round);
         await mutationLock.WaitAsync();
         try
         {
@@ -133,7 +135,7 @@ public sealed class RoundFileStore
         }
     }
 
-    public Task ExportRoundsAsync(string destinationPath)
+    public async Task ExportRoundsAsync(string destinationPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destinationPath);
         var destinationDirectory = Path.GetDirectoryName(destinationPath);
@@ -144,11 +146,13 @@ public sealed class RoundFileStore
 
         if (!File.Exists(filePath))
         {
-            return File.WriteAllTextAsync(destinationPath, string.Empty);
+            await File.WriteAllTextAsync(destinationPath, string.Empty);
+            return;
         }
 
+        if ((await ReadRoundsAsync(filePath)).Rounds is null)
+            throw new InvalidDataException("Runderne kunne ikke læses og blev ikke eksporteret.");
         File.Copy(filePath, destinationPath, overwrite: true);
-        return Task.CompletedTask;
     }
 
     public async Task ImportRoundsAsync(string sourcePath)
@@ -256,6 +260,7 @@ public sealed class RoundFileStore
             if (document.RootElement.ValueKind == JsonValueKind.Array)
             {
                 var rounds = document.RootElement.Deserialize<List<Round>>(JsonOptions);
+                if (rounds is not null) foreach (var round in rounds) ValidateCoursePracticeRound(round);
                 return new RoundReadResult(rounds, false);
             }
 
@@ -264,6 +269,7 @@ public sealed class RoundFileStore
                 roundsElement.ValueKind == JsonValueKind.Array)
             {
                 var rounds = roundsElement.Deserialize<List<Round>>(JsonOptions);
+                if (rounds is not null) foreach (var round in rounds) ValidateCoursePracticeRound(round);
                 return new RoundReadResult(rounds, false);
             }
 
@@ -277,10 +283,34 @@ public sealed class RoundFileStore
         {
             return new RoundReadResult(null, true);
         }
+        catch (InvalidDataException)
+        {
+            return new RoundReadResult(null, true);
+        }
+        catch (ArgumentException)
+        {
+            return new RoundReadResult(null, true);
+        }
+    }
+
+    private static void ValidateCoursePracticeRound(Round round)
+    {
+        if (round.CoursePractice is not { } practice) return;
+        try
+        {
+            CoursePracticeService.ValidateResults(practice.Course, practice.Results, requireComplete: true);
+            if (round.Holes is null || round.Holes.Count != practice.Results.Count || round.ConfiguredHoleCount != practice.Results.Count)
+                throw new ArgumentException("Antallet af slag i rundens oversigt stemmer ikke med resultaterne.");
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidDataException("Banerundens opgaver eller slagresultater er ugyldige.", ex);
+        }
     }
 
     private async Task WriteRoundsAsync(IReadOnlyList<Round> rounds)
     {
+        foreach (var round in rounds) ValidateCoursePracticeRound(round);
         var directory = Path.GetDirectoryName(filePath)!;
         Directory.CreateDirectory(directory);
 

@@ -14,6 +14,7 @@ This is a directional roadmap, not a promise of dates. Priorities may change as 
 
 ## Next: actionable improvement
 
+- Validate the [beta course setup/play flow](course-practice-beta.md) on devices before expanding it to GPS maps, multiplayer or full-hole play.
 - Add trend views for total SG, category SG, distance bands, three-putt rate, and make percentage.
 - Turn round results into coaching-oriented insights and practice recommendations.
 - Add autosave and a clear resume/abandon flow for interrupted sessions.

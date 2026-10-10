@@ -5,6 +5,7 @@ public static class UiAutomationIds
     public const string StartPage = "start.page";
     public const string NewRound = "start.new-round";
     public const string PuttingGames = "start.putting-games";
+    public const string CoursePractice = "start.course-practice";
     public const string History = "start.history";
     public const string ResumeActiveRound = "start.active-round.resume";
     public const string AbandonActiveRound = "start.active-round.abandon";

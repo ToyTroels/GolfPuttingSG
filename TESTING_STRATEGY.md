@@ -14,6 +14,8 @@ The current strengths are:
 - result-screen presentation and distance-unit formatting;
 - concurrency guards and project dependency boundaries.
 
+`tests/GolfSG.PageTests` compiles the actual course play page and MAUI controls for headless interaction tests. It presses the selection, save, and undo buttons to verify that results persist, the displayed shot advances, and outcome fields reset. Run it with `dotnet test tests/GolfSG.PageTests/GolfSG.PageTests.csproj`; CI also runs it. These tests exercise page event handlers without native platform handlers.
+
 The main remaining gap is execution through the real MAUI interface. Critical controls now expose stable `AutomationId` values and semantic descriptions through `src/GolfSG/Views/UiAutomationIds.cs`, but an Appium runner and approved visual baselines are not yet implemented. Until they are, packaged-app smoke, accessibility, and physical-device checks remain mandatory release gates.
 
 ## Recommended test layers

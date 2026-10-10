@@ -280,7 +280,7 @@ public sealed class StartViewModel : ViewModelBase
             RecentRounds.Add(round);
         }
 
-        RefreshInsights(sortedRounds);
+        RefreshInsights(sortedRounds.Where(r => r.Round.CoursePractice is null).ToArray());
     }
 
     private void RefreshInsights(IReadOnlyList<RoundListItemViewModel> sortedRounds)

@@ -6,7 +6,7 @@ namespace GolfSG.Application.Queries;
 
 public sealed class RoundStatisticsQueryService(IRoundRepository repository) : IRoundStatisticsQueryService
 {
-    public Task<IReadOnlyList<Round>> LoadRoundsAsync() => repository.GetRoundsAsync();
+    public async Task<IReadOnlyList<Round>> LoadRoundsAsync() => (await repository.GetRoundsAsync()).Where(r => r.CoursePractice is null).ToArray();
 
     public RoundStatisticsSummary Summarize(
         IReadOnlyList<Round> rounds,

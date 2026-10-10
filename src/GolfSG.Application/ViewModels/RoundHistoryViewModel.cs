@@ -46,7 +46,7 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     public ObservableCollection<RoundListItemViewModel> Rounds { get; } = [];
 
     public IReadOnlyList<string> HistoryTypeOptions { get; } =
-        [HistoryTypeAll, HistoryTypeRounds, HistoryTypePuttingGames, HistoryTypeBenchmarks];
+        [HistoryTypeAll, HistoryTypeRounds, HistoryTypePuttingGames, HistoryTypeBenchmarks, "Banetræning · Beta"];
 
     public IReadOnlyList<string> HistoryCategoryOptions { get; } =
         [HistoryCategoryTotal, HistoryCategoryPutting, HistoryCategoryApproach, HistoryCategoryAroundGreen];
@@ -290,7 +290,8 @@ public sealed class RoundHistoryViewModel : ViewModelBase
     {
         return SelectedHistoryType switch
         {
-            HistoryTypeRounds => !item.IsPuttingGame,
+            HistoryTypeRounds => !item.IsPuttingGame && item.Round.CoursePractice is null,
+            "Banetræning · Beta" => item.Round.CoursePractice is not null,
             HistoryTypePuttingGames => item.IsPuttingGame && !item.IsBenchmark,
             HistoryTypeBenchmarks => item.IsBenchmark,
             _ => true

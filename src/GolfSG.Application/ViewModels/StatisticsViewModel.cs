@@ -42,7 +42,7 @@ public sealed class StatisticsViewModel(IRoundRepository repository, IDistanceUn
 
     public async Task LoadAsync()
     {
-        rounds = await repository.GetRoundsAsync();
+        rounds = (await repository.GetRoundsAsync()).Where(r => r.CoursePractice is null).ToArray();
         foreach (var year in rounds.Select(round => round.Date.Year).Distinct().OrderDescending())
             if (!Periods.Contains($"Sæson {year}")) Periods.Add($"Sæson {year}");
         Refresh();

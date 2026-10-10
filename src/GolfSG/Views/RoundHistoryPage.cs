@@ -141,6 +141,11 @@ public sealed class RoundHistoryPage : ContentPage
     {
         try
         {
+            if (item.Round.CoursePractice is not null)
+            {
+                await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new CoursePracticeResultPage(item.Round)));
+                return;
+            }
             var page = services.GetRequiredService<RoundResultPage>();
             await page.LoadAsync(item.Id, openedFromHistory: true);
             await this.RunNavigationOnceAsync(() => Navigation.PushAsync(page));

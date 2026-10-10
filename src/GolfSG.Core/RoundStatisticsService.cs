@@ -32,7 +32,7 @@ public static class RoundStatisticsService
         DateTime? startDate = null,
         DateTime? endDate = null)
     {
-        var periodRounds = FilterByPeriod(rounds, startDate, endDate);
+        var periodRounds = FilterByPeriod(rounds.Where(r => r.CoursePractice is null), startDate, endDate);
         var trackedRounds = periodRounds
             .Where(round => IsCategoryTracked(round, category))
             .ToList();
@@ -83,6 +83,7 @@ public static class RoundStatisticsService
         ArgumentNullException.ThrowIfNull(rounds);
 
         var puttingHoles = rounds
+            .Where(round => round.CoursePractice is null)
             .Where(round => (round.TrackingOptions ?? RoundTrackingOptions.PuttingOnly).TrackPutting)
             .SelectMany(round => round.Holes.Where(hole => HoleResultMapper.ToResult(hole).IsPuttingCompleted))
             .ToList();

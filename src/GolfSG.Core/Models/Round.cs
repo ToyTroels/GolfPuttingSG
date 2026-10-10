@@ -7,7 +7,8 @@ public sealed record Round(
     RoundTrackingOptions? TrackingOptions = null,
     int ConfiguredHoleCount = 18,
     bool EndedEarly = false,
-    RoundGameInfo? GameInfo = null)
+    RoundGameInfo? GameInfo = null,
+    CoursePracticeDetails? CoursePractice = null)
 {
     public int CompletedHoleCount => Holes.Count(IsTrackedHoleCompleted);
 
