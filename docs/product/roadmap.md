@@ -2,31 +2,35 @@
 
 This is a directional roadmap, not a promise of dates. Priorities may change as real-device testing and golfer feedback reveal the most important problems.
 
+See [the active backlog](../../TODO.md) for remaining work, [project ideas](ideas.md) for exploration, and [the completed archive](completed-backlog.md) for recorded completions.
+
 ## Now: alpha hardening
 
 - Make the core putting round and practice flows reliable on Windows and Android.
-- Resolve history visibility and date-styling issues.
+- Verify history reliability and resolve remaining date contrast issues; history visibility has already been addressed.
 - Finish consistent distance-unit behavior.
 - Stabilize approach and around-the-green category configuration before presenting those areas as mature.
 - Add accessibility semantics, stable automation identifiers, and a small UI smoke suite.
 - Document the strokes-gained methodology and reference-data provenance.
-- Establish repeatable CI and release packaging.
+- Complete production signing and physical-device acceptance using the existing CI and release packaging workflows.
 
 ## Next: actionable improvement
 
-- Validate the [beta course setup/play flow](course-practice-beta.md) on devices before expanding it to GPS maps, multiplayer or full-hole play.
+- Review [optional accounts and cloud sync for a small group](cloud-sync-idea.md), including free-tier feasibility, while preserving offline use. This is an idea for evaluation before implementation.
 - Add trend views for total SG, category SG, distance bands, three-putt rate, and make percentage.
 - Turn round results into coaching-oriented insights and practice recommendations.
-- Add autosave and a clear resume/abandon flow for interrupted sessions.
-- Improve benchmark editing and review before saving.
-- Add personal baselines and clearly explain when they are statistically meaningful.
+- Validate putting-game autosave/resume on physical devices alongside the existing round recovery flow.
+- Validate practice-result undo and editing on devices, including resumed and just-finished benchmarks.
+- Validate the [beta course setup/play flow](course-practice-beta.md) on devices before expanding it to GPS maps, multiplayer or full-hole play.
+- Add course name and an in-round scoreboard.
+- Review personal baseline options from the ideas list before scheduling implementation.
 
 ## Later: continuity and coaching
 
-- Add stronger practice feedback loops, goals, personal records, and streaks.
+- Evaluate practice recommendations first; keep goals, personal records, and streaks in the ideas list until prioritized.
 - Provide shareable summaries for coaching conversations.
 - Improve category-specific reference tables and lie modeling.
-- Evaluate optional cross-device synchronization only after the offline data model and privacy expectations are stable.
+- Expand cloud synchronization only if the near-term feasibility review validates the offline data model, privacy expectations, and free-tier constraints.
 
 ## Out of scope until validated
 
