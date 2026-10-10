@@ -64,6 +64,41 @@ embedded credentials are rejected. Redirects are not followed.
 The emulator alias is documented in Microsoft's
 [local web services guide](https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/local-web-services?view=net-maui-10.0).
 
+## Local IIS
+
+The local IIS deployment is published to `C:\Websites\Maui.Api` and has an
+HTTPS binding on port 443, alongside its HTTP binding on port 81. Check the API
+using `https://localhost/api/products` and `https://localhost/api/rounds`.
+The API does not have a page at `/`.
+
+Full IIS requires the **.NET 10 Hosting Bundle**, which installs the ASP.NET Core
+IIS module. Having the SDK or IIS Express installed is not sufficient.
+
+IIS does not use Visual Studio User Secrets. This deployment reads
+`ConnectionStrings:Default` from
+`C:\Websites\Maui.Api\appsettings.Production.json`. That private file contains
+the existing local database connection and is readable by IIS. Keep it outside
+the repository. The current folder publish profile uses
+`DeleteExistingFiles=false` so subsequent publishes retain this server file;
+if the deployment folder is cleared, restore the private settings as well.
+
+The IIS HTTPS binding uses a copy of the existing ASP.NET development certificate
+in the Local Machine personal certificate store. This lets the Debug app use the
+local certificate exception described above. The IIS Express certificate does
+not have the ASP.NET development certificate extension and does not qualify for
+that exception. Use a normally trusted certificate for a hosted Release app.
+
+For the Android phone over USB, run:
+
+```powershell
+adb reverse tcp:443 tcp:443
+```
+
+Enter `https://localhost/` in **Indstillinger → Produkter** and choose
+**Gem og hent**. This saved address also applies to **Historik → Synkroniser**.
+The emulator uses `https://10.0.2.2/`. Repeat USB forwarding after reconnecting
+the phone or restarting ADB, as described above.
+
 ## Hosted API
 
 Release builds have no local default server address. Enter the deployed API's
