@@ -1,4 +1,5 @@
 using GolfSG.Application.ViewModels;
+using GolfSG.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -15,6 +16,7 @@ public sealed class RoundHistoryPage : ContentPage
     private readonly RoundHistoryViewModel viewModel;
     private readonly IServiceProvider services;
     private CancellationTokenSource? syncCancellation;
+    private CancellationTokenSource? pageCancellation;
 
     public RoundHistoryPage(RoundHistoryViewModel viewModel, IServiceProvider services)
     {
@@ -30,6 +32,9 @@ public sealed class RoundHistoryPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        pageCancellation?.Cancel();
+        pageCancellation?.Dispose();
+        pageCancellation = new();
         try
         {
             await viewModel.LoadAsync();
@@ -46,10 +51,15 @@ public sealed class RoundHistoryPage : ContentPage
     protected override void OnDisappearing()
     {
         syncCancellation?.Cancel();
+        pageCancellation?.Cancel();
         base.OnDisappearing();
     }
 
-    private async Task SyncAsync()
+    private Task SyncAsync() => this.RunActionOnceAsync(SyncCoreAsync);
+
+    private CancellationToken PageToken => pageCancellation?.Token ?? new CancellationToken(canceled: true);
+
+    private async Task SyncCoreAsync()
     {
         if (syncCancellation is not null) return;
         using var cancellation = new CancellationTokenSource();
@@ -121,6 +131,15 @@ public sealed class RoundHistoryPage : ContentPage
         BindableLayout.SetItemTemplate(rounds, RoundTemplate(OpenRoundAsync, ShowRoundActionsAsync));
         rounds.SetBinding(BindableLayout.ItemsSourceProperty, nameof(RoundHistoryViewModel.Rounds));
 
+        var import = AppViews.SecondaryButton("Importer runder fra fil")
+            .Accessible(UiAutomationIds.HistoryImport, "Importer en eksporteret rounds.json-fil");
+        import.SetBinding(IsEnabledProperty, nameof(RoundHistoryViewModel.CanInteract));
+        import.Clicked += async (_, _) => await RoundImportActions.ImportAsync(this,
+            services.GetRequiredService<RoundImportService>(), () => viewModel.LoadAsync(), PageToken);
+        var account = AppViews.SecondaryButton("Log ind / Konto")
+            .Accessible(UiAutomationIds.HistoryAccount, "Åbn login før synkronisering");
+        account.SetBinding(IsEnabledProperty, nameof(RoundHistoryViewModel.CanInteract));
+        account.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<LoginPage>()));
         var sync = AppViews.SecondaryButton("Synkroniser")
             .Accessible(UiAutomationIds.HistorySync, "Synkroniser gemte runder med serveren");
         sync.SetBinding(IsEnabledProperty, nameof(RoundHistoryViewModel.CanInteract));
@@ -132,7 +151,7 @@ public sealed class RoundHistoryPage : ContentPage
         progress.SetBinding(ActivityIndicator.IsRunningProperty, nameof(RoundHistoryViewModel.IsBusy));
         progress.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.IsBusy));
         var syncPanel = new VerticalStackLayout { Spacing = 6, Margin = new Thickness(0, 0, 0, 12),
-            Children = { sync, progress, syncStatus } };
+            Children = { account, sync, progress, syncStatus } };
         syncPanel.SetBinding(IsVisibleProperty, nameof(RoundHistoryViewModel.HasSync));
         var error = new Label { FontSize = 13, TextColor = GolfTheme.Colors.WarningText };
         error.SetBinding(Label.TextProperty, nameof(RoundHistoryViewModel.ErrorMessage));
@@ -160,6 +179,7 @@ public sealed class RoundHistoryPage : ContentPage
                         TextColor = MutedTextColor,
                         Margin = new Thickness(0, 0, 0, 10)
                     },
+                    import,
                     syncPanel,
                     error,
                     FilterPanel(type, category, period, sort),

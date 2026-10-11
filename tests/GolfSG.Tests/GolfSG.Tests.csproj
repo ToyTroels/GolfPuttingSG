@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../../src/GolfSG/Services/ProductsHttpClientFactory.cs" Link="Services/ProductsHttpClientFactory.cs" />
     <ProjectReference Include="..\..\src\GolfSG.Application\GolfSG.Application.csproj" />
     <ProjectReference Include="..\..\src\GolfSG.Core\GolfSG.Core.csproj" />
     <ProjectReference Include="..\..\src\GolfSG.Infrastructure\GolfSG.Infrastructure.csproj" />

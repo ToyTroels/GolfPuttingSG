@@ -5,12 +5,14 @@ using GolfSG.Application.Rounds.Sync;
 using GolfSG.Core;
 using GolfSG.Core.Models;
 using GolfSG.Infrastructure.Rounds;
+using GolfSG.Tests.Infrastructure.TestDoubles;
 
 namespace GolfSG.Tests.Infrastructure;
 
 [TestClass]
 public sealed class RoundsApiServiceTests
 {
+    private static readonly TestApiAccountService Accounts = new();
     private static readonly Uri Server = new("https://localhost:7151/backend/");
 
     [TestMethod]
@@ -29,10 +31,11 @@ public sealed class RoundsApiServiceTests
         using var client = new HttpClient(new Handler((request, _) =>
         {
             requested = request.RequestUri;
+            Assert.AreEqual("Bearer test-access-token", request.Headers.Authorization!.ToString());
             return Task.FromResult(Json(JsonSerializer.Serialize(new List<RemoteRound> { remote },
                 RoundSyncJsonContext.Default.ListRemoteRound)));
         }));
-        var result = (await new RoundsApiService(client).GetRoundsAsync(Server)).Single();
+        var result = (await new RoundsApiService(client, Accounts).GetRoundsAsync(Accounts.Session(Server))).Single();
         Assert.AreEqual("https://localhost:7151/backend/api/rounds", requested!.AbsoluteUri);
         Assert.AreEqual(JsonSerializer.Serialize(round, RoundSyncJsonContext.Default.Round),
             JsonSerializer.Serialize(result.Round, RoundSyncJsonContext.Default.Round));
@@ -55,7 +58,7 @@ public sealed class RoundsApiServiceTests
             Assert.IsNull(body.Round);
             return Json(JsonSerializer.Serialize(new RemoteRound("round-1", version, null), RoundSyncJsonContext.Default.RemoteRound));
         }));
-        Assert.IsNull((await new RoundsApiService(client).WriteAsync(Server, "round-1", new(version, expected, null))).Round);
+        Assert.IsNull((await new RoundsApiService(client, Accounts).WriteAsync(Accounts.Session(Server), "round-1", new(version, expected, null))).Round);
     }
 
     [TestMethod]
@@ -71,7 +74,7 @@ public sealed class RoundsApiServiceTests
         RoundSyncValidation.Validate(round);
         using var client = new HttpClient(new Handler((_, _) => Task.FromResult(Json(JsonSerializer.Serialize(
             new List<RemoteRound> { new(round.Id, Guid.NewGuid(), round) }, RoundSyncJsonContext.Default.ListRemoteRound)))));
-        var downloaded = (await new RoundsApiService(client).GetRoundsAsync(Server)).Single().Round!;
+        var downloaded = (await new RoundsApiService(client, Accounts).GetRoundsAsync(Accounts.Session(Server))).Single().Round!;
         Assert.AreEqual(course, downloaded.CoursePractice!.Course with { Shots = course.Shots });
         Assert.AreEqual(result, downloaded.CoursePractice.Results.Single());
         Assert.AreEqual(shot, downloaded.CoursePractice.Course.Shots.Single());
@@ -86,7 +89,7 @@ public sealed class RoundsApiServiceTests
         var body = JsonSerializer.Serialize(new List<RemoteRound> { new("round-1", Guid.NewGuid(), round) },
             RoundSyncJsonContext.Default.ListRemoteRound);
         using var client = new HttpClient(new Handler((_, _) => Task.FromResult(Json(body))));
-        await Assert.ThrowsAsync<RoundSyncException>(() => new RoundsApiService(client).GetRoundsAsync(Server));
+        await Assert.ThrowsAsync<RoundSyncException>(() => new RoundsApiService(client, Accounts).GetRoundsAsync(Accounts.Session(Server)));
     }
 
     [TestMethod]
@@ -97,16 +100,17 @@ public sealed class RoundsApiServiceTests
     public async Task RejectsMalformedResponseBeforeChangingLocalData(string body)
     {
         using var client = new HttpClient(new Handler((_, _) => Task.FromResult(Json(body))));
-        await Assert.ThrowsAsync<RoundSyncException>(() => new RoundsApiService(client).GetRoundsAsync(Server));
+        await Assert.ThrowsAsync<RoundSyncException>(() => new RoundsApiService(client, Accounts).GetRoundsAsync(Accounts.Session(Server)));
     }
 
     [TestMethod]
     [DataRow(HttpStatusCode.Conflict)]
+    [DataRow(HttpStatusCode.Unauthorized)]
     [DataRow(HttpStatusCode.InternalServerError)]
     public async Task ReturnsReadableErrorWithoutExposingServerDetails(HttpStatusCode code)
     {
         using var client = new HttpClient(new Handler((_, _) => Task.FromResult(Json("password secret", code))));
-        var exception = await Assert.ThrowsAsync<RoundSyncException>(() => new RoundsApiService(client).GetRoundsAsync(Server));
+        var exception = await Assert.ThrowsAsync<RoundSyncException>(() => new RoundsApiService(client, Accounts).GetRoundsAsync(Accounts.Session(Server)));
         Assert.DoesNotContain("secret", exception.Message);
     }
 
@@ -114,19 +118,19 @@ public sealed class RoundsApiServiceTests
     public async Task SeparatesTimeoutFromCallerCancellation()
     {
         using var client = new HttpClient(new Handler((_, _) => throw new TaskCanceledException()));
-        var service = new RoundsApiService(client);
-        var exception = await Assert.ThrowsAsync<RoundSyncException>(() => service.GetRoundsAsync(Server));
+        var service = new RoundsApiService(client, Accounts);
+        var exception = await Assert.ThrowsAsync<RoundSyncException>(() => service.GetRoundsAsync(Accounts.Session(Server)));
         Assert.Contains("i tide", exception.Message);
         using var canceled = new CancellationTokenSource();
         canceled.Cancel();
-        await Assert.ThrowsAsync<OperationCanceledException>(() => service.GetRoundsAsync(Server, canceled.Token));
+        await Assert.ThrowsAsync<OperationCanceledException>(() => service.GetRoundsAsync(Accounts.Session(Server), canceled.Token));
     }
 
     [TestMethod]
     public async Task RejectsNonHttpsAddress()
     {
         using var client = new HttpClient(new Handler((_, _) => throw new AssertFailedException("Unexpected network request")));
-        await Assert.ThrowsAsync<RoundSyncException>(() => new RoundsApiService(client).GetRoundsAsync(new Uri("http://localhost/")));
+        await Assert.ThrowsAsync<RoundSyncException>(() => new RoundsApiService(client, Accounts).GetRoundsAsync(Accounts.Session(new Uri("http://localhost/"))));
     }
 
     [TestMethod]

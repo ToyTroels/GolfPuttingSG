@@ -1,60 +1,40 @@
-using GolfSG.Api.Data;
 using GolfSG.Api.DTOs;
-using GolfSG.Api.Models;
+using GolfSG.Application.Products;
+using GolfSG.Application.Server;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GolfSG.Api.Controllers;
 
 [ApiController]
+[Authorize(AuthenticationSchemes = "Identity.Bearer")]
 [Route("api/products")]
-public class ProductsController(AppDbContext dbContext) : ControllerBase
+public class ProductsController(IServerProductStore products) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<List<Product>>> GetAll(CancellationToken cancellationToken)
-    {
-        return Ok(await dbContext.Products.AsNoTracking()
-            .OrderBy(p => p.Id).ToListAsync(cancellationToken));
-    }
+    public async Task<ActionResult<List<ProductDto>>> GetAll(CancellationToken cancellationToken) =>
+        Ok(await products.GetAllAsync(cancellationToken));
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Product>> GetById(int id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProductDto>> GetById(int id, CancellationToken cancellationToken)
     {
-        var product = await dbContext.Products.AsNoTracking()
-            .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
+        var product = await products.GetByIdAsync(id, cancellationToken);
         return product is null ? NotFound() : Ok(product);
     }
 
     [HttpPost]
-    public async Task<ActionResult<Product>> Create(CreateProductDto request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ProductDto>> Create(CreateProductDto request, CancellationToken cancellationToken)
     {
-        var product = new Product { Name = request.Name };
-        dbContext.Products.Add(product);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        var product = await products.CreateAsync(request.Name, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, UpdateProductDto request, CancellationToken cancellationToken)
-    {
-        var product = await dbContext.Products.SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
-        if (product is null)
-            return NotFound();
-
-        product.Name = request.Name;
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return NoContent();
-    }
+    public async Task<IActionResult> Update(int id, UpdateProductDto request, CancellationToken cancellationToken) =>
+        await products.UpdateAsync(id, request.Name, cancellationToken) ? NoContent() : NotFound();
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
-    {
-        var product = await dbContext.Products.SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
-        if (product is null)
-            return NotFound();
-
-        dbContext.Products.Remove(product);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return NoContent();
-    }
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken) =>
+        await products.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
 }

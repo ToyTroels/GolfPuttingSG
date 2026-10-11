@@ -20,13 +20,16 @@ public sealed class PrivacyPage : ContentPage
                     AppViews.PageTitle("Privatliv"),
                     Section(
                         "Data p\u00e5 enheden",
-                        "GolfSG gemmer runder, hulinput, putting-spil, benchmarks og indstillinger i appens lokale dataområde. Appen kræver ingen konto. Gemte runder sendes kun til den valgte server, når du trykker på Synkroniser i Historik."),
+                        "GolfSG gemmer runder, hulinput, putting-spil, benchmarks og indstillinger i appens lokale dataområde. Du kan spille og gemme offline uden en konto. Gemte runder sendes kun til din konto på den valgte server, når du trykker på Synkroniser i Historik."),
+                    Section(
+                        "Konto",
+                        "Login og kontooprettelse sender brugernavn og adgangskode via HTTPS til den valgte server. Appen gemmer login-tokens i enhedens sikre lager og gemmer aldrig adgangskoden. Serveren gemmer en beskyttet adgangskodehash. Den første konto og server knyttes til denne installations historik. Logout fjerner login-tokens og bevarer historik og tilknytning. Automatisk tokenfornyelse bruges ved serverforespørgsler."),
                     Section(
                         "Valgfri brugsstatistik",
                         "Lokal brugsstatistik er slået fra som standard. Når den aktiveres under Indstillinger, gemmes tællere for knaptryk, færdige huller, rettelser, afstandsinput og sessionsafslutninger. Indtastede værdier og personlige oplysninger gemmes ikke i oversigten. Data sendes ikke automatisk. Du kan stoppe registrering, eksportere eller slette tællerne under Indstillinger."),
                     Section(
                         "Backup og eksport",
-                        "Synkroniser i Historik sender gemte runder og henter serverens runder via HTTPS. Serveradressen vælges under Indstillinger → Produkter. Synkronisering er manuel. Android-cloudbackup er deaktiveret. En eksport indeholder hele rundehistorikken og deles kun, når du selv vælger det."),
+                        "Synkroniser i Historik sender gemte runder og henter din kontos runder via HTTPS. Serveradressen vælges under Indstillinger → Konto og server. Log ind eller opret en konto via Konto og login på startskærmen. Import fra fil gemmes først lokalt og sendes kun ved manuel synkronisering. Android-cloudbackup er deaktiveret. En eksport indeholder hele rundehistorikken og deles kun, når du selv vælger det."),
                     Section(
                         "Sletning",
                         "Gemte runder har ingen automatisk udløbsdato. Slet individuelle runder i Historik, og synkroniser for også at slette rundens indhold på serveren. Serveren beholder rundens id og versionsnummer for at undgå gendannelse på andre enheder. Lokale gendannelseskopier, eksporter og serverbackups kan stadig indeholde tidligere slettede data. Nulstilling eller afinstallation fjerner lokale data og sender ikke sletninger til serveren."),

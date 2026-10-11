@@ -9,6 +9,8 @@ using GolfSG.Application.Products;
 using GolfSG.Infrastructure.Products;
 using GolfSG.Application.Rounds.Sync;
 using GolfSG.Infrastructure.Rounds;
+using GolfSG.Application.Accounts;
+using GolfSG.Infrastructure.Accounts;
 using GolfSG.Services;
 using GolfSG.Views;
 using Microsoft.Extensions.Logging;
@@ -51,6 +53,18 @@ public static class MauiProgram
         builder.Services.AddSingleton<AppShell>();
         builder.Services.AddSingleton<IProductsApiSettings, PreferenceProductsApiSettings>();
         builder.Services.AddSingleton(_ => ProductsHttpClientFactory.Create());
+        builder.Services.AddSingleton<ISecureApiSessionStore, SecureApiSessionStore>();
+        builder.Services.AddSingleton<IApiAccountService>(serviceProvider => new ApiAccountService(
+            serviceProvider.GetRequiredService<HttpClient>(), serviceProvider.GetRequiredService<ISecureApiSessionStore>(),
+            serviceProvider.GetRequiredService<IProductsApiSettings>(), FileSystem.AppDataDirectory));
+        builder.Services.AddTransient<AccountViewModel>();
+        builder.Services.AddTransient<AccountPage>();
+        builder.Services.AddTransient<LoginPage>(serviceProvider => new LoginPage(
+            serviceProvider.GetRequiredService<AccountViewModel>(),
+            () => serviceProvider.GetRequiredService<RoundHistoryPage>(),
+            () => serviceProvider.GetRequiredService<AccountPage>()));
+        builder.Services.AddSingleton(serviceProvider => new RoundImportService(
+            serviceProvider.GetRequiredService<IRoundRepository>(), FileSystem.CacheDirectory));
         builder.Services.AddSingleton<IProductsApiService, ProductsApiService>();
         builder.Services.AddSingleton<IRoundsApiService, RoundsApiService>();
         builder.Services.AddSingleton<IRoundSyncService, RoundSyncService>();

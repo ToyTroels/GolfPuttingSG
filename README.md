@@ -18,6 +18,9 @@ GolfSG is an offline-first .NET MAUI app for tracking golf putting performance w
 - Stores round and practice history locally as JSON.
 - Provides history, filtering, editing, recovery, and import/export support.
 - Import files one at a time to merge round history. Rounds are matched by ID; existing saved versions are kept, and repeated imports do not add duplicates. Copies with different IDs are treated as separate rounds.
+- Use **Konto og login** on the start screen to sign in or create an account. In **Historik**, import a GolfSG `rounds.json` export, then choose **Synkroniser** to upload your local rounds to that account. Import and local play work offline.
+- On a fresh launch, signed-out users see the login/signup screen first. Successful login or signup opens the main page; a remembered account is restored locally and continues immediately. Opening the app, returning from the background and saving the server address make no API or database calls. **Fortsæt uden login** opens the local app immediately.
+- Login, manual connection checks and sync allow two minutes per request for an API that takes about a minute to wake. Login and connection checks show a wait message and **Annuller**. No background polling or automatic retries keep the server awake; unchanged rounds are not uploaded again.
 - Keeps scoring and statistics in testable, platform-independent .NET projects.
 
 The current product focus is putting. Approach and around-the-green tracking are being expanded and should be considered experimental in this alpha release.
@@ -66,13 +69,22 @@ dotnet publish src\GolfSG\GolfSG.csproj `
 The output is written below `src\GolfSG\bin\Release\net10.0-android\publish`.
 ## Project structure
 
+For the local ASP.NET Core API and PostgreSQL database, follow
+[Local database setup](docs/LOCAL_DATABASE_SETUP.md), then
+[Products API setup](docs/PRODUCTS_API_SETUP.md) and
+[Round sync setup](docs/ROUND_SYNC_SETUP.md).
+
 | Project | Responsibility |
 | --- | --- |
 | `src/GolfSG` | .NET MAUI composition, pages, navigation, and platform integration |
 | `src/GolfSG.Application` | Application services, view models, ports, and workflows |
 | `src/GolfSG.Core` | Domain models, strokes-gained calculations, summaries, and game rules |
-| `src/GolfSG.Infrastructure` | Local JSON persistence and storage recovery |
+| `src/GolfSG.Infrastructure` | Device JSON persistence, storage recovery, and HTTP API clients |
+| `GolfSG.Api` | HTTP endpoints, account authentication, authorization, response mapping, and server composition |
+| `src/GolfSG.Server.Infrastructure` | PostgreSQL persistence, ASP.NET Core Identity storage, EF Core mappings, and server storage implementations |
+| `src/GolfSG.Database.Setup` | Explicit versioned database updates and application-role grants |
 | `tests/GolfSG.Tests` | Core, application, infrastructure, and view-model tests |
+| `tests/GolfSG.Api.Tests` | API responses, authentication boundaries, account isolation, and PostgreSQL integration |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for dependency rules and [TESTING_STRATEGY.md](TESTING_STRATEGY.md) for the testing roadmap.
 
@@ -84,7 +96,7 @@ The methodology, limitations, and public-release provenance gate are documented 
 
 ## Data and privacy
 
-GolfSG is designed to work without an account or an internet connection. Round and practice data is stored in the app's local data directory. The current application does not provide cloud synchronization, advertising, or an analytics account.
+GolfSG's scoring and local history work without an account or an internet connection. Optional manual sync to the configured development API requires a username/password account. The server separates rounds and retained deletions by the authenticated account. The app stores tokens in platform secure storage and binds an installation's sync history to the first signed-in account and server. Signing out leaves local history available and preserves that binding. There is no public cloud-sync service, advertising, or analytics account.
 
 See [PRIVACY.md](PRIVACY.md) for the current data-handling statement and [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for third-party assets and data notes.
 

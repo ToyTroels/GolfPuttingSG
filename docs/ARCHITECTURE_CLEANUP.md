@@ -2,12 +2,21 @@
 
 ## Assessment
 
-GolfSG has a sound four-project structure:
+GolfSG separates client and server responsibilities:
 
 - `GolfSG.Core` contains domain models, strokes-gained calculations, statistics, and putting-game rules.
 - `GolfSG.Application` contains workflows, ports, action guards, and testable view models.
-- `GolfSG.Infrastructure` contains local JSON persistence.
+- `GolfSG.Infrastructure` contains local JSON persistence and API clients.
 - `GolfSG` contains the .NET MAUI composition root, pages, navigation, platform integration, and visual formatting.
+- `GolfSG.Api` contains HTTP endpoints, request/response mapping, error handling, and server dependency registration.
+- `GolfSG.Server.Infrastructure` contains PostgreSQL access, database entities, mappings, and server storage implementations.
+- `GolfSG.Database.Setup` contains the explicit schema-update runner and versioned SQL.
+
+Application's `Server` area owns database-independent storage interfaces and round
+validation. The API composes those workflows with Server.Infrastructure. PostgreSQL
+remains a separate database service; Server.Infrastructure is an API-loaded library,
+and Database.Setup is an independent command. See [Architecture](../ARCHITECTURE.md)
+for dependency rules and [Local database setup](LOCAL_DATABASE_SETUP.md) for updates.
 
 This cleanup is intended to improve maintainability as the application grows. It is not a proposal to replace the architecture, introduce a large framework, or add unnecessary abstraction layers.
 
@@ -104,7 +113,7 @@ This is organizational only; it should not require changing test behavior.
 
 ## Non-goals
 
-- Do not replace the four-project structure.
+- Preserve the documented client/server component boundaries.
 - Do not introduce a mediator, CQRS framework, or dependency-injection framework beyond the existing .NET facilities without a demonstrated need.
 - Do not move scoring rules into view models or infrastructure.
 - Do not rewrite the code-built MAUI UI solely for stylistic reasons.
@@ -114,11 +123,11 @@ This is organizational only; it should not require changing test behavior.
 
 Each cleanup step is complete when:
 
-- The dependency direction remains Core ← Application ← MAUI/Infrastructure as documented.
+- The dependency direction remains Core ← Application ← MAUI/API/Infrastructure/Server.Infrastructure as documented; the setup executable stays independent of the API.
 - Core and Application still have no MAUI dependency.
 - Architecture boundary tests pass.
 - The complete test suite passes.
 - User-visible behavior and saved JSON compatibility are unchanged unless the task explicitly requires otherwise.
 - The resulting code is easier to locate and modify than before the refactor.
 
-The current baseline is a passing test suite with 188 tests. Keep that baseline green throughout the cleanup.
+Keep the existing test suite green throughout the cleanup.

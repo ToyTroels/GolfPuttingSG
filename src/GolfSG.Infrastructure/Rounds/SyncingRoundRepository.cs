@@ -47,7 +47,25 @@ public sealed class SyncingRoundRepository(IRoundRepository local, RoundSyncStat
     public async Task ImportRoundsAsync(string sourcePath)
     {
         await MutationGate.WaitAsync().ConfigureAwait(false);
-        try { await local.ImportRoundsAsync(sourcePath).ConfigureAwait(false); }
+        try
+        {
+            var document = await state.LoadAsync().ConfigureAwait(false);
+            var previousIds = (await local.GetRoundsAsync().ConfigureAwait(false)).Select(round => round.Id)
+                .ToHashSet(StringComparer.Ordinal);
+            await local.ImportRoundsAsync(sourcePath).ConfigureAwait(false);
+            var restoredIds = (await local.GetRoundsAsync().ConfigureAwait(false))
+                .Where(round => !previousIds.Contains(round.Id) && document.DeletedIds.Contains(round.Id))
+                .Select(round => round.Id).ToArray();
+            if (restoredIds.Length == 0) return;
+            foreach (var id in restoredIds)
+            {
+                document.DeletedIds.Remove(id);
+                // An explicitly restored export is new local work even if it matches a previously synced copy.
+                // Old hashes must not allow a retained server deletion to remove the restored round again.
+                foreach (var hashes in document.Servers.Values) hashes.Remove(id);
+            }
+            await state.SaveAsync(document).ConfigureAwait(false);
+        }
         finally { MutationGate.Release(); }
     }
 }

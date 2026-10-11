@@ -1,44 +1,64 @@
+using GolfSG.Application.Server;
+using GolfSG.Server.Infrastructure;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
+using System.Globalization;
+using System.Threading.RateLimiting;
 
-using GolfSG.Api.Data;
-using Microsoft.EntityFrameworkCore;
+namespace GolfSG.Api;
 
-namespace GolfSG.Api
+public class Program
 {
-    public class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
+        var builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddControllers();
+        builder.Services.AddScoped<ServerRoundService>();
+        builder.Services.AddServerInfrastructure(builder.Configuration);
+        builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
+            .AddBearerToken(IdentityConstants.BearerScheme);
+        builder.Services.AddAuthorization();
+        builder.Services.AddSingleton(TimeProvider.System);
+        var dataProtection = builder.Services.AddDataProtection().SetApplicationName("GolfSG.Api");
+        if (builder.Configuration["Auth:DataProtectionKeysPath"] is { Length: > 0 } keysPath)
         {
-            var builder = WebApplication.CreateBuilder(args);
-
-            // Add services to the container.
-
-            builder.Services.AddControllers();
-            builder.Services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("Default")
-                    ?? throw new InvalidOperationException("ConnectionStrings:Default is not configured.")));
-            builder.Services.AddProblemDetails();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
-
-            var app = builder.Build();
-
-            // Return a generic problem response without exposing database exception details.
-            app.UseExceptionHandler();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.MapOpenApi();
-            }
-
-            app.UseHttpsRedirection();
-
-            app.UseAuthorization();
-
-
-            app.MapControllers();
-
-            app.Run();
+            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+            if (OperatingSystem.IsWindows()) dataProtection.ProtectKeysWithDpapi();
         }
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.AddPolicy("accounts", context => RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 20,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                    context.HttpContext.Response.Headers.RetryAfter =
+                        Math.Ceiling(retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+                await Results.Problem(statusCode: StatusCodes.Status429TooManyRequests,
+                    title: "Too many account requests. Try again shortly.")
+                    .ExecuteAsync(context.HttpContext);
+            };
+        });
+        builder.Services.AddProblemDetails();
+        builder.Services.AddOpenApi();
+
+        var app = builder.Build();
+        app.UseExceptionHandler();
+
+        if (app.Environment.IsDevelopment())
+            app.MapOpenApi();
+
+        app.UseHttpsRedirection();
+        app.UseAuthentication();
+        app.UseRateLimiter();
+        app.UseAuthorization();
+        app.MapControllers();
+        app.Run();
     }
 }

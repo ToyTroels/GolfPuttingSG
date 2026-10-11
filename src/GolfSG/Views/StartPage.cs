@@ -71,6 +71,10 @@ public sealed class StartPage : ContentPage
 
     private void BuildLayout()
     {
+        var accountButton = AppViews.SecondaryButton("Konto og login")
+            .Accessible(UiAutomationIds.StartAccountEntry, "Log ind, opret konto eller se din konto");
+        accountButton.Clicked += async (_, _) =>
+            await this.RunNavigationOnceAsync(() => Navigation.PushAsync(services.GetRequiredService<LoginPage>()));
         var newRoundButton = AppViews.PrimaryButton("Ny runde")
             .Accessible(UiAutomationIds.NewRound, "Start en ny runde");
         newRoundButton.SetBinding(VisualElement.IsEnabledProperty, nameof(StartViewModel.CanInteract));
@@ -221,7 +225,7 @@ public sealed class StartPage : ContentPage
                     new VerticalStackLayout
                     {
                         Spacing = 10,
-                        Children = { newRoundButton, resumePuttingGameButton, puttingGameButton, historyButton, betaActions }
+                        Children = { newRoundButton, resumePuttingGameButton, puttingGameButton, historyButton, accountButton, betaActions }
                     }.Margin(new Thickness(0, 16, 0, 18)),
                     insights,
                     new Label

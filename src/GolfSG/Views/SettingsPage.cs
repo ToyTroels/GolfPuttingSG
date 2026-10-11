@@ -124,6 +124,16 @@ public sealed partial class SettingsPage : ContentPage
                         () => new StorageDiagnosticsPage(repository)),
                     UsageDiagnosticsItem(),
                     ReferenceItem(
+                        "Log ind / Opret konto",
+                        "Synkroniser runder til din GolfSG-konto",
+                        () => services.GetRequiredService<LoginPage>(),
+                        UiAutomationIds.LoginEntry),
+                    ReferenceItem(
+                        "Konto og server",
+                        "Se din konto, log ud og tjek serverforbindelsen",
+                        () => services.GetRequiredService<AccountPage>(),
+                        UiAutomationIds.AccountEntry),
+                    ReferenceItem(
                         "Produkter",
                         "Hent produkter fra serveren",
                         () => services.GetRequiredService<ProductsPage>(),

@@ -1,16 +1,57 @@
 @GolfSG.Api_HostAddress = https://localhost:7151
+@username = REPLACE_WITH_YOUR_USERNAME
+@password = REPLACE_WITH_YOUR_PASSWORD
+@accessToken = REPLACE_WITH_ACCESS_TOKEN
+@refreshToken = REPLACE_WITH_REFRESH_TOKEN
 
-GET {{GolfSG.Api_HostAddress}}/weatherforecast/
+# Username: 3-50 letters/digits/underscore/dot/hyphen.
+# Debug registration accepts simple passwords (1-128 characters, not blank).
+# Release defaults to 12-128 characters including upper/lower case, a digit, and a symbol.
+# A local IIS API can explicitly enable Auth:AllowSimplePasswordsForLocalTesting for simple passwords.
+POST {{GolfSG.Api_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+###
+
+# Copy the returned accessToken and refreshToken into the placeholders above.
+POST {{GolfSG.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+###
+
+GET {{GolfSG.Api_HostAddress}}/api/auth/me
+Authorization: Bearer {{accessToken}}
 Accept: application/json
 
 ###
 
+POST {{GolfSG.Api_HostAddress}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+###
+
 GET {{GolfSG.Api_HostAddress}}/api/products
+Authorization: Bearer {{accessToken}}
 Accept: application/json
 
 ###
 
 GET {{GolfSG.Api_HostAddress}}/api/rounds
+Authorization: Bearer {{accessToken}}
 Accept: application/json
 
 ###

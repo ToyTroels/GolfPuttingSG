@@ -5,6 +5,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using GolfSG.Application.Products;
 using GolfSG.Infrastructure.Products;
+using GolfSG.Tests.Infrastructure.TestDoubles;
 
 namespace GolfSG.Tests.Infrastructure;
 
@@ -18,10 +19,11 @@ public sealed class ProductsApiServiceTests
         using var client = new HttpClient(new Handler((request, _) =>
         {
             requests.Add(request.RequestUri!);
+            Assert.AreEqual("Bearer test-access-token", request.Headers.Authorization!.ToString());
             return Task.FromResult(Json("[{\"id\":1,\"name\":\"Product 1\"},{\"id\":2,\"name\":\"Product 2\"}]"));
         }));
         var settings = new Settings { BaseAddress = "https://localhost:7151" };
-        var service = new ProductsApiService(client, settings);
+        var service = new ProductsApiService(client, settings, new TestApiAccountService(settings));
 
         var products = await service.GetProductsAsync();
         Assert.HasCount(2, products);
@@ -49,7 +51,7 @@ public sealed class ProductsApiServiceTests
             called = true;
             return Task.FromResult(Json("[]"));
         }));
-        var service = new ProductsApiService(client, new Settings { BaseAddress = address! });
+        var service = new ProductsApiService(client, new Settings { BaseAddress = address! }, new TestApiAccountService());
         await Assert.ThrowsAsync<ProductsApiException>(() => service.GetProductsAsync());
         Assert.IsFalse(called);
     }
@@ -130,7 +132,7 @@ public sealed class ProductsApiServiceTests
             DateTimeOffset.UtcNow.AddDays(expired ? -1 : 1));
     }
 
-    private static ProductsApiService Service(HttpClient client) => new(client, new Settings());
+    private static ProductsApiService Service(HttpClient client) => new(client, new Settings(), new TestApiAccountService());
     private static HttpResponseMessage Json(string content, HttpStatusCode status = HttpStatusCode.OK) =>
         new(status) { Content = new StringContent(content, Encoding.UTF8, "application/json") };
 

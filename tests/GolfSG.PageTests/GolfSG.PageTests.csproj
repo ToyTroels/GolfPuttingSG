@@ -20,6 +20,11 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Compile the actual page and controls so event-handler state regressions are covered. -->
+    <Compile Include="../../src/GolfSG/Views/AccountPage.cs" Link="Views/AccountPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/LoginPage.cs" Link="Views/LoginPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/AccountViews.cs" Link="Views/AccountViews.cs" />
+    <Compile Include="../../src/GolfSG/Views/AccountRequestActions.cs" Link="Views/AccountRequestActions.cs" />
+    <Compile Include="../../src/GolfSG/Views/UiAutomationIds.cs" Link="Views/UiAutomationIds.cs" />
     <Compile Include="../../src/GolfSG/Views/CoursePlayPage.cs" Link="Views/CoursePlayPage.cs" />
     <Compile Include="../../src/GolfSG/Views/CourseMapView.cs" Link="Views/CourseMapView.cs" />
     <Compile Include="../../src/GolfSG/Views/CourseSetupPage.cs" Link="Views/CourseSetupPage.cs" />

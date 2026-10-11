@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace GolfSG.Api.Models;
+namespace GolfSG.Server.Infrastructure.Persistence.Models;
 
 public class Product
 {

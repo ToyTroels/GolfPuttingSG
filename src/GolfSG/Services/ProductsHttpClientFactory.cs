@@ -12,7 +12,8 @@ public static class ProductsHttpClientFactory
         handler.ServerCertificateCustomValidationCallback = (request, certificate, _, errors) =>
             LocalDevelopmentCertificate.IsAccepted(request.RequestUri, certificate, errors);
 #endif
-        var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+        // A sleeping API can take about a minute to start. Explicit requests allow startup plus normal processing.
+        var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(2) };
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         return client;
     }

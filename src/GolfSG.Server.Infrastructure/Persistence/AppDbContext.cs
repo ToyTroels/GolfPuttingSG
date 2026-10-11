@@ -1,9 +1,11 @@
-using GolfSG.Api.Models;
+using GolfSG.Server.Infrastructure.Persistence.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace GolfSG.Api.Data;
+namespace GolfSG.Server.Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbContext<IdentityUser>(options)
 {
     public DbSet<Product> Products => Set<Product>();
     public DbSet<SavedRound> SavedRounds => Set<SavedRound>();
@@ -22,7 +24,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         var round = modelBuilder.Entity<SavedRound>();
         round.ToTable("saved_rounds");
-        round.HasKey(r => r.Id);
+        round.HasKey(r => new { r.UserId, r.Id });
+        round.Property(r => r.UserId).HasColumnName("user_id").HasColumnType("text").IsRequired();
         round.Property(r => r.Id).HasColumnName("id").HasMaxLength(100);
         round.Property(r => r.Version).HasColumnName("version");
         round.Property(r => r.Payload).HasColumnName("payload").HasColumnType("jsonb");

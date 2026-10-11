@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using GolfSG.Core.Models;
+using GolfSG.Application.Accounts;
 
 namespace GolfSG.Application.Rounds.Sync;
 
@@ -16,8 +17,8 @@ public sealed record RoundWriteRequest(
 
 public interface IRoundsApiService
 {
-    Task<IReadOnlyList<RemoteRound>> GetRoundsAsync(Uri server, CancellationToken cancellationToken = default);
-    Task<RemoteRound> WriteAsync(Uri server, string id, RoundWriteRequest request,
+    Task<IReadOnlyList<RemoteRound>> GetRoundsAsync(ApiSession session, CancellationToken cancellationToken = default);
+    Task<RemoteRound> WriteAsync(ApiSession session, string id, RoundWriteRequest request,
         CancellationToken cancellationToken = default);
 }
 

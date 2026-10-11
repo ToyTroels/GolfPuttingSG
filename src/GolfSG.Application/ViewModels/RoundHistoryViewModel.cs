@@ -196,7 +196,7 @@ public sealed class RoundHistoryViewModel : ViewModelBase
         if (IsBusy || syncService is null) return;
         IsBusy = true;
         ErrorMessage = string.Empty;
-        SyncMessage = "Synkroniserer gemte runder…";
+        SyncMessage = "Synkroniserer gemte runder… Serveren kan være i dvale og bruge omkring et minut på at starte.";
         try
         {
             var result = await syncService.SyncAsync(cancellationToken);

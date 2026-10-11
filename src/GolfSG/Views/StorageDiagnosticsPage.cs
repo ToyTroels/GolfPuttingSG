@@ -1,4 +1,5 @@
 using GolfSG.Application.Services;
+using GolfSG.Infrastructure.Persistence;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Storage;
 
@@ -7,6 +8,7 @@ namespace GolfSG.Views;
 public sealed class StorageDiagnosticsPage : ContentPage
 {
     private readonly IRoundRepository repository;
+    private CancellationTokenSource? pageCancellation;
     private readonly Label savedRounds = new()
     {
         FontSize = 24,
@@ -31,10 +33,21 @@ public sealed class StorageDiagnosticsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        pageCancellation?.Cancel();
+        pageCancellation?.Dispose();
+        pageCancellation = new();
         var rounds = await repository.GetRoundsAsync();
         savedRounds.Text = rounds.Count.ToString();
         storageStatus.Text = BuildStorageStatus();
     }
+
+    protected override void OnDisappearing()
+    {
+        pageCancellation?.Cancel();
+        base.OnDisappearing();
+    }
+
+    private CancellationToken PageToken => pageCancellation?.Token ?? new CancellationToken(canceled: true);
 
     private void BuildLayout()
     {
@@ -91,34 +104,13 @@ public sealed class StorageDiagnosticsPage : ContentPage
         }
     }
 
-    private async Task ImportAsync() =>
-        await this.RunActionOnceAsync(ImportCoreAsync);
-
-    private async Task ImportCoreAsync()
-    {
-        try
+    private Task ImportAsync() =>
+        RoundImportActions.ImportAsync(this, new RoundImportService(repository, FileSystem.CacheDirectory), async () =>
         {
-            var result = await FilePicker.Default.PickAsync(new PickOptions
-            {
-                PickerTitle = "Vælg rounds.json"
-            });
-
-            if (result is null)
-            {
-                return;
-            }
-
-            await repository.ImportRoundsAsync(result.FullPath);
             var rounds = await repository.GetRoundsAsync();
             savedRounds.Text = rounds.Count.ToString();
             storageStatus.Text = BuildStorageStatus();
-            await DisplayAlertAsync("Import fuldført", "Nye runder er føjet til historikken. Runder med samme ID beholdes i deres gemte version.", "OK");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
-        {
-            await DisplayAlertAsync("Import fejlede", "Den valgte fil kunne ikke importeres.", "OK");
-        }
-    }
+        }, PageToken);
 
     private string BuildStorageStatus()
     {

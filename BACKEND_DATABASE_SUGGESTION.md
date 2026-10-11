@@ -1,5 +1,13 @@
 # Backend database suggestion
 
+> Historical proposal: the local backend now uses ASP.NET Core and PostgreSQL.
+> Follow [Local database setup](docs/LOCAL_DATABASE_SETUP.md) for the implemented,
+> versioned setup process, and [Round sync setup](docs/ROUND_SYNC_SETUP.md) for app sync.
+> Database access now belongs to `GolfSG.Server.Infrastructure`, and schema updates
+> to the separate `GolfSG.Database.Setup` executable. See [Architecture](ARCHITECTURE.md)
+> for the implemented component boundaries.
+> The SQLite recommendation below predates that implementation.
+
 ## Recommended MVP setup
 
 Use an ASP.NET Core API with SQLite as the first backend database.

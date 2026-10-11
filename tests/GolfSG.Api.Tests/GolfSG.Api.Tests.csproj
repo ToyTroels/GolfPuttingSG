@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MSTest" Version="4.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+    <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../GolfSG.Api/GolfSG.Api.csproj" />
+    <ProjectReference Include="../../src/GolfSG.Application/GolfSG.Application.csproj" />
+    <ProjectReference Include="../../src/GolfSG.Infrastructure/GolfSG.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/GolfSG.Server.Infrastructure/GolfSG.Server.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/GolfSG.Database.Setup/GolfSG.Database.Setup.csproj" />
+  </ItemGroup>
+</Project>

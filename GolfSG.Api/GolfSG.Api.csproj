@@ -9,12 +9,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-    <PackageReference Include="Npgsql" Version="10.0.3" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\src\GolfSG.Application\GolfSG.Application.csproj" />
+    <ProjectReference Include="..\src\GolfSG.Server.Infrastructure\GolfSG.Server.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
