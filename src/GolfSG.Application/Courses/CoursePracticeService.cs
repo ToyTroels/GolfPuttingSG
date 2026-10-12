@@ -81,6 +81,21 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
         finally { gate.Release(); }
     }
 
+    public async Task<PracticeCourse> ImportCourseAsync(PracticeCourse course)
+    {
+        ValidateCourse(course);
+        await gate.WaitAsync();
+        try
+        {
+            var document = await store.LoadAsync();
+            var existing = document.Courses.FirstOrDefault(c => c.Id == course.Id);
+            if (existing is not null) return existing;
+            await store.SaveAsync(document with { Courses = document.Courses.Append(course).ToArray() });
+            return course;
+        }
+        finally { gate.Release(); }
+    }
+
     public async Task<CoursePracticeSession> StartAsync(PracticeCourse course)
     {
         ValidateCourse(course);

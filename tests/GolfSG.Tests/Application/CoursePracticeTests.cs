@@ -31,6 +31,66 @@ public sealed class CoursePracticeTests
         return new(store, rounds ?? new TestRoundRepository(), putting, new StrokesGainedApproachService(putting, around), around);
     }
 
+    [TestMethod]
+    public async Task SharedCoursePersistsPictureAndSetupWithoutReplacingLocalEdits()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var senderImages = Path.Combine(directory, "sender"); Directory.CreateDirectory(senderImages);
+            var image = new byte[] { 255, 216, 255, 1, 2, 3 };
+            await File.WriteAllBytesAsync(Path.Combine(senderImages, "sample.jpg"), image);
+            var original = RepeatedCourse();
+            using var file = new MemoryStream();
+            await new CourseShareService(Service(new Store()), senderImages).ExportAsync(original, file);
+            var receiver = Path.Combine(directory, "receiver");
+            var images = Path.Combine(receiver, "course-images");
+            var service = Service(new FileCoursePracticeRepository(receiver));
+            var sharing = new CourseShareService(service, images);
+            file.Position = 0;
+            var imported = await sharing.ImportAsync(file);
+            Assert.AreNotEqual(original.Id, imported.Id);
+            Assert.AreEqual(original.MetresPerImageWidth, imported.MetresPerImageWidth);
+            CollectionAssert.AreEqual(original.Shots.ToArray(), imported.Shots.ToArray());
+            CollectionAssert.AreEqual(image, await File.ReadAllBytesAsync(Path.Combine(images, imported.ImageFile)));
+            await service.SaveCourseAsync(imported with { Name = "Local edit" });
+            file.Position = 0; await sharing.ImportAsync(file);
+            var restored = await new FileCoursePracticeRepository(receiver).LoadAsync();
+            Assert.HasCount(1, restored.Courses);
+            Assert.AreEqual("Local edit", restored.Courses[0].Name);
+            Assert.IsNull(restored.Active);
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [TestMethod]
+    public async Task InvalidSharedCourseDoesNotMutateSavedCourses()
+    {
+        var store = new Store(); var service = Service(store);
+        await service.SaveCourseAsync(Course());
+        var sharing = new CourseShareService(service, Path.GetTempPath());
+        using var invalid = new MemoryStream(System.Text.Encoding.UTF8.GetBytes("{\"schemaVersion\":99}"));
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => sharing.ImportAsync(invalid));
+        Assert.HasCount(1, store.Document.Courses);
+        Assert.AreEqual("course", store.Document.Courses[0].Id);
+    }
+
+    [TestMethod]
+    public async Task SharedCourseRejectsInvalidPictureAndPreservesActiveRound()
+    {
+        var store = new Store(); var service = Service(store);
+        await service.SaveCourseAsync(Course());
+        var active = await service.StartAsync(Course());
+        var sharing = new CourseShareService(service, Path.GetTempPath());
+        using var invalid = new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            schemaVersion = 1, course = Course(), image = new byte[] { 1, 2, 3 }
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
+        await Assert.ThrowsExactlyAsync<ArgumentException>(() => sharing.ImportAsync(invalid));
+        Assert.AreEqual(active.Id, store.Document.Active!.Id);
+        Assert.HasCount(1, store.Document.Courses);
+    }
+
     private static PracticeCourse SelectableCourse() => Course(
         new("approach", "Long approach", new(.5, .8), new(.5, .25), ShotLie.Rough, PracticeShotCategory.Approach),
         new("bunker", "Bunker shot", new(.3, .5), new(.4, .45), ShotLie.Sand, PracticeShotCategory.AroundGreen, 15),

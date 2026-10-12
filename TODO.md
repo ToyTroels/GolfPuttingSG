@@ -12,8 +12,14 @@ Remaining implementation and verification work. Exploratory features live in [pr
 
 ## Practice and benchmarks
 
+- [ ] Optimize and improve Banerunde på billede: review the setup, editing, shot overview, and result-entry flows on real devices; make zoom, marker dragging, shot selection, calibration, and navigation easier to use. Measure and improve image loading, rendering responsiveness, and memory use for larger pictures and courses. Improve readability, touch targets, progress feedback, and save/import/share feedback while preserving offline play, saved layouts, and resumable rounds. Use player feedback and device measurements to prioritize changes.
 - [ ] Validate beta course setup/play on physical Android and Windows devices: offline picture rendering, map drag versus scroll, calibration, large text, autosave/resume, repeated-result entry, failed final save, and history. See [the beta guide](docs/product/course-practice-beta.md).
 - [ ] Add benchmark 1-, 2-, and 3-putt quick actions consistent with regular putting games.
+
+## Shared courses, games, and challenges
+
+- [x] Save and share a picture-based course round (banerunde på billede) as a `.golfsgcourse` file containing its picture and complete setup; import a reusable offline copy without player results. Repeated imports preserve local edits, and changed shared files create separate copies. See [the beta guide](docs/product/course-practice-beta.md#save-and-share-a-course) for behavior and physical-device acceptance checks.
+- [ ] Let a user set up a game or challenge that other users can join. Support choosing a saved picture-based course or defining practice shots, setting common rules and attempt counts, inviting players or sharing a join link/code, recording each participant's results, and comparing scores. Define scoring, ties, joining/closing participation, and changes after play begins; preserve offline result entry and sync when connected.
 
 ## Scoring and shot tracking
 

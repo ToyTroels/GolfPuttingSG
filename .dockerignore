@@ -1,0 +1,17 @@
+**/bin
+**/obj
+.git
+.vs
+.idea
+.codex
+.agents
+.artifacts
+**/Properties/PublishProfiles
+**/appsettings.Development.json
+**/appsettings.*.local.json
+**/secrets.json
+**/.env
+**/.env.*
+**/*.pfx
+**/*.p12
+**/*.key

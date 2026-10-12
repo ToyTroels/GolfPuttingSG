@@ -9,8 +9,8 @@ public static class LocalDevelopmentCertificate
     {
         if (errors == SslPolicyErrors.None) return true;
 
-        // Used only by DEBUG client setup. Keep exceptions restricted to local ASP.NET development certificates.
-        return requestUri is { Scheme: "https", Host: "localhost" or "127.0.0.1" or "[::1]" or "10.0.2.2" }
+        // Used only by DEBUG client setup. The Wi-Fi exception is restricted to this development PC.
+        return requestUri is { Scheme: "https", Host: "localhost" or "127.0.0.1" or "[::1]" or "10.0.2.2" or "192.168.50.189" }
             && certificate is not null
             && certificate.Subject == "CN=localhost"
             && certificate.Issuer == "CN=localhost"

@@ -93,13 +93,30 @@ command again. If the API uses a different HTTPS port, use that port in both
 ### Local HTTPS certificates
 
 Debug builds accept a valid, self-signed ASP.NET development certificate only
-for local addresses (`localhost`, `127.0.0.1`, `::1`, `10.0.2.2`). The certificate
+for local addresses (`localhost`, `127.0.0.1`, `::1`, `10.0.2.2`) and the development
+PC's Wi-Fi address (`192.168.50.189`). Other LAN addresses are not accepted. The certificate
 must identify `localhost` and contain the ASP.NET development certificate extension.
 This exception is not configured in Release builds. HTTP URLs and addresses with
 embedded credentials are rejected. Redirects are not followed.
 
 The emulator alias is documented in Microsoft's
 [local web services guide](https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/local-web-services?view=net-maui-10.0).
+
+### Android phone over Wi-Fi with local IIS
+
+Install a **Debug** build of the phone app containing the Wi-Fi certificate exception.
+Publishing the API to IIS does not update the phone app. Keep the existing ASP.NET
+development certificate on the IIS HTTPS binding (port 443), and ensure the binding
+accepts the PC's LAN IP without requiring a host name. Allow inbound TCP 443 on the
+Windows Firewall Private profile and connect both devices to the same home network.
+In **Indstillinger → Konto og server**, save `https://192.168.50.189/`, then choose
+**Tjek forbindelse**. No ADB forwarding is needed. If the API runs from Visual Studio
+instead, listen on `https://0.0.0.0:7151`, allow TCP 7151 and save
+`https://192.168.50.189:7151/`.
+
+Reserve this IP for the PC in the router. If it changes, update the explicit Wi-Fi
+address in `LocalDevelopmentCertificate.cs` and rebuild/install the Debug app.
+Release builds continue to require a normally trusted HTTPS certificate.
 
 ## Local IIS
 

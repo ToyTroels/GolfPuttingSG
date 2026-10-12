@@ -1,5 +1,6 @@
 using GolfSG.Application.Courses;
 using GolfSG.Core.Models;
+using GolfSG.Infrastructure.Persistence;
 
 namespace GolfSG.Views;
 
@@ -48,8 +49,11 @@ public sealed class CourseSelectionPage : ContentPage
         retry.Clicked += async (_, _) => await RunAsync(ReloadAsync);
 
         layout.Children.Add(AppViews.PageTitle("Vælg en bane"));
-        layout.Children.Add(new Label { Text = "Spil en gemt bane, eller rediger dens planlagte slag før en ny runde.", TextColor = GolfTheme.Colors.MutedText });
+        layout.Children.Add(new Label { Text = "Gemte baner kan spilles offline. Del en bane med billede og slag, eller importér en banefil fra en anden spiller. Delte kopier opdateres ikke automatisk; dine resultater deles ikke.", TextColor = GolfTheme.Colors.MutedText });
         layout.Children.Add(activeCard);
+        var import = CoursePracticeViews.SecondaryButton("Importér bane fra fil").Accessible("CoursePractice.Courses.Import", "Importér en delt bane med billede");
+        import.Clicked += async (_, _) => await RunAsync(ImportAsync);
+        layout.Children.Add(import);
         layout.Children.Add(emptyCard);
         layout.Children.Add(courseList);
         layout.Children.Add(error);
@@ -80,6 +84,8 @@ public sealed class CourseSelectionPage : ContentPage
             play.Clicked += async (_, _) => await RunAsync(() => StartAsync(course.Id));
             var edit = CoursePracticeViews.SecondaryButton("Rediger bane").Accessible($"CoursePractice.Edit-{course.Id}", $"Rediger banen {course.Name}");
             edit.Clicked += async (_, _) => await RunAsync(() => EditAsync(course.Id));
+            var share = CoursePracticeViews.SecondaryButton("Del bane").Accessible($"CoursePractice.Share-{course.Id}", $"Del banen {course.Name} med billede og slag");
+            share.Clicked += async (_, _) => await RunAsync(() => ShareAsync(course.Id));
             courseList.Children.Add(AppViews.Card(new VerticalStackLayout
             {
                 Spacing = 10,
@@ -88,7 +94,8 @@ public sealed class CourseSelectionPage : ContentPage
                     AppViews.PageTitle(course.Name, 20),
                     new Label { Text = $"{course.Shots.Count} positioner · {course.Shots.Sum(shot => shot.Attempts)} planlagte slag", TextColor = GolfTheme.Colors.MutedText },
                     play,
-                    edit
+                    edit,
+                    share
                 }
             }));
         }
@@ -105,6 +112,27 @@ public sealed class CourseSelectionPage : ContentPage
         var course = FindCourse(document, courseId);
         var session = await service.StartAsync(course);
         await Navigation.PushAsync(new CoursePlayPage(service, session));
+    }
+
+    private CourseShareService Sharing() => new(service, Path.GetDirectoryName(CoursePracticeImages.PathFor(CoursePracticeImages.SampleFile))!);
+
+    private async Task ShareAsync(string courseId)
+    {
+        var course = FindCourse(await service.LoadAsync(), courseId);
+        await CoursePracticeImages.EnsureSampleAsync();
+        var path = Path.Combine(FileSystem.CacheDirectory, "golfsg-course-" + Guid.NewGuid().ToString("N") + ".golfsgcourse");
+        await using (var output = File.Create(path)) await Sharing().ExportAsync(course, output);
+        await Share.Default.RequestAsync(new ShareFileRequest { Title = $"Del {course.Name}", File = new ShareFile(path, "application/json") });
+    }
+
+    private async Task ImportAsync()
+    {
+        var file = await FilePicker.Default.PickAsync(new PickOptions { PickerTitle = "Vælg en GolfSG-banefil (.golfsgcourse)" });
+        if (file is null) return;
+        await using var input = await file.OpenReadAsync();
+        var course = await Sharing().ImportAsync(input);
+        await ReloadAsync();
+        await DisplayAlertAsync("Bane gemt", $"{course.Name} er gemt på denne enhed og kan spilles offline. En allerede importeret bane bevares med dine ændringer.", "OK");
     }
 
     private async Task EditAsync(string courseId)
@@ -144,7 +172,7 @@ public sealed class CourseSelectionPage : ContentPage
         try { await action(); }
         catch (Exception ex)
         {
-            error.Text = ex is ArgumentException or InvalidOperationException ? ex.Message : "Kunne ikke indlæse eller åbne banen. Prøv igen; dine data er bevaret.";
+            error.Text = ex is ArgumentException or InvalidOperationException ? ex.Message : "Kunne ikke indlæse, dele eller gemme banen. Prøv igen; dine data er bevaret.";
             retry.IsVisible = true;
         }
         finally { busy = false; layout.IsEnabled = true; }

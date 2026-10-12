@@ -106,7 +106,7 @@ public sealed class ProductsApiServiceTests
     {
         using var certificate = Certificate("CN=localhost", includeDevelopmentExtension: true);
         var errors = SslPolicyErrors.RemoteCertificateNameMismatch | SslPolicyErrors.RemoteCertificateChainErrors;
-        foreach (var host in new[] { "localhost", "127.0.0.1", "[::1]", "10.0.2.2" })
+        foreach (var host in new[] { "localhost", "127.0.0.1", "[::1]", "10.0.2.2", "192.168.50.189" })
             Assert.IsTrue(LocalDevelopmentCertificate.IsAccepted(new Uri($"https://{host}:7151/"), certificate, errors));
 
         Assert.IsFalse(LocalDevelopmentCertificate.IsAccepted(new Uri("https://example.com/"), certificate, errors));
@@ -120,6 +120,25 @@ public sealed class ProductsApiServiceTests
         using var wrongName = Certificate("CN=other", includeDevelopmentExtension: true);
         Assert.IsFalse(LocalDevelopmentCertificate.IsAccepted(new Uri("https://localhost/"), wrongName, errors));
         Assert.IsTrue(LocalDevelopmentCertificate.IsAccepted(new Uri("https://example.com/"), wrongName, SslPolicyErrors.None));
+    }
+
+    [TestMethod]
+    public void WifiCertificateExceptionRejectsOtherHostsAndInvalidCertificates()
+    {
+        var address = new Uri("https://192.168.50.189/");
+        var errors = SslPolicyErrors.RemoteCertificateNameMismatch | SslPolicyErrors.RemoteCertificateChainErrors;
+        using var certificate = Certificate("CN=localhost", includeDevelopmentExtension: true);
+        Assert.IsTrue(LocalDevelopmentCertificate.IsAccepted(address, certificate, errors));
+        foreach (var host in new[] { "192.168.50.190", "192.168.1.1", "8.8.8.8", "192.168.50.189.example.com" })
+            Assert.IsFalse(LocalDevelopmentCertificate.IsAccepted(new Uri($"https://{host}/"), certificate, errors));
+        Assert.IsFalse(LocalDevelopmentCertificate.IsAccepted(new Uri("http://192.168.50.189/"), certificate, errors));
+        Assert.IsFalse(LocalDevelopmentCertificate.IsAccepted(address, null, errors));
+        Assert.IsFalse(LocalDevelopmentCertificate.IsAccepted(address, certificate, SslPolicyErrors.RemoteCertificateNotAvailable));
+        using var ordinary = Certificate("CN=localhost", includeDevelopmentExtension: false);
+        using var expired = Certificate("CN=localhost", includeDevelopmentExtension: true, expired: true);
+        using var wrongName = Certificate("CN=other", includeDevelopmentExtension: true);
+        foreach (var invalid in new[] { ordinary, expired, wrongName })
+            Assert.IsFalse(LocalDevelopmentCertificate.IsAccepted(address, invalid, errors));
     }
 
     private static X509Certificate2 Certificate(string subject, bool includeDevelopmentExtension, bool expired = false)

@@ -25,7 +25,15 @@ Planned shot distances show whole metres in setup, play and saved results: 10.4 
 
 SG is expected strokes at the start minus expected strokes at the finish, minus the single shot and penalties. Holed shots have zero expected finish strokes. This uses the application's existing approximate putting, approach and short-game baselines. Long tee-shot/off-the-tee scoring and full hole play are outside this beta flow.
 
-Practice rounds are excluded from normal statistics and Start insights, since single-shot attempts are not comparable to full-hole scores or putting rounds. History contains their individual outcomes, course name, layout and scale. The ordinary round export/import includes these result details, but not local course-image files or the saved-course library. Results remain readable without their original image; transferring/recovering the editable course library needs a separate future export flow.
+Practice rounds are excluded from normal statistics and Start insights, since single-shot attempts are not comparable to full-hole scores or putting rounds. History contains their individual outcomes, course name, layout and scale. The ordinary round export/import includes these result details, but not local course-image files or the saved-course library. Results remain readable without their original image.
+
+## Save and share a course
+
+**Gem bane** persists the reusable setup on this device. Under **Spil bane**, choose **Del bane** on a saved course to share or save a `.golfsgcourse` file through the device's share dialog. It includes the picture, calibration, course and shot names, positions, lies, categories, measured overrides and attempt counts. It excludes player results, active sessions and account information. Anyone you give the file to can import and reuse it; sharing does not grant remote editing access.
+
+On the receiving device, open **Spil bane → Importér bane fra fil** and select the shared file. The course and its picture are saved locally and remain available offline after restarting. Importing the same content again preserves the existing copy, including local edits. A changed shared file creates a separate copy; it does not update existing copies or recorded rounds. Supported pictures are JPEG and PNG, with a 10 MB image limit and 15 MB total file limit. Sharing and importing do not require an account or a running API.
+
+Physical-device acceptance should include saving the shared file, transferring it to another device, importing it, restarting offline, playing and editing the imported course, and importing the same file again without duplicates.
 
 ## Verification
 
