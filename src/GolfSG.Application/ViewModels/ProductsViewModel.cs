@@ -49,11 +49,13 @@ public sealed class ProductsViewModel : ViewModelBase
     }
 
     public bool CanRefresh => !IsBusy;
+    public bool CanConfigureServer => settings.CanConfigureEndpoint;
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
     public bool IsEmpty => hasLoaded && !IsBusy && !HasError && Products.Count == 0;
 
     public async Task SaveServerAddressAsync(CancellationToken cancellationToken = default)
     {
+        if (!CanConfigureServer) { ServerAddress = settings.BaseAddress; return; }
         if (!ProductsApiAddress.TryNormalize(ServerAddress, out var address))
         {
             ErrorMessage = "Angiv en gyldig HTTPS-adresse, f.eks. https://server.example/.";

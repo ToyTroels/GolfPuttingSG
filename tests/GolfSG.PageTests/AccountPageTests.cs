@@ -202,6 +202,20 @@ public sealed class AccountPageTests
     }
 
     [TestMethod]
+    public void FixedEndpointPagesOmitServerEditorAndKeepConnectionCheck()
+    {
+        var settings = new Settings { CanConfigureEndpoint = false, BaseAddress = "https://golfputtingsg.onrender.com/" };
+        var model = new AccountViewModel(new PendingAccounts(), settings);
+        var accountPage = new AccountPage(model);
+        Assert.IsFalse(Descendants(accountPage).OfType<Entry>().Any(entry => entry.AutomationId == UiAutomationIds.AccountServer));
+        Assert.IsFalse(Descendants(accountPage).OfType<Button>().Any(button => button.AutomationId == UiAutomationIds.AccountSaveServer));
+        Assert.IsNotNull(Control<Button>(accountPage, UiAutomationIds.AccountCheckConnection));
+        var loginPage = new LoginPage(model);
+        Assert.IsFalse(Descendants(loginPage).OfType<Label>().Any(label => label.Text == settings.BaseAddress));
+        Assert.AreEqual("Kontoindstillinger", Control<Button>(loginPage, UiAutomationIds.LoginServerSettings).Text);
+    }
+
+    [TestMethod]
     public async Task LeavingPageDuringConnectionCheckCancelsAndDoesNotClaimSuccess()
     {
         var accounts = new PendingAccounts { PauseConnectionCheck = true };
@@ -578,6 +592,7 @@ public sealed class AccountPageTests
 
     private sealed class Settings : IProductsApiSettings
     {
+        public bool CanConfigureEndpoint { get; set; } = true;
         public string BaseAddress { get; set; } = "https://localhost/";
     }
 

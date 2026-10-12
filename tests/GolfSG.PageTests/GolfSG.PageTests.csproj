@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Compile the actual page and controls so event-handler state regressions are covered. -->
+    <Compile Include="../../src/GolfSG/Services/PreferenceProductsApiSettings.cs" Link="Services/PreferenceProductsApiSettings.cs" />
     <Compile Include="../../src/GolfSG/Views/AccountPage.cs" Link="Views/AccountPage.cs" />
     <Compile Include="../../src/GolfSG/Views/LoginPage.cs" Link="Views/LoginPage.cs" />
     <Compile Include="../../src/GolfSG/Views/AccountViews.cs" Link="Views/AccountViews.cs" />

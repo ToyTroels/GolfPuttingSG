@@ -14,6 +14,11 @@ GolfSG may store:
 - App settings such as distance preferences and selected tracking options.
 - Temporary active-round or active-session state.
 - The configured server address, account ID/username, and the installation's sync-account binding.
+
+Release builds always connect to `https://golfputtingsg.onrender.com/`; only Debug
+builds allow configuring another endpoint. Upgrading from a development server
+clears its login and sync tracking locally, retaining saved rounds for manual sync
+after signing in on the production server.
 - Access and refresh tokens for optional server sign-in, in platform secure storage.
 
 Round data, settings and account binding are stored as JSON and preferences in the application's platform-managed local data directory. Authentication tokens use platform secure storage. Saved round history is also sent to the configured HTTPS server when you choose **Sync** in History. Saving a round does not automatically upload it.

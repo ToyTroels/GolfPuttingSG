@@ -96,6 +96,9 @@ The methodology, limitations, and public-release provenance gate are documented 
 
 ## Data and privacy
 
+Release builds always use `https://golfputtingsg.onrender.com/` and do not offer
+endpoint configuration. Debug builds allow changing the endpoint under **Konto og server**.
+
 GolfSG's scoring and local history work without an account or an internet connection. Optional manual sync to the configured API requires a username/password account. The server separates rounds and retained deletions by the authenticated account. The app stores tokens in platform secure storage and binds an installation's sync history to the first signed-in account and server. Signing out leaves local history available and preserves that binding. An explicitly confirmed server change signs out and resets the binding and sync tracking, keeping local rounds available for manual upload after signing in on the new server. There is no advertising or analytics account.
 
 See [PRIVACY.md](PRIVACY.md) for the current data-handling statement and [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for third-party assets and data notes.

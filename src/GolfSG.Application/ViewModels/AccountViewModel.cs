@@ -44,7 +44,9 @@ public sealed class AccountViewModel(IApiAccountService accounts, IProductsApiSe
     public string AuthenticationTitle => IsSignedIn ? "Din konto" : AuthenticationActionText;
     public string AuthenticationActionText => IsCreatingAccount ? "Opret konto" : "Log ind";
     public string AuthenticationSwitchText => IsCreatingAccount ? "Jeg har allerede en konto" : "Opret en ny konto";
-    public string CurrentIdentity => session is null ? "Du er ikke logget ind." : $"Logget ind som {session.Username}\n{session.ServerAddress}";
+    public bool CanConfigureServer => settings.CanConfigureEndpoint;
+    public string CurrentIdentity => session is null ? "Du er ikke logget ind." :
+        CanConfigureServer ? $"Logget ind som {session.Username}\n{session.ServerAddress}" : $"Logget ind som {session.Username}";
     public bool IsBusy
     {
         get => isBusy;
@@ -92,6 +94,7 @@ public sealed class AccountViewModel(IApiAccountService accounts, IProductsApiSe
 
     public Task SwitchServerAsync(CancellationToken token = default) => RunAsync(async () =>
     {
+        if (!CanConfigureServer) throw new ApiAccountException("Appen bruger GolfSG-serveren automatisk.");
         var address = Address();
         try { await accounts.SwitchServerAsync(address, token); }
         finally { SetSession(null); ClearCredentials(); }
@@ -157,7 +160,7 @@ public sealed class AccountViewModel(IApiAccountService accounts, IProductsApiSe
         StatusMessage = "Du er logget ud. Dine runder er stadig gemt på enheden.";
     }, token, clearPassword: true);
 
-    private Uri Address() => ProductsApiAddress.TryNormalize(ServerAddress, out var address) ? address!
+    private Uri Address() => ProductsApiAddress.TryNormalize(CanConfigureServer ? ServerAddress : settings.BaseAddress, out var address) ? address!
         : throw new ApiAccountException("Angiv en gyldig HTTPS-adresse, f.eks. https://localhost/.");
 
     private async Task CheckConnectionCoreAsync(CancellationToken token)

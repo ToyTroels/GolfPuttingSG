@@ -14,6 +14,23 @@ public sealed class ApiAccountServiceTests
     private const string Password = "MyStrongPassword123!";
 
     [TestMethod]
+    public async Task FixedProductionEndpointReleasesDevelopmentBindingOnLoad()
+    {
+        using var setup = new Setup();
+        await setup.Service.SignInAsync(Server, "tester", Password);
+        setup.Settings.BaseAddress = "https://golfputtingsg.onrender.com/";
+        setup.Settings.CanConfigureEndpoint = false;
+        var requestCount = setup.Requests.Count;
+        Assert.IsNull(await setup.Service.LoadAccountAsync(new Uri(setup.Settings.BaseAddress)));
+        Assert.IsNull(setup.Store.Json);
+        Assert.IsFalse(File.Exists(setup.Service.BindingPath));
+        Assert.HasCount(requestCount, setup.Requests);
+        await Assert.ThrowsAsync<ApiAccountException>(() => setup.Service.SwitchServerAsync(Server));
+        setup.Owner = "production-owner";
+        Assert.AreEqual("production-owner", (await setup.Service.RegisterAsync(new Uri(setup.Settings.BaseAddress), "tester", Password)).AccountId);
+    }
+
+    [TestMethod]
     public async Task ExplicitServerSwitchClearsTokensAndSyncTrackingAndAllowsNewOwner()
     {
         using var setup = new Setup();
@@ -550,7 +567,11 @@ public sealed class ApiAccountServiceTests
         public void Set(ApiSession session) => Json = JsonSerializer.Serialize(session,
             new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
     }
-    private sealed class Settings : IProductsApiSettings { public string BaseAddress { get; set; } = Server.AbsoluteUri; }
+    private sealed class Settings : IProductsApiSettings
+    {
+        public string BaseAddress { get; set; } = Server.AbsoluteUri;
+        public bool CanConfigureEndpoint { get; set; } = true;
+    }
     private sealed class Handler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> action) : HttpMessageHandler
     { protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => action(request, cancellationToken); }
     private static HttpResponseMessage Tokens(string access, string refresh) => Json(JsonSerializer.Serialize(new

@@ -103,6 +103,12 @@ public sealed class ProductsPage : ContentPage
                 refresh.Row(2)
             }
         };
+        if (!viewModel.CanConfigureServer)
+        {
+            var serverControls = (VerticalStackLayout)serverAddress.Parent;
+            var card = (Border)serverControls.Parent;
+            ((VerticalStackLayout)card.Parent).Children.Remove(card);
+        }
     }
 
     private CancellationToken PageToken => pageCancellation?.Token ?? new CancellationToken(canceled: true);

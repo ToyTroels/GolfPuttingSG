@@ -51,6 +51,17 @@ public sealed class ApiAccountService(HttpClient client, ISecureApiSessionStore 
             {
                 EnsureAddress(normalized);
                 var binding = await ReadBindingAsync().ConfigureAwait(false);
+                if (!settings.CanConfigureEndpoint && binding is not null && binding.ServerAddress != normalized.AbsoluteUri)
+                {
+                    // An upgrade from a configurable build retains rounds but requires a fresh
+                    // login on the fixed production server. Never reuse development credentials.
+                    Interlocked.Increment(ref generation);
+                    Volatile.Write(ref signedOut, 1);
+                    await secureStore.DeleteAsync().ConfigureAwait(false);
+                    await rounds.ResetSyncTrackingAsync().ConfigureAwait(false);
+                    File.Delete(BindingPath);
+                    return null;
+                }
                 if (binding is not null && binding.ServerAddress != normalized.AbsoluteUri)
                     throw new ApiAccountException(DifferentAccount);
                 var session = await ReadSessionAsync().ConfigureAwait(false);
@@ -150,6 +161,7 @@ public sealed class ApiAccountService(HttpClient client, ISecureApiSessionStore 
     public Task SwitchServerAsync(Uri server, CancellationToken cancellationToken = default) =>
         ExecuteAsync(async () =>
         {
+            if (!settings.CanConfigureEndpoint) throw new ApiAccountException("Appen bruger GolfSG-serveren automatisk.");
             var normalized = Normalize(server);
             await stateGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try

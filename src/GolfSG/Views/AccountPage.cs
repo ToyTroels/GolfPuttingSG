@@ -70,7 +70,7 @@ public sealed class AccountPage : ContentPage
                 Padding = 16, Spacing = 14,
                 Children =
                 {
-                    AppViews.PageTitle("Konto og server"),
+                    AppViews.PageTitle(viewModel.CanConfigureServer ? "Konto og server" : "Konto"),
                     AppViews.Card(new VerticalStackLayout { Spacing = 8, Children = { identity,
                         new Label { Text = "Du kan spille og gemme offline. Login bruges til manuel synkronisering af runder.", TextColor = GolfTheme.Colors.MutedText }, login, signOut } }),
                     AppViews.Card(new VerticalStackLayout { Spacing = 8, Children = { AppViews.FieldLabel("Serveradresse"), server, save, checkConnection, connectionStatus } }),
@@ -80,6 +80,16 @@ public sealed class AccountPage : ContentPage
                 }
             }
         };
+        if (!viewModel.CanConfigureServer)
+        {
+            var layout = (VerticalStackLayout)((ScrollView)Content).Content;
+            // Release exposes account management and connection checks without endpoint controls.
+            var serverControls = (VerticalStackLayout)server.Parent;
+            serverControls.Children.RemoveAt(0); // Server address field label.
+            serverControls.Children.Remove(server);
+            serverControls.Children.Remove(save);
+            layout.Children.RemoveAt(3); // Debug server-switch explanation.
+        }
     }
 
     private async Task SaveServerAsync()

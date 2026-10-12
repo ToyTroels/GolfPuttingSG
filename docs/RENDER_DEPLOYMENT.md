@@ -43,9 +43,15 @@ set `Auth__DataProtectionKeysPath` to a directory on that mount. Ensure the
 container's non-root app user can write there. Without persistent keys, users can
 need to sign in again after restarts. Multiple API instances need shared keys.
 
-After deployment, check `https://<service>.onrender.com/api/health`, then save
-`https://<service>.onrender.com/` in the MAUI app's account/server settings and
-verify registration, login, and manual round sync.
+After deployment, check `https://golfputtingsg.onrender.com/api/health` and
+verify registration, login, and manual round sync. Release builds always use
+`https://golfputtingsg.onrender.com/`; saved endpoint overrides are ignored and
+address-editing controls are removed. Debug builds retain configurable endpoints
+under **Konto og server**. If the production hostname changes, update
+`PreferenceProductsApiSettings.ProductionAddress` and rebuild the app.
+
+Upgrading from a development server clears its login and sync tracking on local
+account load, preserving rounds for manual sync after signing in on Render.
 
 If the repository is missing from Render's list, check the connected Git provider's
 repository permissions. If the API files are missing, check that Render uses the

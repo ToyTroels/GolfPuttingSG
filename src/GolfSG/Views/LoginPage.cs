@@ -101,7 +101,7 @@ public sealed class LoginPage : ContentPage
         var retry = AppViews.SecondaryButton("Tjek forbindelse").Accessible(UiAutomationIds.AccountCheckConnection, "Tjek server og database");
         retry.SetBinding(IsEnabledProperty, nameof(AccountViewModel.CanAct));
         retry.Clicked += async (_, _) => await requests.RunAsync(viewModel.CheckConnectionAsync, PageToken);
-        var settings = AppViews.SecondaryButton("Konto og serverindstillinger").Accessible(UiAutomationIds.LoginServerSettings, "Åbn konto og serverindstillinger");
+        var settings = AppViews.SecondaryButton(viewModel.CanConfigureServer ? "Konto og serverindstillinger" : "Kontoindstillinger").Accessible(UiAutomationIds.LoginServerSettings, "Åbn kontoindstillinger");
         settings.SetBinding(IsEnabledProperty, nameof(AccountViewModel.CanAct));
         settings.Clicked += async (_, _) =>
         {
@@ -146,6 +146,8 @@ public sealed class LoginPage : ContentPage
                 }
             }
         };
+        if (!viewModel.CanConfigureServer)
+            ((VerticalStackLayout)server.Parent).Children.Remove(server);
     }
 
     private CancellationToken PageToken => pageCancellation?.Token ?? new CancellationToken(canceled: true);
