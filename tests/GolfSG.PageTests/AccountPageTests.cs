@@ -170,7 +170,7 @@ public sealed class AccountPageTests
         var accounts = new PendingAccounts { PauseConnectionCheck = true };
         var settings = new Settings();
         var model = new AccountViewModel(accounts, settings);
-        var page = new AccountPage(model);
+        var page = new AccountPage(model, confirmServerSwitch: _ => Task.FromResult(true));
         InvokeLifecycle(page, "OnAppearing");
         Control<Entry>(page, UiAutomationIds.AccountServer).Text = "https://other.example/";
 
@@ -179,7 +179,26 @@ public sealed class AccountPageTests
         Assert.AreEqual("https://other.example/", settings.BaseAddress);
         Assert.AreEqual(0, accounts.ConnectionChecks);
         Assert.IsTrue(model.CanAct);
-        Assert.Contains("gemt", model.StatusMessage);
+        Assert.Contains("skiftet", model.StatusMessage);
+    }
+
+    [TestMethod]
+    public void CancellingServerSwitchLeavesAddressAndSessionUnchanged()
+    {
+        var accounts = new PendingAccounts();
+        var settings = new Settings();
+        var model = new AccountViewModel(accounts, settings);
+        var page = new AccountPage(model, confirmServerSwitch: _ => Task.FromResult(false));
+        InvokeLifecycle(page, "OnAppearing");
+        var identity = model.CurrentIdentity;
+        Control<Entry>(page, UiAutomationIds.AccountServer).Text = "https://other.example/";
+
+        ((IButtonController)Control<Button>(page, UiAutomationIds.AccountSaveServer)).SendClicked();
+
+        Assert.AreEqual("https://localhost/", settings.BaseAddress);
+        Assert.AreEqual(identity, model.CurrentIdentity);
+        Assert.AreEqual(0, accounts.ConnectionChecks);
+        Assert.AreEqual(string.Empty, model.StatusMessage);
     }
 
     [TestMethod]
@@ -578,6 +597,7 @@ public sealed class AccountPageTests
 
     private sealed class PendingAccounts : IApiAccountService
     {
+        public Task SwitchServerAsync(Uri server, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public TaskCompletionSource<bool> Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource<bool> Cancelled { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public CancellationToken LoginToken { get; private set; }

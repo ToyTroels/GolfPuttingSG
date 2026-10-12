@@ -432,6 +432,7 @@ public sealed class AccountViewModelTests
 
     private sealed class RecordingAccounts : IApiAccountService
     {
+        public Task SwitchServerAsync(Uri server, CancellationToken cancellationToken = default) => inner.SwitchServerAsync(server, cancellationToken);
         private readonly TestApiAccountService inner = new() { SignedOut = true };
         public int Calls { get; private set; }
         public int RegisterCalls { get; private set; }

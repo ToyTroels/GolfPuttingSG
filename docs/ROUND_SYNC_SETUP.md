@@ -81,9 +81,13 @@ verification are not part of this local pilot.
 Manual sync requires sign-in. The first successful sign-in binds that installation's
 sync history to the account ID and server. Signing out with **Log ud** clears saved
 tokens while leaving local history and the binding intact. Sign back into the same
-account to continue. A different account/server requires a separate installation;
-the app refuses to mix its existing local history into another account. Export local
-history before any app-data reset. Passwords are not persisted; tokens use the platform's
+account to continue. To change servers, enter the new HTTPS address in **Konto og server**,
+choose **Gem serveradresse**, and confirm **Skift server**. This signs out, releases
+the old account binding, and resets sync tracking, including old deletion records.
+Local rounds remain available. Sign in or register on the new server and manually
+sync to upload them to that account. Nothing is uploaded during the switch; old
+server data is unchanged. Changing accounts on the same server remains restricted.
+Export local history before any app-data reset. Passwords are not persisted; tokens use the platform's
 secure storage. Expired sessions require sign-in again when token refresh cannot succeed.
 
 Saving rounds, games and benchmarks stays local. Sync is explicit, without polling

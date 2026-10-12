@@ -87,6 +87,21 @@ public sealed class AccountViewModel(IApiAccountService accounts, IProductsApiSe
         StatusMessage = "Serveradressen er gemt.";
     }, token);
 
+    public bool RequiresServerSwitch => ProductsApiAddress.TryNormalize(ServerAddress, out var target) &&
+        (!ProductsApiAddress.TryNormalize(settings.BaseAddress, out var current) || target != current);
+
+    public Task SwitchServerAsync(CancellationToken token = default) => RunAsync(async () =>
+    {
+        var address = Address();
+        try { await accounts.SwitchServerAsync(address, token); }
+        finally { SetSession(null); ClearCredentials(); }
+        settings.BaseAddress = address.AbsoluteUri;
+        Username = string.Empty;
+        ServerAddress = settings.BaseAddress;
+        ConnectionStatusMessage = ConnectionNotChecked;
+        StatusMessage = "Serveren er skiftet. Log ind eller opret en konto. Dine lokale runder er bevaret og kan synkroniseres manuelt til den nye konto.";
+    }, token, clearPassword: true);
+
     public Task CheckConnectionAsync(CancellationToken token = default) =>
         RunAsync(() => CheckConnectionCoreAsync(token), token, networkOperation: true);
 

@@ -14,6 +14,62 @@ public sealed class ApiAccountServiceTests
     private const string Password = "MyStrongPassword123!";
 
     [TestMethod]
+    public async Task ExplicitServerSwitchClearsTokensAndSyncTrackingAndAllowsNewOwner()
+    {
+        using var setup = new Setup();
+        var original = await setup.Service.SignInAsync(Server, "tester", Password);
+        var directory = Path.GetDirectoryName(setup.Service.BindingPath)!;
+        var roundsPath = Path.Combine(directory, "rounds.json");
+        await File.WriteAllTextAsync(roundsPath, "local rounds preserved");
+        var syncPath = Path.Combine(directory, "round-sync.json");
+        await File.WriteAllTextAsync(syncPath, "{\"schemaVersion\":1,\"servers\":{},\"deletedIds\":[\"old-round\"]}");
+        var requestCount = setup.Requests.Count;
+        var target = new Uri("https://golfputtingsg.onrender.com/");
+
+        await setup.Service.SwitchServerAsync(target);
+
+        Assert.AreEqual(target.AbsoluteUri, setup.Settings.BaseAddress);
+        Assert.IsNull(setup.Store.Json);
+        Assert.IsFalse(File.Exists(setup.Service.BindingPath));
+        Assert.AreEqual("local rounds preserved", await File.ReadAllTextAsync(roundsPath));
+        using var sync = JsonDocument.Parse(await File.ReadAllTextAsync(syncPath));
+        Assert.AreEqual(0, sync.RootElement.GetProperty("deletedIds").GetArrayLength());
+        Assert.AreEqual(0, sync.RootElement.GetProperty("servers").EnumerateObject().Count());
+        Assert.HasCount(requestCount, setup.Requests, "Switching must not make network requests.");
+        await Assert.ThrowsAsync<ApiAccountException>(() => setup.Service.WithSessionAsync(original, () => Task.FromResult(true)));
+        Assert.IsNull(await setup.Service.LoadAccountAsync(target));
+        setup.Owner = "render-owner";
+        var registered = await setup.Service.RegisterAsync(target, "tester", Password);
+        Assert.AreEqual("render-owner", registered.AccountId);
+        Assert.AreEqual(target.AbsoluteUri, registered.ServerAddress);
+    }
+
+    [TestMethod]
+    public async Task SwitchingDuringLoginDiscardsOldResponse()
+    {
+        using var setup = new Setup();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        setup.BeforeLogin = async () => { entered.SetResult(); await release.Task; };
+        var login = setup.Service.SignInAsync(Server, "tester", Password);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await setup.Service.SwitchServerAsync(new Uri("https://other.example/"));
+        release.SetResult();
+        await Assert.ThrowsAsync<ApiAccountException>(() => login);
+        Assert.IsNull(setup.Store.Json);
+        Assert.IsFalse(File.Exists(setup.Service.BindingPath));
+    }
+
+    [TestMethod]
+    public async Task SameServerCannotReleaseAccountBinding()
+    {
+        using var setup = new Setup();
+        var session = await setup.Service.SignInAsync(Server, "tester", Password);
+        await Assert.ThrowsAsync<ApiAccountException>(() => setup.Service.SwitchServerAsync(Server));
+        Assert.AreEqual(session, await setup.Service.LoadAccountAsync(Server));
+    }
+
+    [TestMethod]
     public async Task SignInStoresVerifiedIdentityAndOpaqueTokensButNeverPassword()
     {
         using var setup = new Setup();
@@ -476,7 +532,9 @@ public sealed class ApiAccountServiceTests
                 }
                 return Json(JsonSerializer.Serialize(new { id = Owner, username = "verified_name" }));
             }));
-            Service = new(Client, Store, Settings, directory);
+            Service = new(Client, Store, Settings, directory,
+                new GolfSG.Infrastructure.Rounds.SyncingRoundRepository(new TestRoundRepository(),
+                    new GolfSG.Infrastructure.Rounds.RoundSyncStateStore(directory)));
         }
         public void Dispose() { Client.Dispose(); Directory.Delete(directory, recursive: true); }
     }

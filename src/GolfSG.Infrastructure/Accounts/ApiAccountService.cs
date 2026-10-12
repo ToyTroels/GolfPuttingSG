@@ -4,11 +4,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using GolfSG.Application.Accounts;
 using GolfSG.Application.Products;
+using GolfSG.Infrastructure.Rounds;
 
 namespace GolfSG.Infrastructure.Accounts;
 
 public sealed class ApiAccountService(HttpClient client, ISecureApiSessionStore secureStore,
-    IProductsApiSettings settings, string directory) : IApiAccountService
+    IProductsApiSettings settings, string directory, SyncingRoundRepository rounds) : IApiAccountService
 {
     private readonly SemaphoreSlim stateGate = new(1, 1);
     private readonly SemaphoreSlim refreshGate = new(1, 1);
@@ -84,6 +85,7 @@ public sealed class ApiAccountService(HttpClient client, ISecureApiSessionStore 
             await stateGate.WaitAsync(token).ConfigureAwait(false);
             try
             {
+                EnsureAttempt(attempt, normalized);
                 var binding = await ReadBindingAsync().ConfigureAwait(false);
                 if (binding is not null && binding.ServerAddress != normalized.AbsoluteUri)
                     throw new ApiAccountException(DifferentAccount);
@@ -143,6 +145,32 @@ public sealed class ApiAccountService(HttpClient client, ISecureApiSessionStore 
             finally { stateGate.Release(); }
         }, cancellationToken);
     }
+
+    // Called only after the user explicitly agrees to carry local rounds to another server.
+    public Task SwitchServerAsync(Uri server, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(async () =>
+        {
+            var normalized = Normalize(server);
+            await stateGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var binding = await ReadBindingAsync().ConfigureAwait(false);
+                if (binding?.ServerAddress == normalized.AbsoluteUri ||
+                    binding is null && ProductsApiAddress.TryNormalize(settings.BaseAddress, out var current) && current == normalized)
+                    throw new ApiAccountException("Vælg en anden serveradresse for at skifte server.");
+                cancellationToken.ThrowIfCancellationRequested();
+                Interlocked.Increment(ref generation);
+                Volatile.Write(ref signedOut, 1);
+                // Invalidate old credentials before releasing the binding. Remaining steps finish
+                // together without cancellation; a failure leaves the installation signed out.
+                await secureStore.DeleteAsync().ConfigureAwait(false);
+                await rounds.ResetSyncTrackingAsync().ConfigureAwait(false);
+                File.Delete(BindingPath);
+                settings.BaseAddress = normalized.AbsoluteUri;
+                return true;
+            }
+            finally { stateGate.Release(); }
+        }, cancellationToken);
 
     public Task<ApiSession> GetSessionAsync(Uri server, CancellationToken cancellationToken = default) =>
         ExecuteAsync(async () =>

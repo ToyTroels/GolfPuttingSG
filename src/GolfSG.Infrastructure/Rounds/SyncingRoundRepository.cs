@@ -19,6 +19,13 @@ public sealed class SyncingRoundRepository(IRoundRepository local, RoundSyncStat
     public Task<Round?> GetRoundAsync(string roundId) => local.GetRoundAsync(roundId);
     public Task ExportRoundsAsync(string destinationPath) => local.ExportRoundsAsync(destinationPath);
 
+    public async Task ResetSyncTrackingAsync()
+    {
+        await MutationGate.WaitAsync().ConfigureAwait(false);
+        try { await state.SaveAsync(new RoundSyncState()).ConfigureAwait(false); }
+        finally { MutationGate.Release(); }
+    }
+
     public async Task SaveRoundAsync(Round round)
     {
         await MutationGate.WaitAsync().ConfigureAwait(false);

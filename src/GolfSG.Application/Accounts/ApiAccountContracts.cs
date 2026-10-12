@@ -19,6 +19,7 @@ public interface IApiAccountService
     Task<ApiSession> RegisterAsync(Uri server, string username, string password, CancellationToken cancellationToken = default);
     Task<ApiSession> SignInAsync(Uri server, string username, string password, CancellationToken cancellationToken = default);
     Task SignOutAsync(CancellationToken cancellationToken = default);
+    Task SwitchServerAsync(Uri server, CancellationToken cancellationToken = default);
     Task<ApiSession> GetSessionAsync(Uri server, CancellationToken cancellationToken = default);
     // Serializes a short local operation with logout; no network work belongs in this callback.
     Task<T> WithSessionAsync<T>(ApiSession session, Func<Task<T>> action, CancellationToken cancellationToken = default);

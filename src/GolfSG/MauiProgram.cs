@@ -56,7 +56,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<ISecureApiSessionStore, SecureApiSessionStore>();
         builder.Services.AddSingleton<IApiAccountService>(serviceProvider => new ApiAccountService(
             serviceProvider.GetRequiredService<HttpClient>(), serviceProvider.GetRequiredService<ISecureApiSessionStore>(),
-            serviceProvider.GetRequiredService<IProductsApiSettings>(), FileSystem.AppDataDirectory));
+            serviceProvider.GetRequiredService<IProductsApiSettings>(), FileSystem.AppDataDirectory,
+            serviceProvider.GetRequiredService<SyncingRoundRepository>()));
         builder.Services.AddTransient<AccountViewModel>();
         builder.Services.AddTransient<AccountPage>();
         builder.Services.AddTransient<LoginPage>(serviceProvider => new LoginPage(

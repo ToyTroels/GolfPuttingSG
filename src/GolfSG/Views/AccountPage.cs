@@ -7,11 +7,14 @@ public sealed class AccountPage : ContentPage
 {
     private readonly AccountViewModel viewModel;
     private readonly AccountRequestActions requests = new();
+    private readonly Func<string, Task<bool>>? confirmServerSwitch;
     private CancellationTokenSource? pageCancellation;
 
-    public AccountPage(AccountViewModel viewModel, IServiceProvider? services = null, Func<Task>? openLogin = null)
+    public AccountPage(AccountViewModel viewModel, IServiceProvider? services = null, Func<Task>? openLogin = null,
+        Func<string, Task<bool>>? confirmServerSwitch = null)
     {
         this.viewModel = viewModel;
+        this.confirmServerSwitch = confirmServerSwitch;
         BindingContext = viewModel;
         Title = "Konto";
         BackgroundColor = GolfTheme.Colors.PageBackground;
@@ -36,7 +39,7 @@ public sealed class AccountPage : ContentPage
         var busy = new ActivityIndicator { Color = GolfTheme.Colors.PrimaryGreen };
         busy.SetBinding(ActivityIndicator.IsRunningProperty, nameof(AccountViewModel.IsBusy));
         busy.SetBinding(IsVisibleProperty, nameof(AccountViewModel.IsBusy));
-        var save = ActionButton("Gem serveradresse", UiAutomationIds.AccountSaveServer, () => viewModel.SaveServerAddressAsync(PageToken));
+        var save = ActionButton("Gem serveradresse", UiAutomationIds.AccountSaveServer, SaveServerAsync);
         var checkConnection = ActionButton("Tjek forbindelse", UiAutomationIds.AccountCheckConnection,
             () => requests.RunAsync(viewModel.CheckConnectionAsync, PageToken));
         var requestWait = new Label { TextColor = GolfTheme.Colors.MutedText, LineBreakMode = LineBreakMode.WordWrap }
@@ -71,12 +74,28 @@ public sealed class AccountPage : ContentPage
                     AppViews.Card(new VerticalStackLayout { Spacing = 8, Children = { identity,
                         new Label { Text = "Du kan spille og gemme offline. Login bruges til manuel synkronisering af runder.", TextColor = GolfTheme.Colors.MutedText }, login, signOut } }),
                     AppViews.Card(new VerticalStackLayout { Spacing = 8, Children = { AppViews.FieldLabel("Serveradresse"), server, save, checkConnection, connectionStatus } }),
-                    new Label { Text = "Denne installations historik knyttes til den første konto og server, du logger ind på. Tilknytningen bevares ved logout. Brug en separat installation til en anden konto.", TextColor = GolfTheme.Colors.MutedText },
+                    new Label { Text = "Skifter du server, bliver du logget ud. Dine lokale runder bevares og kan uploades til din nye konto via Historik → Synkroniser. Logout alene bevarer tilknytningen til den nuværende konto.", TextColor = GolfTheme.Colors.MutedText },
                     new Label { Text = "Forbindelsen testes kun, når du vælger Tjek forbindelse. Appen kan bruges offline, mens serveren er i dvale.", TextColor = GolfTheme.Colors.MutedText },
                     busy, requestWait, cancel, error, status
                 }
             }
         };
+    }
+
+    private async Task SaveServerAsync()
+    {
+        if (!viewModel.CanAct) return;
+        if (!viewModel.RequiresServerSwitch)
+        {
+            await viewModel.SaveServerAddressAsync(PageToken);
+            return;
+        }
+        var target = viewModel.ServerAddress;
+        var confirmed = confirmServerSwitch is not null ? await confirmServerSwitch(target) : await DisplayAlertAsync("Skift server?",
+            $"Skift til {target}? Du bliver logget ud. Dine lokale runder bevares og kan uploades til den konto, du logger ind på på den nye server. Gamle synkroniseringsoplysninger nulstilles. Der uploades ikke noget nu.",
+            "Skift server", "Annuller");
+        if (confirmed && !PageToken.IsCancellationRequested && target == viewModel.ServerAddress)
+            await viewModel.SwitchServerAsync(PageToken);
     }
 
     private Button ActionButton(string title, string id, Func<Task> action, string enabled = nameof(AccountViewModel.CanAct))

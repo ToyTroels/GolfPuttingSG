@@ -35,6 +35,8 @@ internal sealed class TestApiAccountService(IProductsApiSettings? settings = nul
     public Task<ApiSession> SignInAsync(Uri server, string username, string password, CancellationToken cancellationToken = default)
     { SignedOut = false; return Task.FromResult(Session(server) with { Username = username }); }
     public Task SignOutAsync(CancellationToken cancellationToken = default) { SignedOut = true; return Task.CompletedTask; }
+    public Task SwitchServerAsync(Uri server, CancellationToken cancellationToken = default)
+    { cancellationToken.ThrowIfCancellationRequested(); SignedOut = true; if (settings is not null) settings.BaseAddress = server.AbsoluteUri; return Task.CompletedTask; }
     public Task<T> WithSessionAsync<T>(ApiSession session, Func<Task<T>> action, CancellationToken cancellationToken = default)
     { cancellationToken.ThrowIfCancellationRequested(); Check(session); return action(); }
     private void Check(ApiSession session)
