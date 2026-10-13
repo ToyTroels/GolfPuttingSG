@@ -147,6 +147,8 @@ jobs:
 
   windows:
     name: Windows MSIX build
+    # Temporarily disabled until Windows is an active target; remove this guard to enable.
+    if: ${{ false }}
     runs-on: windows-latest
     needs: test
     steps:
@@ -181,6 +183,8 @@ jobs:
 
   apple:
     name: Apple Release compile check
+    # Temporarily disabled until Apple is an active target; remove this guard to enable.
+    if: ${{ false }}
     runs-on: macos-26
     needs: test
     steps:
@@ -222,7 +226,7 @@ jobs:
   deploy-staging:
     name: Migrate and deploy staging
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    needs: [test, backend, android, windows, apple]
+    needs: [test, backend, android]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: staging

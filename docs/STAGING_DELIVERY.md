@@ -4,14 +4,19 @@ GitHub Actions runs CI on pull requests and pushes to `dev` and `master`.
 Only a push to `dev` can enter the staging delivery job. Pull requests build and
 test without database owner credentials or deployment hooks.
 
+Windows and Apple builds are temporarily disabled while Android is the only active
+app platform. Their job definitions remain in the workflow for later use. When
+reenabling them, remove their `if: ${{ false }}` guards and add both jobs back to
+the staging delivery job's `needs` list.
+
 ## What happens after a merge into dev
 
 1. Run application/page tests, backend/PostgreSQL integration tests, dependency
-   audits, platform builds and an API Docker build.
+   audits, the Android build and an API Docker build.
 2. Build Android packaging-check artifacts for **GolfSG Staging**, using its
    distinct application ID and staging endpoint. These are test artifacts, not
    production-signed store releases. The Android check targets ARM64 devices.
-3. After every CI job succeeds, validate the staging database URL and Render hook
+3. After every enabled CI check succeeds, validate the staging database URL and Render hook
    against the public identifiers in `deploy/staging.json`.
 4. Restore and run `GolfSG.Database.Setup` at the validated commit, connecting
    directly to the staging database as its owner and granting the restricted
