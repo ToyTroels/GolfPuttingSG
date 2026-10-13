@@ -128,6 +128,8 @@ jobs:
 
   windows:
     name: Windows MSIX build
+    # Temporarily disabled until Windows is an active target; remove this guard to enable.
+    if: ${{ false }}
     runs-on: windows-latest
     needs: test
     steps:
@@ -160,6 +162,8 @@ jobs:
 
   apple:
     name: Apple Release compile check
+    # Temporarily disabled until Apple is an active target; remove this guard to enable.
+    if: ${{ false }}
     runs-on: macos-latest
     needs: test
     steps:
