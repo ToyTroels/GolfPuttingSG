@@ -1,0 +1,47 @@
+<Project>
+  <!-- Imported only by the MAUI app and the tests that compile its settings. -->
+  <PropertyGroup>
+    <GolfSGEnvironment Condition="'$(GolfSGEnvironment)' == ''">Production</GolfSGEnvironment>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GolfSGEnvironment)' == 'Staging'">
+    <DefineConstants>$(DefineConstants);GOLFSG_STAGING</DefineConstants>
+    <!-- Native manifest/package tasks cache configuration in their intermediate files. -->
+    <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(Configuration)/Staging/</IntermediateOutputPath>
+    <OutputPath>bin/$(Configuration)/Staging/</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GolfSGEnvironment)' == 'Staging' and '$(UseMaui)' == 'true'">
+    <ApplicationTitle>GolfSG Staging</ApplicationTitle>
+    <ApplicationId>com.troel.golfsg.staging</ApplicationId>
+    <ApplicationId Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">com.GolfSG.myapp.staging</ApplicationId>
+  </PropertyGroup>
+
+  <Target Name="ValidateGolfSGAppEnvironment" BeforeTargets="PrepareForBuild;GenerateGolfSGStagingAddress">
+    <Error Condition="'$(GolfSGEnvironment)' != 'Production' and '$(GolfSGEnvironment)' != 'Staging'"
+           Text="GolfSGEnvironment must be Production or Staging." />
+    <Error Condition="'$(GolfSGEnvironment)' == 'Production' and '$(GolfSGStagingApiAddress)' != ''"
+           Text="GolfSGStagingApiAddress requires GolfSGEnvironment=Staging." />
+    <Error Condition="'$(GolfSGEnvironment)' == 'Staging' and '$(GolfSGStagingApiAddress)' == ''"
+           Text="Staging builds require GolfSGStagingApiAddress, for example https://your-staging-service.onrender.com/." />
+    <!-- Accept an HTTPS origin only. This also makes embedding the address in C# safe. -->
+    <Error Condition="'$(GolfSGEnvironment)' == 'Staging' and !$([System.Text.RegularExpressions.Regex]::IsMatch('$(GolfSGStagingApiAddress)', '^https://[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?(?::[0-9]{1,5})?/$'))"
+           Text="GolfSGStagingApiAddress must be an HTTPS origin ending in /, without credentials, a path, query or fragment." />
+    <Error Condition="'$(GolfSGEnvironment)' == 'Staging' and $([System.Text.RegularExpressions.Regex]::IsMatch('$(GolfSGStagingApiAddress)', '(?i)^https://golfputtingsg[.]onrender[.]com[.]?(?::[0-9]+)?/'))"
+           Text="Staging builds cannot use the production API host." />
+  </Target>
+
+  <Target Name="GenerateGolfSGStagingAddress" BeforeTargets="CoreCompile"
+          DependsOnTargets="ValidateGolfSGAppEnvironment" Condition="'$(GolfSGEnvironment)' == 'Staging'">
+    <PropertyGroup>
+      <_GolfSGStagingAddressFile>$(IntermediateOutputPath)GolfSG.StagingApiAddress.g.cs</_GolfSGStagingAddressFile>
+      <_GolfSGStagingAddressSource>namespace GolfSG.Services { internal static class StagingApiAddress { internal const string Value = &quot;$(GolfSGStagingApiAddress)&quot;%3B } }</_GolfSGStagingAddressSource>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_GolfSGStagingAddressFile)" Lines="$(_GolfSGStagingAddressSource)"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(_GolfSGStagingAddressFile)" />
+      <FileWrites Include="$(_GolfSGStagingAddressFile)" />
+    </ItemGroup>
+  </Target>
+</Project>

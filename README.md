@@ -55,6 +55,9 @@ To run the app, open `GolfSG.sln` in Visual Studio, select the `GolfSG` startup 
 
 ## Build Android packages
 
+For a separate **GolfSG Staging** installation connected to its own API and
+database, follow [staging setup](docs/STAGING_SETUP.md).
+
 An ordinary local Release APK may use a development signing identity and must not be distributed. Production Android releases are built as both AAB and APK files by the guarded release workflow. Follow [docs/ANDROID_RELEASE_SIGNING.md](docs/ANDROID_RELEASE_SIGNING.md) and verify the certificate fingerprint before installation or upload.
 
 For an unsigned packaging check:

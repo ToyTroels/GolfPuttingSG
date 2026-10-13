@@ -1,5 +1,8 @@
 # Deploy the API to Render
 
+For an isolated `dev` environment and a separately installed beta app, follow
+[staging setup](STAGING_SETUP.md). Its Blueprint manages only the staging service.
+
 `GolfSG.Api/GolfSG.Api.csproj` is included in `GolfSG.sln` and tracked in this
 repository. Render selects repositories, not individual Visual Studio projects.
 The root Dockerfile publishes only the API and its server dependencies; no MAUI

@@ -19,7 +19,8 @@ public class Program
             .AddBearerToken(IdentityConstants.BearerScheme);
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton(TimeProvider.System);
-        var dataProtection = builder.Services.AddDataProtection().SetApplicationName("GolfSG.Api");
+        var dataProtection = builder.Services.AddDataProtection().SetApplicationName(
+            builder.Environment.IsStaging() ? "GolfSG.Api.Staging" : "GolfSG.Api");
         if (builder.Configuration["Auth:DataProtectionKeysPath"] is { Length: > 0 } keysPath)
         {
             dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));

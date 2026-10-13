@@ -5,7 +5,20 @@ namespace GolfSG.Tests;
 [TestClass]
 public sealed class ProductionEndpointTests
 {
-#if !DEBUG
+#if GOLFSG_STAGING
+    [TestMethod]
+    public void StagingUsesItsBuildAddressAndIgnoresEndpointWrites()
+    {
+        var settings = new PreferenceProductsApiSettings();
+        Assert.IsFalse(settings.CanConfigureEndpoint);
+        Assert.AreNotEqual(PreferenceProductsApiSettings.ProductionAddress, settings.BaseAddress);
+        Assert.AreEqual(StagingApiAddress.Value, settings.BaseAddress);
+        settings.BaseAddress = PreferenceProductsApiSettings.ProductionAddress;
+        Assert.AreEqual(StagingApiAddress.Value, settings.BaseAddress);
+        settings.BaseAddress = "https://localhost:7151/";
+        Assert.AreEqual(StagingApiAddress.Value, settings.BaseAddress);
+    }
+#elif !DEBUG
     [TestMethod]
     public void ReleaseAlwaysUsesRenderAndIgnoresEndpointWrites()
     {

@@ -501,7 +501,7 @@ public sealed class AccountPageTests
         Assert.AreEqual(1, accounts.ConnectionChecks, "A duplicate clicked event must not add another pending health request.");
         ((IButtonController)cancel).SendClicked();
         await accounts.CheckCancelled.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await WaitForIdle(model);
+        await WaitForIdle(model, () => !IsShown(hint) && check.IsEnabled);
         Assert.AreEqual("Serverforbindelsen er ikke testet.",
             Control<Label>(page, UiAutomationIds.AccountConnectionStatus).Text);
         Assert.IsFalse(model.HasError);
@@ -561,11 +561,12 @@ public sealed class AccountPageTests
     private static ApiSession Session() => new(Guid.NewGuid(), "stored-account", "golfer", "https://localhost/",
         "test-access-token", "test-refresh-token", DateTimeOffset.UtcNow.AddHours(1));
 
-    private static async Task WaitForIdle(AccountViewModel model)
+    private static async Task WaitForIdle(AccountViewModel model, Func<bool>? pageSettled = null)
     {
         var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (model.IsBusy && DateTime.UtcNow < deadline) await Task.Delay(10);
+        while ((model.IsBusy || pageSettled?.Invoke() == false) && DateTime.UtcNow < deadline) await Task.Delay(10);
         Assert.IsFalse(model.IsBusy, "Page work must release the view model's gate.");
+        if (pageSettled is not null) Assert.IsTrue(pageSettled(), "The page must finish updating its cancellation controls.");
         // Let the page's awaiting event handler finish its navigation/cancellation decision.
         await Task.Yield();
     }

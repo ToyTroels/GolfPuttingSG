@@ -38,4 +38,5 @@
     <Compile Include="../../src/GolfSG/Views/PageActionGuardExtensions.cs" Link="Views/PageActionGuardExtensions.cs" />
     <Compile Include="../GolfSG.Tests/Infrastructure/TestDoubles/TestRoundRepository.cs" Link="TestDoubles/TestRoundRepository.cs" />
   </ItemGroup>
+  <Import Project="../../build/GolfSG.AppEnvironment.targets" />
 </Project>
