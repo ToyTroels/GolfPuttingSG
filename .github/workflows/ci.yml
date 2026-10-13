@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           dotnet list tests/GolfSG.Tests/GolfSG.Tests.csproj package --vulnerable --include-transitive --no-restore --format json --output-version 1 > vulnerability-report.json
-          jq -e '[.projects[].frameworks[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0' vulnerability-report.json
+          jq -e '((.errors // []) | length == 0) and (.projects | type == "array") and ([.projects[] | (.frameworks // [])[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0)' vulnerability-report.json
 
   backend:
     name: API boundaries and PostgreSQL integration
@@ -97,7 +97,7 @@ jobs:
         shell: bash
         run: |
           dotnet list tests/GolfSG.Api.Tests/GolfSG.Api.Tests.csproj package --vulnerable --include-transitive --no-restore --format json --output-version 1 > backend-vulnerability-report.json
-          jq -e '[.projects[].frameworks[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0' backend-vulnerability-report.json
+          jq -e '((.errors // []) | length == 0) and (.projects | type == "array") and ([.projects[] | (.frameworks // [])[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0)' backend-vulnerability-report.json
 
   android:
     name: Android Release build
@@ -122,7 +122,7 @@ jobs:
         shell: bash
         run: |
           dotnet list src/GolfSG/GolfSG.csproj package --framework net10.0-android --vulnerable --include-transitive --no-restore --format json --output-version 1 > vulnerability-report.json
-          jq -e '[.projects[].frameworks[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0' vulnerability-report.json
+          jq -e '((.errors // []) | length == 0) and (.projects | type == "array") and ([.projects[] | (.frameworks // [])[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0)' vulnerability-report.json
 
       - name: Publish Android Release packages
         shell: bash

@@ -7,7 +7,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MSTest" Version="4.0.2" />
-    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <!-- Headless C# page tests need controls, not platform packaging/build tasks. -->
+    <PackageReference Include="Microsoft.Maui.Controls.Core" Version="10.0.20" />
     <Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
     <Using Include="Microsoft.Maui" />
     <Using Include="Microsoft.Maui.Controls" />
