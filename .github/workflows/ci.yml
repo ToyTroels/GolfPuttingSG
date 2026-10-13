@@ -116,7 +116,7 @@ jobs:
         run: dotnet workload install maui-android --version 10.0.401
 
       - name: Restore Android app
-        run: dotnet restore src/GolfSG/GolfSG.csproj -p:GolfSGRuntimeIdentifier=android-arm64 -p:GolfSGTargetFramework=net10.0-android
+        run: dotnet restore src/GolfSG/GolfSG.csproj -p:Configuration=Release -p:GolfSGRuntimeIdentifier=android-arm64 -p:GolfSGTargetFramework=net10.0-android
 
       - name: Check Android dependencies for known vulnerabilities
         shell: bash
@@ -160,7 +160,7 @@ jobs:
         run: dotnet workload install maui-windows --version 10.0.401
 
       - name: Restore Windows app
-        run: dotnet restore src/GolfSG/GolfSG.csproj -p:GolfSGRuntimeIdentifier=win-x64 -p:GolfSGTargetFramework=net10.0-windows10.0.19041.0
+        run: dotnet restore src/GolfSG/GolfSG.csproj -p:Configuration=Release -p:GolfSGRuntimeIdentifier=win-x64 -p:GolfSGTargetFramework=net10.0-windows10.0.19041.0
 
       - name: Publish unsigned MSIX validation package
         run: >-
@@ -214,9 +214,9 @@ jobs:
             ios_rid=iossimulator-x64
             mac_rid=maccatalyst-x64
           fi
-          dotnet restore src/GolfSG/GolfSG.csproj -p:GolfSGTargetFramework=net10.0-ios -p:GolfSGRuntimeIdentifier="$ios_rid"
+          dotnet restore src/GolfSG/GolfSG.csproj -p:Configuration=Release -p:GolfSGTargetFramework=net10.0-ios -p:GolfSGRuntimeIdentifier="$ios_rid"
           dotnet build src/GolfSG/GolfSG.csproj -f net10.0-ios -c Release --no-restore -p:GolfSGTargetFramework=net10.0-ios -p:GolfSGRuntimeIdentifier="$ios_rid"
-          dotnet restore src/GolfSG/GolfSG.csproj -p:GolfSGTargetFramework=net10.0-maccatalyst -p:GolfSGRuntimeIdentifier="$mac_rid"
+          dotnet restore src/GolfSG/GolfSG.csproj -p:Configuration=Release -p:GolfSGTargetFramework=net10.0-maccatalyst -p:GolfSGRuntimeIdentifier="$mac_rid"
           dotnet build src/GolfSG/GolfSG.csproj -f net10.0-maccatalyst -c Release --no-restore -p:GolfSGTargetFramework=net10.0-maccatalyst -p:GolfSGRuntimeIdentifier="$mac_rid"
 
   deploy-staging:

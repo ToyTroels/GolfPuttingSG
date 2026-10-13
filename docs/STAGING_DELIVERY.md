@@ -76,7 +76,8 @@ separate step. Production Android releases keep the existing version-tag workflo
 The SDK and workload set are pinned to `10.0.401`. The Apple compile job uses
 the `macos-26` runner and Xcode 26.6, matching
 [the .NET Apple SDK release](https://github.com/dotnet/macios/releases/tag/dotnet-10.0.1xx-xcode26.5-10318).
-Each platform restores the runtime it builds and installs only its own workloads.
+Each platform restores the runtime in Release configuration, so configuration-specific
+runtime and compilation packs are downloaded before the build, and requests only its own workloads.
 `GolfSGTargetFramework` and `GolfSGRuntimeIdentifier` select the app platform
 without overriding the frameworks or runtime-neutral lock files of the shared
 .NET library projects.
