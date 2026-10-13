@@ -1,5 +1,6 @@
 using GolfSG.Application.ViewModels;
 using GolfSG.Application.Services;
+using GolfSG.Infrastructure.Courses;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -359,7 +360,7 @@ public sealed class StartPage : ContentPage
         {
             if (item.Round.CoursePractice is not null)
             {
-                await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new CoursePracticeResultPage(item.Round)));
+                await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new CoursePracticeResultPage(item.Round, services.GetRequiredService<CourseCommunityWorkflow>())));
                 return;
             }
             var page = services.GetRequiredService<RoundResultPage>();

@@ -1,4 +1,5 @@
 using GolfSG.Application.Server;
+using GolfSG.Application.Courses;
 using GolfSG.Server.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,7 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.AddControllers();
         builder.Services.AddScoped<ServerRoundService>();
+        builder.Services.AddScoped<CourseCommunityService>();
         builder.Services.AddServerInfrastructure(builder.Configuration);
         builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
             .AddBearerToken(IdentityConstants.BearerScheme);
@@ -28,6 +30,9 @@ public class Program
         }
         builder.Services.AddRateLimiter(options =>
         {
+            options.AddPolicy("game-codes", context => RateLimitPartition.GetFixedWindowLimiter(
+                context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 15, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
             options.AddPolicy("accounts", context => RateLimitPartition.GetFixedWindowLimiter(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions

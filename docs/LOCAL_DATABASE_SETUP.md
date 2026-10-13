@@ -2,6 +2,7 @@
 
 The API uses PostgreSQL through `GolfSG.Server.Infrastructure`. PostgreSQL runs
 separately; the app continues saving locally and talks only to the API.
+Migration `003_course_library_games.sql` adds shared course revisions, durable picture storage, games and participant submissions. Apply it before using the new library/game screens; the setup tool grants the configured application role access to these tables.
 `GolfSG.Database.Setup` applies database updates explicitly. Starting the API does
 not create or modify tables.
 Use the same process for a fresh local database and the existing `MauiAppDB`.

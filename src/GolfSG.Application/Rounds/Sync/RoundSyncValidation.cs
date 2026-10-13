@@ -22,6 +22,7 @@ public static class RoundSyncValidation
         if (round.CoursePractice is { } practice)
         {
             CoursePracticeService.ValidateResults(practice.Course, practice.Results, requireComplete: true);
+            CoursePracticeService.ValidateGameLink(practice.Game);
             if (round.Holes.Count != practice.Results.Count || round.ConfiguredHoleCount != practice.Results.Count)
                 throw new ArgumentException("Banetræningen mangler slagresultater.");
         }

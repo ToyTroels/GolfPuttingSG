@@ -12,6 +12,18 @@ namespace GolfSG.Tests;
 public sealed class CoursePlayPageTests
 {
     [TestMethod]
+    public async Task GameLocksAttemptControlsButStillAllowsChoosingPositionAndRecording()
+    {
+        var (page, store) = await CreatePageAsync(game: true);
+        PreviewShot(page, "putt");
+        Assert.IsFalse(CountControl<Button>(page, "CoursePractice.IncreaseAttempts-putt").IsEnabled);
+        Assert.IsFalse(CountControl<Button>(page, "CoursePractice.DecreaseAttempts-putt").IsEnabled);
+        await ChooseShotAsync(page, "putt");
+        SetOutcome(page, "0,8", 0, 0);
+        await ClickAsync(page, GetField<Button>(page, "record"));
+        AssertRecorded(page, store, 1, "putt", .8, 0, "approach");
+    }
+    [TestMethod]
     public async Task SaveButtonRecordsFirstAndSecondResultsAndAdvancesDisplayedShot()
     {
         var (page, store) = await CreatePageAsync();
@@ -200,7 +212,7 @@ public sealed class CoursePlayPageTests
         Assert.AreEqual("Slag 1 af 2", GetField<Label>(page, "attemptProgress").Text);
     }
 
-    private static async Task<(CoursePlayPage Page, Store Store)> CreatePageAsync(int approachAttempts = 1)
+    private static async Task<(CoursePlayPage Page, Store Store)> CreatePageAsync(int approachAttempts = 1, bool game = false)
     {
         var store = new Store();
         var putting = new StrokesGainedPuttingService();
@@ -213,7 +225,8 @@ public sealed class CoursePlayPageTests
             new("putt", "Putt", new(.5, .2), new(.5, .175), ShotLie.Green, PracticeShotCategory.Putting, 5)
         ]);
         await service.SaveCourseAsync(course);
-        var session = await service.StartAsync(course);
+        var session = game ? await service.StartGameAsync(course, Guid.NewGuid().ToString("N"),
+            new(Guid.NewGuid().ToString("N"), "account", "https://example.com/")) : await service.StartAsync(course);
         var page = new CoursePlayPage(service, session);
         return (page, store);
     }

@@ -1,0 +1,21 @@
+{
+  "branch": "master",
+  "repository": "ToyTroels/GolfPuttingSG",
+  "requiredReviewer": "ToyTroels",
+  "apiAddress": "https://golfputtingsg.onrender.com/",
+  "stagingApiAddress": "https://golfputtingsg-staging.onrender.com/",
+  "render": {
+    "workspaceId": "tea-db6bh0o473hc73dst4ug",
+    "serviceId": "srv-db6ejion74is73aorrdg",
+    "healthCheckPath": "/api/health",
+    "autoDeploy": false
+  },
+  "neon": {
+    "projectId": "plain-snow-09189050",
+    "branchId": "br-purple-mud-bat2pknl",
+    "database": "neondb",
+    "directHost": "ep-rapid-hall-batx03bx.c-8.eu-central-1.aws.neon.tech",
+    "setupRole": "neondb_owner",
+    "runtimeRole": "neondb_owner"
+  }
+}

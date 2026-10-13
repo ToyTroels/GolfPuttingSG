@@ -11,6 +11,7 @@ using GolfSG.Application.Rounds.Sync;
 using GolfSG.Infrastructure.Rounds;
 using GolfSG.Application.Accounts;
 using GolfSG.Infrastructure.Accounts;
+using GolfSG.Infrastructure.Courses;
 using GolfSG.Services;
 using GolfSG.Views;
 using Microsoft.Extensions.Logging;
@@ -68,6 +69,11 @@ public static class MauiProgram
             serviceProvider.GetRequiredService<IRoundRepository>(), FileSystem.CacheDirectory));
         builder.Services.AddSingleton<IProductsApiService, ProductsApiService>();
         builder.Services.AddSingleton<IRoundsApiService, RoundsApiService>();
+        builder.Services.AddSingleton<ICourseCommunityApi, CourseCommunityApi>();
+        builder.Services.AddSingleton(serviceProvider => new CourseCommunityWorkflow(
+            serviceProvider.GetRequiredService<ICourseCommunityApi>(), serviceProvider.GetRequiredService<IApiAccountService>(),
+            serviceProvider.GetRequiredService<IProductsApiSettings>(), serviceProvider.GetRequiredService<CoursePracticeService>(),
+            serviceProvider.GetRequiredService<IRoundRepository>(), FileSystem.AppDataDirectory));
         builder.Services.AddSingleton<IRoundSyncService, RoundSyncService>();
         builder.Services.AddTransient<ProductsViewModel>();
         builder.Services.AddTransient<ProductsPage>();

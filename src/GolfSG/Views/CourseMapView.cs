@@ -169,6 +169,7 @@ public sealed class CourseMapView : Grid, IDrawable
     }
 
     public void SetImage(string path) { if (interacting) Cancel(); image.Source = ImageSource.FromFile(path); Refresh(); }
+    public void SetImage(ImageSource source) { if (interacting) Cancel(); image.Source = source; Refresh(); }
     public void ToggleZoom() { if (interacting) Cancel(); Zoom = Zoom == 1 ? 2 : 1; image.Scale = Zoom; Refresh(); }
     public void Refresh() => overlay.Invalidate();
 

@@ -71,10 +71,9 @@ change. Applied migration files are immutable; add the next numbered migration.
 
 ## Production
 
-This workflow deploys staging only. Production still follows
-`codex/maui-products-api`; it does not change its branch, credentials or deployment
-settings. Moving production to `master` and wiring production delivery is a
-separate step. Production Android releases keep the existing version-tag workflow.
+Pushes to `master` use the separate protected production job and wait for your
+approval before migrations or deployment. See [production delivery](PRODUCTION_DELIVERY.md).
+Production Android store releases keep the existing version-tag workflow.
 
 ## Build toolchain
 

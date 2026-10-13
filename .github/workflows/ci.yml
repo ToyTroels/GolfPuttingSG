@@ -9,8 +9,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # Do not interrupt a dev run once database setup/deployment may have started.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
+  # Do not interrupt delivery or an approval awaiting a production decision.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' && github.ref != 'refs/heads/master' }}
 
 permissions:
   contents: read
@@ -253,3 +253,53 @@ jobs:
 
       - name: Deploy and verify the validated commit
         run: python3 scripts/deliver_staging.py deploy
+
+  production-readiness:
+    name: Prepare production approval
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [test, backend, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - name: Verify protection and healthy staging; prepare release summary
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/deliver_production.py review
+
+  deploy-production:
+    name: Approve, migrate and deploy production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: production-readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: production
+      url: https://golfputtingsg.onrender.com/
+    permissions:
+      contents: read
+      actions: read
+    concurrency:
+      group: golfsg-production-deployment
+      cancel-in-progress: false
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      PRODUCTION_DATABASE_SETUP_CONNECTION: ${{ secrets.PRODUCTION_DATABASE_SETUP_CONNECTION }}
+      PRODUCTION_RENDER_DEPLOY_HOOK: ${{ secrets.PRODUCTION_RENDER_DEPLOY_HOOK }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.401
+      - name: Recheck approval protection and production target
+        run: python3 scripts/deliver_production.py validate
+      - name: Apply production database migrations
+        run: python3 scripts/deliver_production.py migrate
+      - name: Deploy and verify the approved commit
+        run: python3 scripts/deliver_production.py deploy

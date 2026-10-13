@@ -14,10 +14,12 @@
     <Using Include="Microsoft.Maui.Controls" />
     <Using Include="Microsoft.Maui.Graphics" />
     <Using Include="Microsoft.Maui.Storage" />
+    <Using Include="Microsoft.Maui.ApplicationModel.DataTransfer" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/GolfSG.Application/GolfSG.Application.csproj" />
     <ProjectReference Include="../../src/GolfSG.Core/GolfSG.Core.csproj" />
+    <ProjectReference Include="../../src/GolfSG.Infrastructure/GolfSG.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Compile the actual page and controls so event-handler state regressions are covered. -->
@@ -28,6 +30,11 @@
     <Compile Include="../../src/GolfSG/Views/AccountRequestActions.cs" Link="Views/AccountRequestActions.cs" />
     <Compile Include="../../src/GolfSG/Views/UiAutomationIds.cs" Link="Views/UiAutomationIds.cs" />
     <Compile Include="../../src/GolfSG/Views/CoursePlayPage.cs" Link="Views/CoursePlayPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/CourseCommunityPage.cs" Link="Views/CourseCommunityPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/CourseLibraryPage.cs" Link="Views/CourseLibraryPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/CourseGamePages.cs" Link="Views/CourseGamePages.cs" />
+    <Compile Include="../../src/GolfSG/Views/CourseSelectionPage.cs" Link="Views/CourseSelectionPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/CoursePracticeMenuPage.cs" Link="Views/CoursePracticeMenuPage.cs" />
     <Compile Include="../../src/GolfSG/Views/CourseMapView.cs" Link="Views/CourseMapView.cs" />
     <Compile Include="../../src/GolfSG/Views/CourseSetupPage.cs" Link="Views/CourseSetupPage.cs" />
     <Compile Include="../../src/GolfSG/Views/CoursePracticeImages.cs" Link="Views/CoursePracticeImages.cs" />
@@ -38,6 +45,7 @@
     <Compile Include="../../src/GolfSG/Views/ViewExtensions.cs" Link="Views/ViewExtensions.cs" />
     <Compile Include="../../src/GolfSG/Views/PageActionGuardExtensions.cs" Link="Views/PageActionGuardExtensions.cs" />
     <Compile Include="../GolfSG.Tests/Infrastructure/TestDoubles/TestRoundRepository.cs" Link="TestDoubles/TestRoundRepository.cs" />
+    <Compile Include="../GolfSG.Tests/Infrastructure/TestDoubles/TestApiAccountService.cs" Link="TestDoubles/TestApiAccountService.cs" />
   </ItemGroup>
   <Import Project="../../build/GolfSG.AppEnvironment.targets" />
 </Project>

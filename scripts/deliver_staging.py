@@ -23,27 +23,32 @@ class Delivery:
     hook: str
     database_connection: str
     password: str
+    name: str = "Staging"
 
     @property
     def api_address(self):
         return self.metadata["apiAddress"].rstrip("/")
 
 
-def configuration(environment=None, metadata=None):
+def configuration(environment=None, metadata=None, *, target="staging"):
     environment = os.environ if environment is None else environment
+    if target not in ("staging", "production"):
+        raise ValueError("Unknown delivery target.")
+    name = target.capitalize()
+    prefix = target.upper()
     if metadata is None:
-        metadata = json.loads((ROOT / "deploy/staging.json").read_text(encoding="utf-8"))
+        metadata = json.loads((ROOT / f"deploy/{target}.json").read_text(encoding="utf-8"))
     if environment.get("GITHUB_ACTIONS") == "true" and (
-        environment.get("GITHUB_REF") != "refs/heads/dev"
+        environment.get("GITHUB_REF") != "refs/heads/" + metadata["branch"]
         or environment.get("GITHUB_EVENT_NAME") != "push"
     ):
-        raise ValueError("Staging delivery requires a push to dev.")
+        raise ValueError(f"{name} delivery requires a push to {metadata['branch']}.")
     commit = environment.get("GITHUB_SHA", "")
     if not re.fullmatch(r"[0-9a-fA-F]{40}", commit):
         raise ValueError("A full validated commit SHA is required.")
-    hook_value = environment.get("STAGING_RENDER_DEPLOY_HOOK", "").strip()
+    hook_value = environment.get(prefix + "_RENDER_DEPLOY_HOOK", "").strip()
     if not hook_value:
-        raise ValueError("Add the STAGING_RENDER_DEPLOY_HOOK Actions secret.")
+        raise ValueError(f"Add the {prefix}_RENDER_DEPLOY_HOOK environment secret.")
     hook = urlsplit(hook_value)
     if (
         hook.scheme != "https"
@@ -52,16 +57,16 @@ def configuration(environment=None, metadata=None):
         or hook.username or hook.password or hook.fragment
         or hook.path.rstrip("/") != "/deploy/" + metadata["render"]["serviceId"]
     ):
-        raise ValueError("The deploy hook must belong to the configured staging service.")
+        raise ValueError(f"The deploy hook must belong to the configured {target} service.")
     query = parse_qs(hook.query)
     if len(query.get("key", [])) != 1 or not query["key"][0]:
-        raise ValueError("The staging deploy hook is missing its key.")
+        raise ValueError(f"The {target} deploy hook is missing its key.")
     query["ref"] = [commit.lower()]
     deployment_hook = urlunsplit(hook._replace(query=urlencode(query, doseq=True)))
 
-    database_value = environment.get("STAGING_DATABASE_SETUP_CONNECTION", "").strip()
+    database_value = environment.get(prefix + "_DATABASE_SETUP_CONNECTION", "").strip()
     if not database_value:
-        raise ValueError("Add the STAGING_DATABASE_SETUP_CONNECTION Actions secret.")
+        raise ValueError(f"Add the {prefix}_DATABASE_SETUP_CONNECTION environment secret.")
     database = urlsplit(database_value)
     expected = metadata["neon"]
     if (
@@ -72,10 +77,10 @@ def configuration(environment=None, metadata=None):
         or unquote(database.username or "") != expected["setupRole"]
         or not database.password or database.fragment
     ):
-        raise ValueError("Use the direct Neon URL for the staging owner, host, and database recorded in deploy/staging.json.")
+        raise ValueError(f"Use the direct Neon URL for the {target} owner, host, and database recorded in deploy/{target}.json.")
     ssl_mode = parse_qs(database.query).get("sslmode", ["require"])[0]
     if ssl_mode not in ("require", "verify-ca", "verify-full"):
-        raise ValueError("The staging database connection must require TLS.")
+        raise ValueError(f"The {target} database connection must require TLS.")
     password = unquote(database.password)
     if any(c in password for c in "\r\n\0"):
         raise ValueError("The database password contains unsupported control characters.")
@@ -89,7 +94,7 @@ def configuration(environment=None, metadata=None):
         f"Username={quoted(expected['setupRole'])};Password={quoted(password)};"
         f"SSL Mode={npgsql_ssl_mode};Channel Binding=Require"
     )
-    return Delivery(metadata, commit.lower(), deployment_hook, connection, password)
+    return Delivery(metadata, commit.lower(), deployment_hook, connection, password, name)
 
 
 def migrate(delivery):
@@ -121,24 +126,24 @@ def serving_commit(delivery):
 
 def deploy(delivery, timeout_seconds=900):
     if serving_commit(delivery):
-        print("Staging already serves the validated commit and its database is ready.", flush=True)
+        print(f"{delivery.name} already serves the validated commit and its database is ready.", flush=True)
         return
     try:
         with urlopen(Request(delivery.hook, data=b"", method="POST"), timeout=30) as response:
             response.read()
     except HTTPError as error:
-        raise RuntimeError(f"Render rejected the staging deployment request (HTTP {error.code}).") from None
+        raise RuntimeError(f"Render rejected the {delivery.name.lower()} deployment request (HTTP {error.code}).") from None
     except (URLError, TimeoutError):
-        raise RuntimeError("The staging deployment request failed; check the Render service events.") from None
+        raise RuntimeError(f"The {delivery.name.lower()} deployment request failed; check the Render service events.") from None
 
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
         if serving_commit(delivery):
-            print(f"Staging deployment verified: {delivery.commit}", flush=True)
+            print(f"{delivery.name} deployment verified: {delivery.commit}", flush=True)
             return
-        print("Waiting for staging to serve the validated commit with a ready database...", flush=True)
+        print(f"Waiting for {delivery.name.lower()} to serve the validated commit with a ready database...", flush=True)
         time.sleep(10)
-    raise RuntimeError("Staging did not serve the validated commit before the deployment timeout. Check Render deploy logs.")
+    raise RuntimeError(f"{delivery.name} did not serve the validated commit before the deployment timeout. Check Render deploy logs.")
 
 
 def main():

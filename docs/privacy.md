@@ -4,7 +4,7 @@ title: GolfSG Privacy Policy
 
 # GolfSG Privacy Policy
 
-Last updated: 2026-10-11
+Last updated: 2026-10-13
 
 GolfSG is an offline-first golf training application. This policy describes the behavior of the current alpha version.
 
@@ -17,6 +17,7 @@ GolfSG may store:
 - Dates, titles, scores, strokes-gained values, and summary statistics.
 - App settings such as distance preferences and selected tracking options.
 - Temporary active-round or active-session state.
+- Local course pictures, reusable layouts, game participation links and completed results awaiting submission.
 - The configured server address, account ID/username, and the installation's sync-account binding.
 - Access and refresh tokens for optional server sign-in, in platform secure storage.
 
@@ -42,7 +43,16 @@ The development API separates round history by the authenticated account. The fi
 
 The server operator controls access to the database and its backups. Local HTTPS development certificates are accepted only for supported local addresses in Debug builds; Release builds require a normally trusted certificate. The current account system is a local development pilot, with no email verification or password recovery.
 
+## Course library and games
+
+Publishing a course explicitly uploads its picture, calibration, positions, shot settings and the creator's username to the server library, where signed-in users can browse and download it. Player results and unfinished input are excluded. Removing a course from the library stops discovery; retained revisions, downloaded copies and games that already use it remain available.
+
+Creating a game uploads its fixed course and picture, host identity, title and join code without publicly publishing the course. Joining stores the participant's account ID, username and membership. The code allows preview and joining; game details and the leaderboard are available to the host and joined participants. Explicit result submission uploads completed outcomes and calculated scores for sharing within that game. Personal History and its manual synchronization remain separate and private to the account. Unfinished shot input stays on the device.
+
+Downloaded pictures and unfinished game progress remain on the device for offline play. A completed local result can be submitted later; it is not automatically sent when saved. Deleting a round from personal History does not delete an already submitted game result. Closing a game retains membership and its leaderboard while rejecting new joins and first submissions. Courses, revisions, images, games and submitted results have no automatic expiry; server data removal requires the operator, including backup retention.
+
 ## Security
+
 
 GolfSG stores its data in the application's platform-managed private data directory and uses operating-system preferences for settings. Access protection relies on the operating system's app isolation and device security. GolfSG does not add its own encryption to its JSON files or exported files. When you export data, protection of the resulting copy depends on the destination you choose.
 
@@ -52,7 +62,7 @@ The current alpha does not include:
 
 - Advertising.
 - Hosted analytics or crash-reporting services.
-- Sale or sharing of personal data.
+- Sale of personal data.
 
 The app's scoring and history features work without network access.
 

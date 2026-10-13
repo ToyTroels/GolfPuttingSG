@@ -1,5 +1,6 @@
 using GolfSG.Application.ViewModels;
 using GolfSG.Infrastructure.Persistence;
+using GolfSG.Infrastructure.Courses;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls.Shapes;
 
@@ -198,7 +199,7 @@ public sealed class RoundHistoryPage : ContentPage
         {
             if (item.Round.CoursePractice is not null)
             {
-                await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new CoursePracticeResultPage(item.Round)));
+                await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new CoursePracticeResultPage(item.Round, services.GetRequiredService<CourseCommunityWorkflow>())));
                 return;
             }
             var page = services.GetRequiredService<RoundResultPage>();

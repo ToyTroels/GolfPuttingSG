@@ -9,10 +9,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
 {
     public DbSet<Product> Products => Set<Product>();
     public DbSet<SavedRound> SavedRounds => Set<SavedRound>();
+    public DbSet<SharedCourseImage> CourseImages => Set<SharedCourseImage>();
+    public DbSet<SharedCourse> SharedCourses => Set<SharedCourse>();
+    public DbSet<SharedCourseRevision> CourseRevisions => Set<SharedCourseRevision>();
+    public DbSet<SharedCourseGame> CourseGames => Set<SharedCourseGame>();
+    public DbSet<SharedGameParticipant> GameParticipants => Set<SharedGameParticipant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        CourseCommunityMapping.Configure(modelBuilder);
 
         var product = modelBuilder.Entity<Product>();
         product.ToTable("products");

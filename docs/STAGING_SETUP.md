@@ -30,10 +30,9 @@ in [staging metadata](../deploy/staging.json), with no passwords or tokens:
 - GitHub `dev` starts at `5d8364de27653111fbb02266eb0785f76249abc7`, the production
   service's running commit when staging was created.
 
-Production currently tracks `codex/maui-products-api`, not `master`. This setup
-does not switch its branch. The staging service initially runs the same committed
-API baseline. The staging setup and delivery workflow are committed to `dev`;
-unfinished feature work is promoted separately.
+Production follows `master`, with deployment and migrations behind your approval.
+See [production delivery](PRODUCTION_DELIVERY.md). Feature work is tested in `dev`
+and staging before promotion to `master`.
 Render auto-deployment is off because GitHub Actions controls database migrations,
 deployment and verification. See [staging delivery](STAGING_DELIVERY.md) for the
 two required Actions secrets and the merge-to-deploy flow.

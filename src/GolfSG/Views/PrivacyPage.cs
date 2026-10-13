@@ -20,7 +20,10 @@ public sealed class PrivacyPage : ContentPage
                     AppViews.PageTitle("Privatliv"),
                     Section(
                         "Data p\u00e5 enheden",
-                        "GolfSG gemmer runder, hulinput, putting-spil, benchmarks og indstillinger i appens lokale dataområde. Du kan spille og gemme offline uden en konto. Gemte runder sendes kun til din konto på den valgte server, når du trykker på Synkroniser i Historik."),
+                        "GolfSG gemmer runder, hulinput, putting-spil, benchmarks, banebilleder og indstillinger i appens lokale dataområde. Du kan spille og gemme offline uden en konto. Synkroniser i Historik sender gemte runder til din private konto. Indsend til spil deler kun det valgte spilresultat med spillets deltagere."),
+                    Section(
+                        "Banebibliotek og spil",
+                        "Offentliggør bane sender billede, opsætning og dit spillernavn til serverens bibliotek. Dine resultater offentliggøres ikke. Deltagelse med kode gemmer dit spillernavn og din tilmelding på serveren. Indsend til spil deler dine færdige slagresultater og SG med værten og de øvrige deltagere. Spil og hentede baner kan fortsættes offline. At skjule en bane fjerner den fra biblioteket, men bevarer hentede kopier og eksisterende spil. Sletning af personlig historik sletter ikke et allerede indsendt spilresultat."),
                     Section(
                         "Konto",
                         "Login og kontooprettelse sender brugernavn og adgangskode via HTTPS til den valgte server. Appen gemmer login-tokens i enhedens sikre lager og gemmer aldrig adgangskoden. Serveren gemmer en beskyttet adgangskodehash. Den første konto og server knyttes til denne installations historik. Logout fjerner login-tokens og bevarer historik og tilknytning. Automatisk tokenfornyelse bruges ved serverforespørgsler."),
