@@ -13,7 +13,7 @@ public sealed class PreferenceProductsApiSettings : IProductsApiSettings
     {
         get
         {
-#if DEBUG
+#if DEBUG && !GOLFSG_STAGING
             return true;
 #else
             return false;
@@ -25,15 +25,17 @@ public sealed class PreferenceProductsApiSettings : IProductsApiSettings
     {
         get
         {
-#if DEBUG
+#if DEBUG && !GOLFSG_STAGING
             return Preferences.Default.Get(PreferenceKey, DefaultAddress);
+#elif GOLFSG_STAGING
+            return StagingApiAddress.Value;
 #else
             return ProductionAddress;
 #endif
         }
         set
         {
-#if DEBUG
+#if DEBUG && !GOLFSG_STAGING
             Preferences.Default.Set(PreferenceKey, value);
 #endif
         }
@@ -43,11 +45,13 @@ public sealed class PreferenceProductsApiSettings : IProductsApiSettings
     {
         get
         {
-#if DEBUG
+#if DEBUG && !GOLFSG_STAGING
             return DeviceInfo.Current.Platform == DevicePlatform.Android
                 && DeviceInfo.Current.DeviceType == DeviceType.Virtual
                     ? "https://10.0.2.2:7151/"
                     : "https://localhost:7151/";
+#elif GOLFSG_STAGING
+            return StagingApiAddress.Value;
 #else
             return ProductionAddress;
 #endif

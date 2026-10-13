@@ -1,0 +1,20 @@
+# Staging only. Import this file as a new Blueprint; it does not manage production.
+# Create dev and initialize the separate Neon database before the first deploy.
+services:
+  - type: web
+    name: golfputtingsg-staging
+    runtime: docker
+    repo: https://github.com/ToyTroels/GolfPuttingSG
+    branch: dev
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    # Enable deployment automation once migrations and dev CI are wired up.
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Staging
+      - key: ConnectionStrings__Default
+        sync: false

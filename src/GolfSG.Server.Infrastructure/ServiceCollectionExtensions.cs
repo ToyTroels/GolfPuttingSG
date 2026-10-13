@@ -1,4 +1,5 @@
 using GolfSG.Application.Accounts;
+using GolfSG.Application.Courses;
 using GolfSG.Application.Server;
 using GolfSG.Server.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -17,6 +18,7 @@ public static class ServiceCollectionExtensions
             options.UseNpgsql(configuration.GetConnectionString("Default")
                 ?? throw new InvalidOperationException("ConnectionStrings:Default is not configured.")));
         services.AddScoped<IServerRoundStore, PostgresRoundStore>();
+        services.AddScoped<ICourseCommunityStore, PostgresCourseCommunityStore>();
         services.AddScoped<IServerProductStore, PostgresProductStore>();
         services.AddScoped<IServerConnectionCheck, PostgresConnectionCheck>();
         services.AddIdentityCore<IdentityUser>(options =>

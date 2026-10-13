@@ -97,20 +97,40 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
     }
 
     public async Task<CoursePracticeSession> StartAsync(PracticeCourse course)
+        => await StartSessionAsync(course, Guid.NewGuid().ToString("N"), null);
+
+    public Task<CoursePracticeSession> StartGameAsync(PracticeCourse course, string roundId, CourseGameLink game)
+        => StartSessionAsync(course, roundId, game);
+
+    private async Task<CoursePracticeSession> StartSessionAsync(PracticeCourse course, string roundId, CourseGameLink? game)
     {
         ValidateCourse(course);
+        ValidateGameLink(game);
+        if (game is not null && !Guid.TryParseExact(roundId, "N", out _)) throw new ArgumentException("Spillets runde-id er ugyldigt.");
         await gate.WaitAsync();
         try
         {
             var document = await store.LoadAsync();
+            if (game is not null && document.Active is { } current && current.Id == roundId && current.Game == game)
+                return current;
             if (document.Active is not null) throw new InvalidOperationException("Fortsæt eller opgiv den igangværende træningsrunde først.");
+            if (game is not null && await rounds.GetRoundAsync(roundId) is not null)
+                throw new InvalidOperationException("Dit resultat er allerede gemt. Åbn spillet for at indsende det.");
             // Freeze the layout and scale for this round, even if the reusable course is edited later.
-            var session = new CoursePracticeSession(Guid.NewGuid().ToString("N"), DateTime.Now,
-                course with { Shots = course.Shots.ToArray() }, [], new(), course.Shots.Select(shot => shot.Id).ToArray());
+            var session = new CoursePracticeSession(roundId, DateTime.Now,
+                course with { Shots = course.Shots.ToArray() }, [], new(), course.Shots.Select(shot => shot.Id).ToArray(), game);
             await store.SaveAsync(document with { Active = session });
             return session;
         }
         finally { gate.Release(); }
+    }
+
+    public static void ValidateGameLink(CourseGameLink? game)
+    {
+        if (game is null) return;
+        if (!Guid.TryParseExact(game.GameId, "N", out var id) || id == Guid.Empty || string.IsNullOrWhiteSpace(game.AccountId) || game.AccountId.Length > 200 ||
+            !Uri.TryCreate(game.ServerAddress, UriKind.Absolute, out var server) || server.Scheme != Uri.UriSchemeHttps || !string.IsNullOrEmpty(server.UserInfo))
+            throw new ArgumentException("Rundens spiltilknytning er ugyldig.");
     }
 
     public async Task<CoursePracticeSession> SelectShotAsync(string sessionId, string shotId, int expectedIndex, string expectedCurrentShotId)
@@ -145,6 +165,8 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
         {
             var document = await store.LoadAsync();
             var active = RequireActive(document, sessionId);
+            if (active.Game is not null)
+                throw new InvalidOperationException("Antallet af slag er fast for alle deltagere i spillet.");
             if (active.IsComplete || active.Results.Count != expectedIndex || active.CurrentShot?.Id != expectedCurrentShotId)
                 throw new InvalidOperationException("Det aktuelle slag er ændret. Genåbn runden.");
             var selected = active.Course.Shots.FirstOrDefault(shot => shot.Id == shotId);
@@ -181,26 +203,7 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
     }
 
     public CourseShotResult Score(CoursePracticeShot shot, PracticeCourse course, CourseShotOutcome outcome)
-    {
-        ValidateCourse(course);
-        if (!double.IsFinite(outcome.EndDistanceMeters) || outcome.EndDistanceMeters is < 0 or > 1000 ||
-            outcome.PenaltyStrokes is < 0 or > 10 || !Enum.IsDefined(outcome.EndLie) ||
-            outcome.Holed != (outcome.EndLie == ShotLie.Holed) ||
-            (outcome.Holed ? outcome.EndDistanceMeters != 0 : outcome.EndDistanceMeters <= 0))
-            throw new ArgumentException("Angiv en gyldig slutafstand og lie, eller vælg I hul.");
-        var start = Expected(shot.DistanceMeters(course), shot.Lie, shot.Category);
-        var finish = outcome.Holed ? 0 : Expected(outcome.EndDistanceMeters, outcome.EndLie);
-        return new(outcome, start, finish, start - finish - 1 - outcome.PenaltyStrokes, shot.Id);
-    }
-
-    private double Expected(double metres, ShotLie lie, PracticeShotCategory? category = null)
-    {
-        var yards = metres / .9144;
-        if (lie == ShotLie.Green) return putting.GetExpectedPutts(yards, DistanceUnit.Yards);
-        if (lie != ShotLie.Tee && (category == PracticeShotCategory.AroundGreen || category is null && yards <= 30))
-            return around.GetAroundGreenExpectedStrokes(yards, DistanceUnit.Yards, lie == ShotLie.Fairway ? ShotLie.FairwayCut : lie);
-        return approach.GetApproachExpectedStrokes(yards, DistanceUnit.Yards, lie);
-    }
+        => new CoursePracticeScorer(putting, approach, around).Score(shot, course, outcome);
 
     public async Task<CoursePracticeSession> RecordAsync(string sessionId, int expectedIndex, CourseShotOutcome outcome, string? expectedShotId = null)
     {
@@ -308,6 +311,6 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
         }).ToArray();
         return new(session.Id, session.Date, holes, new(shots.Any(s => s.Category == PracticeShotCategory.Putting),
             shots.Any(s => s.Category == PracticeShotCategory.Approach), shots.Any(s => s.Category == PracticeShotCategory.AroundGreen)),
-            shots.Count, CoursePractice: new(session.Course with { Shots = shots.DistinctBy(shot => shot.Id, StringComparer.Ordinal).ToArray() }, results));
+            shots.Count, CoursePractice: new(session.Course with { Shots = shots.DistinctBy(shot => shot.Id, StringComparer.Ordinal).ToArray() }, results, session.Game));
     }
 }

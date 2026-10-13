@@ -74,6 +74,7 @@ public static class DatabaseSetup
             await Execute($"GRANT USAGE ON SCHEMA public TO {quotedRole}");
             await Execute($"GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO {quotedRole}");
             await Execute($"GRANT SELECT, INSERT, UPDATE ON public.saved_rounds TO {quotedRole}");
+            await Execute($"GRANT SELECT, INSERT, UPDATE ON public.shared_courses, public.course_revisions, public.course_images, public.course_games, public.course_game_participants TO {quotedRole}");
             await Execute($"GRANT USAGE, SELECT ON SEQUENCE public.products_id_seq TO {quotedRole}");
             await Execute($"""
                 GRANT SELECT, INSERT, UPDATE, DELETE ON

@@ -326,6 +326,13 @@
       },
       "golfsg.core": {
         "type": "Project"
+      },
+      "golfsg.infrastructure": {
+        "type": "Project",
+        "dependencies": {
+          "GolfSG.Application": "[0.3.0-alpha, )",
+          "GolfSG.Core": "[0.3.0-alpha, )"
+        }
       }
     }
   }

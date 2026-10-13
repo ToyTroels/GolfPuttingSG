@@ -32,6 +32,13 @@ jobs:
       - name: Run page interaction tests
         run: dotnet test tests/GolfSG.PageTests/GolfSG.PageTests.csproj -c Release --no-restore
 
+      - name: Verify staging endpoint isolation
+        run: >-
+          dotnet test tests/GolfSG.PageTests/GolfSG.PageTests.csproj
+          -c Release --no-restore
+          -p:GolfSGEnvironment=Staging
+          -p:GolfSGStagingApiAddress=https://staging.example.invalid/
+
       - name: Check test dependencies for known vulnerabilities
         shell: bash
         run: |

@@ -90,4 +90,5 @@
 	  <ProjectReference Include="..\GolfSG.Infrastructure\GolfSG.Infrastructure.csproj" />
 	</ItemGroup>
 
+	<Import Project="../../build/GolfSG.AppEnvironment.targets" />
 </Project>

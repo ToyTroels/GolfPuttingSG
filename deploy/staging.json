@@ -1,0 +1,17 @@
+{
+  "branch": "dev",
+  "bootstrapCommit": "5d8364de27653111fbb02266eb0785f76249abc7",
+  "apiAddress": "https://golfputtingsg-staging.onrender.com/",
+  "render": {
+    "workspaceId": "tea-db6bh0o473hc73dst4ug",
+    "serviceId": "srv-db754sff3r2c73d82rg0",
+    "healthCheckPath": "/api/health",
+    "autoDeploy": false
+  },
+  "neon": {
+    "projectId": "gentle-king-21309118",
+    "branchId": "br-long-star-baa49p9t",
+    "database": "golfsg_staging",
+    "runtimeRole": "golfsg_staging_app"
+  }
+}

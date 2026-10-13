@@ -6,12 +6,12 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
-  <Identity Name="com.troel.golfsg" Publisher="CN=Troel" Version="0.0.0.0" />
+  <Identity Name="maui-package-name-placeholder" Publisher="CN=Troel" Version="0.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="26CB5955-68E9-4752-B3C0-51898262ECE7" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>GolfSG</DisplayName>
+    <DisplayName>$placeholder$</DisplayName>
     <PublisherDisplayName>Troel</PublisherDisplayName>
     <Logo>$placeholder$.png</Logo>
   </Properties>
@@ -28,7 +28,7 @@
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="GolfSG"
+        DisplayName="$placeholder$"
         Description="Offline golf strokes-gained training and round tracking"
         Square150x150Logo="$placeholder$.png"
         Square44x44Logo="$placeholder$.png"

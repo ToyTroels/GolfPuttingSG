@@ -29,6 +29,8 @@ Practice rounds are excluded from normal statistics and Start insights, since si
 
 ## Save and share a course
 
+Signed-in users can also publish a course to **Banebibliotek**, or create a game with a six-character code for independent play and a shared leaderboard. A game uses fixed positions and attempt counts for every participant. Finish locally and explicitly submit the completed result when connected. See [course library and games](course-library-and-games.md) for the complete flow and server setup.
+
 **Gem bane** persists the reusable setup on this device. Under **Spil bane**, choose **Del bane** on a saved course to share or save a `.golfsgcourse` file through the device's share dialog. It includes the picture, calibration, course and shot names, positions, lies, categories, measured overrides and attempt counts. It excludes player results, active sessions and account information. Anyone you give the file to can import and reuse it; sharing does not grant remote editing access.
 
 On the receiving device, open **Spil bane → Importér bane fra fil** and select the shared file. The course and its picture are saved locally and remain available offline after restarting. Importing the same content again preserves the existing copy, including local edits. A changed shared file creates a separate copy; it does not update existing copies or recorded rounds. Supported pictures are JPEG and PNG, with a 10 MB image limit and 15 MB total file limit. Sharing and importing do not require an account or a running API.

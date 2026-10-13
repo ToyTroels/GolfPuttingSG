@@ -16,6 +16,7 @@ GolfSG is an offline-first .NET MAUI app for tracking golf putting performance w
 - Supports undo of the last submitted practice putt and review/edit of recorded putts during a game or from its completion screen.
 - Includes beta course practice rounds: a menu lets you play a saved course or set up a new one. New courses use the supplied offline facility picture. Place and drag start/target markers, calibrate distances, save shot lies, layouts and attempt counts, then use the shot overview to choose remaining positions in any order. Each attempt has its own result and SG, with resumable input, undo and history. See [the course-practice guide](docs/product/course-practice-beta.md).
 - Stores round and practice history locally as JSON.
+- Includes an account-based course library and games joined with a six-character code. Publish picture-based courses, download offline copies, play a fixed game independently and explicitly submit results to a participant leaderboard. Requires the updated API and database migration 003; see [course library and games](docs/product/course-library-and-games.md).
 - Provides history, filtering, editing, recovery, and import/export support.
 - Import files one at a time to merge round history. Rounds are matched by ID; existing saved versions are kept, and repeated imports do not add duplicates. Copies with different IDs are treated as separate rounds.
 - Use **Konto og login** on the start screen to sign in or create an account. In **Historik**, import a GolfSG `rounds.json` export, then choose **Synkroniser** to upload your local rounds to that account. Import and local play work offline.
@@ -54,6 +55,9 @@ dotnet build src\GolfSG\GolfSG.csproj -f net10.0-windows10.0.19041.0
 To run the app, open `GolfSG.sln` in Visual Studio, select the `GolfSG` startup project, choose a target, and start debugging. See [RUN_ON_PHONE.md](RUN_ON_PHONE.md) for Android device notes.
 
 ## Build Android packages
+
+For a separate **GolfSG Staging** installation connected to its own API and
+database, follow [staging setup](docs/STAGING_SETUP.md).
 
 An ordinary local Release APK may use a development signing identity and must not be distributed. Production Android releases are built as both AAB and APK files by the guarded release workflow. Follow [docs/ANDROID_RELEASE_SIGNING.md](docs/ANDROID_RELEASE_SIGNING.md) and verify the certificate fingerprint before installation or upload.
 

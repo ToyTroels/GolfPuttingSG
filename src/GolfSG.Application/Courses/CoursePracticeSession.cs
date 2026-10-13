@@ -5,7 +5,7 @@ namespace GolfSG.Application.Courses;
 
 public sealed record CourseResultInput(string Distance = "", ShotLie Lie = ShotLie.Green, int Penalties = 0, bool Holed = false);
 public sealed record CoursePracticeSession(string Id, DateTime Date, PracticeCourse Course,
-    IReadOnlyList<CourseShotResult> Results, CourseResultInput Input, IReadOnlyList<string>? ShotOrder = null)
+    IReadOnlyList<CourseShotResult> Results, CourseResultInput Input, IReadOnlyList<string>? ShotOrder = null, CourseGameLink? Game = null)
 {
     public bool IsComplete => Results.Count == TotalAttempts;
 

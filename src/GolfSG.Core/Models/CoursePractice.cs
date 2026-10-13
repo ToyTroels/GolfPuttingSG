@@ -23,7 +23,9 @@ public sealed record PracticeCourse(string Id, string Name, string ImageFile, do
 public sealed record CourseShotOutcome(double EndDistanceMeters, ShotLie EndLie, int PenaltyStrokes, bool Holed);
 public sealed record CourseShotResult(CourseShotOutcome Outcome, double ExpectedStart, double ExpectedFinish, double StrokesGained,
     string? ShotId = null);
-public sealed record CoursePracticeDetails(PracticeCourse Course, IReadOnlyList<CourseShotResult> Results)
+public sealed record CourseGameLink(string GameId, string AccountId, string ServerAddress);
+
+public sealed record CoursePracticeDetails(PracticeCourse Course, IReadOnlyList<CourseShotResult> Results, CourseGameLink? Game = null)
 {
     [JsonIgnore]
     public IReadOnlyList<CoursePracticeShot> PlayedShots

@@ -4,6 +4,8 @@ Ideas to evaluate before scheduling implementation. Moving an idea here preserve
 
 ## Near-term review
 
+- **Next session: easier course play:** focus on making the course-play flow simpler and more user friendly. Review starting and resuming a round, choosing positions, recording shots, and finishing a round before deciding which interactions to simplify.
+- **Google sign-in and easier account sync:** evaluate optional "Continue with Google" and later Apple or similar providers, using the existing GolfSG backend to store and sync rounds. Allow existing users to link a provider to their account without losing history or creating duplicate accounts. Keep offline play without login, show sync status and pending changes clearly, and evaluate automatic sync when connected with retries that accommodate the server's slow wake-up. Provider sign-in identifies the user; it does not itself store or sync round data.
 - **Optional accounts and cloud sync:** evaluate Neon Free + Render Free + Firebase Authentication Spark for a small group, retaining offline saves and allowing servers to sleep. Start with one authenticated round sync, then prove isolation between two accounts, reliable retries, and no duplicates. See the [detailed cloud-sync idea](cloud-sync-idea.md).
 - **Bogey avoidance insight:** define expected versus actual bogey-or-worse outcomes using par, strokes to reach the green, putting, and penalties. Consider GIR/missed-green views and avoid claiming information missing from older rounds.
 - **Personal baselines:** explore scratch/handicap reference options and the golfer's own recent average. Establish data provenance and enough observations before presenting comparisons as meaningful.

@@ -5,6 +5,7 @@ Archived on 2026-10-10 from the checked items in TODO.md. These preserve the rec
 
 ## User-perspective improvement backlog
 
+- [x] Implement the account-based course library and games with join codes: durable PostgreSQL pictures and revisions, offline downloaded copies, frozen game setup, independent play, explicit completed-result submission, server scoring and a participant leaderboard. Deployment requires database migration 003; physical-device acceptance remains a release check. See [course library and games](course-library-and-games.md).
 - [x] Implement beta picture-based course practice setup and play: saved layouts, calibration and measured overrides, draggable positions, lies/categories, configurable attempts per position, individual finishing outcomes/penalties, undo, autosave/resume and separately labelled history. Device acceptance remains in the active backlog.
 - [x] Let players undo the latest submitted putt while a game is active and review/edit any recorded putt in training games, tour rounds, and benchmarks, including the completion screen. Corrections recalculate scores and persist to the active draft or the existing history entry.
 - [x] Add durable autosave/resume for training games, tour rounds, and benchmarks, preserving exact distances, completed results, and the current putt count; require explicit discard before replacement. Automated recovery checks and Windows compilation pass; physical-device acceptance remains a release check.

@@ -43,6 +43,10 @@ Rounds and Products require the Identity bearer scheme. Products are shared test
 
 ## Active round recovery
 
+Community leaderboards and My games use explicit summary projections, avoiding result JSON and unused course definitions. Per-player result pages are sliced in PostgreSQL and fetched on demand with the same host/member authorization. Submission reads a dedicated authenticated context, then retains the existing atomic round-id/closure/retry checks. Joining returns metadata only; `CourseCommunityWorkflow.PlayAsync` reuses known membership and verifies the content-hashed local image before using the separate binary game-image endpoint. My games reads local History at most once per page. Regression checks cover query budgets, summary response size, image reuse and lazy result paging.
+
+Shared course-library and game workflows use `CourseCommunityService` and `ICourseCommunityStore`. The API exposes authenticated `/api/community` routes; PostgreSQL stores pictures, immutable course revisions, frozen games and account-scoped participation. Joining, closing and submitting serialize on the game's database row; creation and publication use transactional locks to make retries safe. Only completed game outcomes are submitted, with server-recalculated scores and fixed quotas. `CourseCommunityWorkflow` retains device images and optional game/account/server linkage in local course-practice sessions and completed History. History is the durable pending-result store; ordinary round synchronization does not submit to a game. See [the feature guide](docs/product/course-library-and-games.md).
+
 An active round is autosaved as an `ActiveRoundSession` containing its draft, current hole, and update time. Finalizing writes the completed or intentionally shortened round to history before deleting the active session. The start page reconciles a stale active session whose id is already present in history.
 
 ## UI concurrency

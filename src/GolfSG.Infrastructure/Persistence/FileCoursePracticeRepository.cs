@@ -29,7 +29,7 @@ public sealed class FileCoursePracticeRepository(string directory) : ICoursePrac
                 throw new InvalidDataException("Banedata kunne ikke indlæses. Filerne er bevaret.");
             if (await ReadAsync(path) is not null) File.Copy(path, path + ".bak", true);
             await using (var stream = File.Create(path + ".tmp"))
-                await JsonSerializer.SerializeAsync(stream, new Document(3, document), Options);
+                await JsonSerializer.SerializeAsync(stream, new Document(4, document), Options);
             File.Move(path + ".tmp", path, true);
             // Keep the backup current after a successful write; discarded/completed rounds must not reappear.
             File.Copy(path, path + ".bak", true);
@@ -43,6 +43,7 @@ public sealed class FileCoursePracticeRepository(string directory) : ICoursePrac
         foreach (var course in document.Courses) CoursePracticeService.ValidateCourse(course);
         if (document.Active is { } active)
         {
+            CoursePracticeService.ValidateGameLink(active.Game);
             CoursePracticeService.ValidateCourse(active.Course);
             if (active.ShotOrder is { } order && (order.Count != active.Course.Shots.Count ||
                 order.Distinct(StringComparer.Ordinal).Count() != order.Count ||
@@ -65,11 +66,11 @@ public sealed class FileCoursePracticeRepository(string directory) : ICoursePrac
             using var json = await JsonDocument.ParseAsync(stream);
             if (json.RootElement.ValueKind == JsonValueKind.Object &&
                 json.RootElement.TryGetProperty("schemaVersion", out var version) && version.ValueKind == JsonValueKind.Number &&
-                version.TryGetInt32(out var schemaVersion) && schemaVersion > 3)
+                version.TryGetInt32(out var schemaVersion) && schemaVersion > 4)
                 throw new NotSupportedException("Banedata er fra en nyere appversion. Filerne er bevaret.");
             var document = json.RootElement.Deserialize<Document>(Options);
-            if (document?.SchemaVersion > 3) throw new NotSupportedException("Banedata er fra en nyere appversion. Filerne er bevaret.");
-            if (document?.SchemaVersion is not (1 or 2 or 3) || document.Data is null) return null;
+            if (document?.SchemaVersion > 4) throw new NotSupportedException("Banedata er fra en nyere appversion. Filerne er bevaret.");
+            if (document?.SchemaVersion is not (1 or 2 or 3 or 4) || document.Data is null) return null;
             Validate(document.Data);
             return document.Data;
         }

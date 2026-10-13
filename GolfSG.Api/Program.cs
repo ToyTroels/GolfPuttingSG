@@ -1,4 +1,5 @@
 using GolfSG.Application.Server;
+using GolfSG.Application.Courses;
 using GolfSG.Server.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -14,12 +15,14 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.AddControllers();
         builder.Services.AddScoped<ServerRoundService>();
+        builder.Services.AddScoped<CourseCommunityService>();
         builder.Services.AddServerInfrastructure(builder.Configuration);
         builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
             .AddBearerToken(IdentityConstants.BearerScheme);
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton(TimeProvider.System);
-        var dataProtection = builder.Services.AddDataProtection().SetApplicationName("GolfSG.Api");
+        var dataProtection = builder.Services.AddDataProtection().SetApplicationName(
+            builder.Environment.IsStaging() ? "GolfSG.Api.Staging" : "GolfSG.Api");
         if (builder.Configuration["Auth:DataProtectionKeysPath"] is { Length: > 0 } keysPath)
         {
             dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
@@ -27,6 +30,9 @@ public class Program
         }
         builder.Services.AddRateLimiter(options =>
         {
+            options.AddPolicy("game-codes", context => RateLimitPartition.GetFixedWindowLimiter(
+                context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 15, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
             options.AddPolicy("accounts", context => RateLimitPartition.GetFixedWindowLimiter(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions

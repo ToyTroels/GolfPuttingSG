@@ -299,6 +299,7 @@ public sealed class RoundFileStore
         try
         {
             CoursePracticeService.ValidateResults(practice.Course, practice.Results, requireComplete: true);
+            CoursePracticeService.ValidateGameLink(practice.Game);
             if (round.Holes is null || round.Holes.Count != practice.Results.Count || round.ConfiguredHoleCount != practice.Results.Count)
                 throw new ArgumentException("Antallet af slag i rundens oversigt stemmer ikke med resultaterne.");
         }

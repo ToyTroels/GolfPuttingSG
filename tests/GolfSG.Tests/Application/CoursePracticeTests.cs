@@ -241,7 +241,7 @@ public sealed class CoursePracticeTests
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
     [TestMethod]
-    [DataRow(4)]
+    [DataRow(5)]
     [DataRow(999)]
     public async Task FutureSchemaIsPreserved(int schemaVersion)
     {
@@ -449,7 +449,7 @@ public sealed class CoursePracticeTests
             Assert.AreEqual("bunker", restored.CurrentShot!.Id); Assert.AreEqual(result, restored.Results[0]);
             await Service(store).SelectShotAsync(active.Id, "putt", 1, "bunker");
             var written = JsonNode.Parse(await File.ReadAllTextAsync(path))!;
-            Assert.AreEqual(3, written["schemaVersion"]!.GetValue<int>());
+            Assert.AreEqual(4, written["schemaVersion"]!.GetValue<int>());
             CollectionAssert.AreEqual(new[] { "approach", "putt", "bunker" }, written["data"]!["active"]!["shotOrder"]!.AsArray().Select(n => n!.GetValue<string>()).ToArray());
             Assert.IsNull(written["data"]!["active"]!["orderedShots"]); Assert.IsNull(written["data"]!["active"]!["currentShot"]);
             restored = (await new FileCoursePracticeRepository(directory).LoadAsync()).Active!;
@@ -889,7 +889,7 @@ public sealed class CoursePracticeTests
             Assert.AreEqual(1, restored.CompletedAttempts("putt")); Assert.AreEqual("approach", restored.CurrentShot!.Id); Assert.AreEqual("3", restored.Input.Distance);
             restored = await Service(store).SelectShotAsync(active.Id, "bunker", 1, "approach");
             Assert.AreEqual(result with { ShotId = "putt" }, restored.Results[0]); Assert.AreEqual("bunker", restored.CurrentShot!.Id);
-            var written = JsonNode.Parse(await File.ReadAllTextAsync(path))!; Assert.AreEqual(3, written["schemaVersion"]!.GetValue<int>());
+            var written = JsonNode.Parse(await File.ReadAllTextAsync(path))!; Assert.AreEqual(4, written["schemaVersion"]!.GetValue<int>());
             Assert.AreEqual("putt", written["data"]!["active"]!["results"]![0]!["shotId"]!.GetValue<string>());
             restored = (await new FileCoursePracticeRepository(directory).LoadAsync()).Active!;
             AssertShotOrder(restored, "putt", "bunker", "approach"); Assert.AreEqual(1, restored.CompletedAttempts("putt"));

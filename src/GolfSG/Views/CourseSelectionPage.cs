@@ -1,12 +1,14 @@
 using GolfSG.Application.Courses;
 using GolfSG.Core.Models;
 using GolfSG.Infrastructure.Persistence;
+using GolfSG.Infrastructure.Courses;
 
 namespace GolfSG.Views;
 
 public sealed class CourseSelectionPage : ContentPage
 {
     private readonly CoursePracticeService service;
+    private readonly CourseCommunityWorkflow? community;
     private readonly VerticalStackLayout layout = new() { Padding = 16, Spacing = 14 };
     private readonly VerticalStackLayout courseList = new() { Spacing = 12 };
     private readonly Label activeDescription = new() { TextColor = GolfTheme.Colors.Text };
@@ -16,9 +18,10 @@ public sealed class CourseSelectionPage : ContentPage
     private readonly Button retry = CoursePracticeViews.SecondaryButton("Prøv at indlæse igen");
     private bool busy;
 
-    public CourseSelectionPage(CoursePracticeService service)
+    public CourseSelectionPage(CoursePracticeService service, CourseCommunityWorkflow? community = null)
     {
         this.service = service;
+        this.community = community;
         CoursePracticeViews.ConfigurePage(this);
         Title = "Spil bane · Beta";
         BackgroundColor = GolfTheme.Colors.PageBackground;
@@ -86,7 +89,7 @@ public sealed class CourseSelectionPage : ContentPage
             edit.Clicked += async (_, _) => await RunAsync(() => EditAsync(course.Id));
             var share = CoursePracticeViews.SecondaryButton("Del bane").Accessible($"CoursePractice.Share-{course.Id}", $"Del banen {course.Name} med billede og slag");
             share.Clicked += async (_, _) => await RunAsync(() => ShareAsync(course.Id));
-            courseList.Children.Add(AppViews.Card(new VerticalStackLayout
+            var card = new VerticalStackLayout
             {
                 Spacing = 10,
                 Children =
@@ -97,7 +100,15 @@ public sealed class CourseSelectionPage : ContentPage
                     edit,
                     share
                 }
-            }));
+            };
+            if (community is not null)
+            {
+                var publish = CoursePracticeViews.SecondaryButton("Offentliggør bane")
+                    .Accessible($"CoursePractice.Publish-{course.Id}", $"Offentliggør {course.Name} i banebiblioteket");
+                publish.Clicked += async (_, _) => await RunAsync(() => Navigation.PushAsync(new CoursePublishPage(community, course)));
+                card.Children.Add(publish);
+            }
+            courseList.Children.Add(AppViews.Card(card));
         }
     }
 
@@ -111,7 +122,7 @@ public sealed class CourseSelectionPage : ContentPage
         }
         var course = FindCourse(document, courseId);
         var session = await service.StartAsync(course);
-        await Navigation.PushAsync(new CoursePlayPage(service, session));
+        await Navigation.PushAsync(new CoursePlayPage(service, session, community));
     }
 
     private CourseShareService Sharing() => new(service, Path.GetDirectoryName(CoursePracticeImages.PathFor(CoursePracticeImages.SampleFile))!);
@@ -119,7 +130,7 @@ public sealed class CourseSelectionPage : ContentPage
     private async Task ShareAsync(string courseId)
     {
         var course = FindCourse(await service.LoadAsync(), courseId);
-        await CoursePracticeImages.EnsureSampleAsync();
+        if (course.ImageFile == CoursePracticeImages.SampleFile) await CoursePracticeImages.EnsureSampleAsync();
         var path = Path.Combine(FileSystem.CacheDirectory, "golfsg-course-" + Guid.NewGuid().ToString("N") + ".golfsgcourse");
         await using (var output = File.Create(path)) await Sharing().ExportAsync(course, output);
         await Share.Default.RequestAsync(new ShareFileRequest { Title = $"Del {course.Name}", File = new ShareFile(path, "application/json") });
@@ -151,7 +162,7 @@ public sealed class CourseSelectionPage : ContentPage
     {
         var document = await service.LoadAsync();
         if (document.Active is not { } active) { await ReloadAsync(); return; }
-        await Navigation.PushAsync(new CoursePlayPage(service, active));
+        await Navigation.PushAsync(new CoursePlayPage(service, active, community));
     }
 
     private async Task DiscardAsync()

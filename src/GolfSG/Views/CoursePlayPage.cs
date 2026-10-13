@@ -1,12 +1,14 @@
 using GolfSG.Application.Courses;
 using GolfSG.Application.ViewModels;
 using GolfSG.Core.Models;
+using GolfSG.Infrastructure.Courses;
 
 namespace GolfSG.Views;
 
 public sealed class CoursePlayPage : ContentPage
 {
     private readonly CoursePracticeService service;
+    private readonly CourseCommunityWorkflow? community;
     private CoursePracticeSession session;
     private readonly CourseMapView map = new() { Editable = false, PictureHeight = 400 };
     private readonly CourseMapView overviewMap = new("CoursePractice.OverviewMap") { Editable = false, SelectSavedShots = true, PictureHeight = 420 };
@@ -42,9 +44,10 @@ public sealed class CoursePlayPage : ContentPage
     private bool refreshing, busy, showingOverview = true;
     private static readonly ShotLie[] Lies = [ShotLie.Green, ShotLie.Fairway, ShotLie.FairwayCut, ShotLie.Rough, ShotLie.Sand, ShotLie.Recovery, ShotLie.Tee];
 
-    public CoursePlayPage(CoursePracticeService practiceService, CoursePracticeSession initialSession)
+    public CoursePlayPage(CoursePracticeService practiceService, CoursePracticeSession initialSession, CourseCommunityWorkflow? community = null)
     {
         service = practiceService; session = initialSession;
+        this.community = community;
         CoursePracticeViews.ConfigurePage(this);
         holed.Color = GolfTheme.Colors.PrimaryGreen;
         Title = "Spil banerunde · Beta"; BackgroundColor = GolfTheme.Colors.PageBackground;
@@ -129,7 +132,7 @@ public sealed class CoursePlayPage : ContentPage
         {
             await FlushInputAsync();
             var round = await service.FinishAsync(session.Id);
-            await Navigation.PushAsync(new CoursePracticeResultPage(round));
+            await Navigation.PushAsync(new CoursePracticeResultPage(round, community));
             Navigation.RemovePage(this);
         });
         undo.Clicked += async (_, _) => await RunAsync(async () =>
@@ -152,7 +155,7 @@ public sealed class CoursePlayPage : ContentPage
                 throw new InvalidOperationException("Runden er ikke længere aktiv.");
             session = active; Refresh();
         });
-        try { await CoursePracticeImages.EnsureSampleAsync(); var path = CoursePracticeImages.PathFor(session.Course.ImageFile); map.SetImage(path); overviewMap.SetImage(path); }
+        try { if (session.Course.ImageFile == CoursePracticeImages.SampleFile) await CoursePracticeImages.EnsureSampleAsync(); var path = CoursePracticeImages.PathFor(session.Course.ImageFile); map.SetImage(path); overviewMap.SetImage(path); }
         catch { error.Text = "Banebilledet kunne ikke åbnes. Slagets navn, lie og afstand er stadig tilgængelige."; }
     }
     private void Refresh()
@@ -261,8 +264,8 @@ public sealed class CoursePlayPage : ContentPage
         var more = CoursePracticeViews.SecondaryButton("+")
             .Accessible($"CoursePractice.IncreaseAttempts-{shot.Id}", $"Flere slag fra {shot.Name}");
         foreach (var button in new[] { fewer, more }) { button.WidthRequest = 56; button.Padding = 0; }
-        fewer.IsEnabled = completedCount == 0 && shot.Attempts > 1;
-        more.IsEnabled = completedCount == 0 && shot.Attempts < 100 && session.TotalAttempts < 1000;
+        fewer.IsEnabled = session.Game is null && completedCount == 0 && shot.Attempts > 1;
+        more.IsEnabled = session.Game is null && completedCount == 0 && shot.Attempts < 100 && session.TotalAttempts < 1000;
         fewer.Clicked += async (_, _) => await RunAsync(() => ChangeAttemptsAsync(shot, shot.Attempts - 1));
         more.Clicked += async (_, _) => await RunAsync(() => ChangeAttemptsAsync(shot, shot.Attempts + 1));
         var value = new Label
@@ -283,7 +286,7 @@ public sealed class CoursePlayPage : ContentPage
                 },
                 new Label
                 {
-                    Text = completedCount == 0 ? "Gælder kun denne runde." : "Antallet er låst, fordi du har registreret slag her.",
+                    Text = session.Game is not null ? "Samme antal slag for alle deltagere i spillet." : completedCount == 0 ? "Gælder kun denne runde." : "Antallet er låst, fordi du har registreret slag her.",
                     TextColor = GolfTheme.Colors.MutedText, FontSize = 14
                 }
             }
