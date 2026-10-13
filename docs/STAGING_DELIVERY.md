@@ -10,7 +10,7 @@ test without database owner credentials or deployment hooks.
    audits, platform builds and an API Docker build.
 2. Build Android packaging-check artifacts for **GolfSG Staging**, using its
    distinct application ID and staging endpoint. These are test artifacts, not
-   production-signed store releases.
+   production-signed store releases. The Android check targets ARM64 devices.
 3. After every CI job succeeds, validate the staging database URL and Render hook
    against the public identifiers in `deploy/staging.json`.
 4. Restore and run `GolfSG.Database.Setup` at the validated commit, connecting
@@ -70,6 +70,15 @@ This workflow deploys staging only. Production still follows
 `codex/maui-products-api`; it does not change its branch, credentials or deployment
 settings. Moving production to `master` and wiring production delivery is a
 separate step. Production Android releases keep the existing version-tag workflow.
+
+## Build toolchain
+
+The SDK and workload set are pinned to `10.0.401`. The Apple compile job uses
+the `macos-26` runner and Xcode 26.6, matching
+[the .NET Apple SDK release](https://github.com/dotnet/macios/releases/tag/dotnet-10.0.1xx-xcode26.5-10318).
+Each platform restores the runtime it builds and installs only its own workloads.
+`GolfSGTargetFramework` selects the app framework without overriding the framework
+of the shared .NET library projects.
 
 References: [Render deploy hooks](https://render.com/docs/deploy-hooks),
 [Render commit environment variable](https://render.com/docs/environment-variables),

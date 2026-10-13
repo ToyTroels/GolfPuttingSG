@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.401
 
       - name: Restore tests
         run: dotnet restore tests/GolfSG.Tests/GolfSG.Tests.csproj --locked-mode
@@ -79,7 +79,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.401
 
       - name: Restore backend tests and setup tool
         run: dotnet restore tests/GolfSG.Api.Tests/GolfSG.Api.Tests.csproj --locked-mode
@@ -110,13 +110,13 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.401
 
       - name: Install pinned-workload manifests
-        run: dotnet workload install maui-android --skip-manifest-update
+        run: dotnet workload install maui-android --version 10.0.401
 
       - name: Restore Android app
-        run: dotnet restore src/GolfSG/GolfSG.csproj
+        run: dotnet restore src/GolfSG/GolfSG.csproj --runtime android-arm64 -p:GolfSGTargetFramework=net10.0-android
 
       - name: Check Android dependencies for known vulnerabilities
         shell: bash
@@ -132,7 +132,8 @@ jobs:
             environment_args+=(-p:GolfSGStagingApiAddress=https://golfputtingsg-staging.onrender.com/)
           fi
           dotnet publish src/GolfSG/GolfSG.csproj \
-            -f net10.0-android -c Release --no-restore \
+            -f net10.0-android -c Release --runtime android-arm64 --no-restore \
+            -p:GolfSGTargetFramework=net10.0-android \
             -p:AndroidPackageFormats=aab%3Bapk \
             -o artifacts/android "${environment_args[@]}"
 
@@ -153,20 +154,22 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.401
 
       - name: Install pinned-workload manifests
-        run: dotnet workload install maui --skip-manifest-update
+        run: dotnet workload install maui-windows --version 10.0.401
 
       - name: Restore Windows app
-        run: dotnet restore src/GolfSG/GolfSG.csproj
+        run: dotnet restore src/GolfSG/GolfSG.csproj --runtime win-x64 -p:GolfSGTargetFramework=net10.0-windows10.0.19041.0
 
       - name: Publish unsigned MSIX validation package
         run: >-
           dotnet publish src/GolfSG/GolfSG.csproj
           -f net10.0-windows10.0.19041.0
           -c Release
+          --runtime win-x64
           --no-restore
+          -p:GolfSGTargetFramework=net10.0-windows10.0.19041.0
           -p:RuntimeIdentifierOverride=win-x64
           -p:AppxPackageSigningEnabled=false
 
@@ -178,18 +181,19 @@ jobs:
 
   apple:
     name: Apple Release compile check
-    runs-on: macos-latest
+    runs-on: macos-26
     needs: test
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.401
 
       - name: Require current App Store SDK generation
         shell: bash
         run: |
+          sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
           xcodebuild -version
           major=$(xcodebuild -version | awk '/Xcode/{split($2, version, "."); print version[1]}')
           test "$major" -ge 26 || {
@@ -198,10 +202,7 @@ jobs:
           }
 
       - name: Install pinned-workload manifests
-        run: dotnet workload install maui --skip-manifest-update
-
-      - name: Restore Apple targets
-        run: dotnet restore src/GolfSG/GolfSG.csproj
+        run: dotnet workload install maui-ios maui-maccatalyst --version 10.0.401
 
       - name: Compile iOS simulator and Mac Catalyst
         shell: bash
@@ -213,8 +214,10 @@ jobs:
             ios_rid=iossimulator-x64
             mac_rid=maccatalyst-x64
           fi
-          dotnet build src/GolfSG/GolfSG.csproj -f net10.0-ios -c Release --no-restore -p:RuntimeIdentifier="$ios_rid"
-          dotnet build src/GolfSG/GolfSG.csproj -f net10.0-maccatalyst -c Release --no-restore -p:RuntimeIdentifier="$mac_rid"
+          dotnet restore src/GolfSG/GolfSG.csproj -p:GolfSGTargetFramework=net10.0-ios --runtime "$ios_rid"
+          dotnet build src/GolfSG/GolfSG.csproj -f net10.0-ios -c Release --no-restore -p:GolfSGTargetFramework=net10.0-ios -p:RuntimeIdentifier="$ios_rid"
+          dotnet restore src/GolfSG/GolfSG.csproj -p:GolfSGTargetFramework=net10.0-maccatalyst --runtime "$mac_rid"
+          dotnet build src/GolfSG/GolfSG.csproj -f net10.0-maccatalyst -c Release --no-restore -p:GolfSGTargetFramework=net10.0-maccatalyst -p:RuntimeIdentifier="$mac_rid"
 
   deploy-staging:
     name: Migrate and deploy staging
@@ -236,7 +239,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.302
+          dotnet-version: 10.0.401
 
       - name: Validate staging credentials and target
         run: python3 scripts/deliver_staging.py validate
