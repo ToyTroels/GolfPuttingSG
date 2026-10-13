@@ -77,8 +77,9 @@ The SDK and workload set are pinned to `10.0.401`. The Apple compile job uses
 the `macos-26` runner and Xcode 26.6, matching
 [the .NET Apple SDK release](https://github.com/dotnet/macios/releases/tag/dotnet-10.0.1xx-xcode26.5-10318).
 Each platform restores the runtime it builds and installs only its own workloads.
-`GolfSGTargetFramework` selects the app framework without overriding the framework
-of the shared .NET library projects.
+`GolfSGTargetFramework` and `GolfSGRuntimeIdentifier` select the app platform
+without overriding the frameworks or runtime-neutral lock files of the shared
+.NET library projects.
 
 References: [Render deploy hooks](https://render.com/docs/deploy-hooks),
 [Render commit environment variable](https://render.com/docs/environment-variables),
