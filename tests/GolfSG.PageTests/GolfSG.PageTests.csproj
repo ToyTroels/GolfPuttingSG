@@ -34,6 +34,7 @@
     <Compile Include="../../src/GolfSG/Views/CourseLibraryPage.cs" Link="Views/CourseLibraryPage.cs" />
     <Compile Include="../../src/GolfSG/Views/CourseGamePages.cs" Link="Views/CourseGamePages.cs" />
     <Compile Include="../../src/GolfSG/Views/CourseSelectionPage.cs" Link="Views/CourseSelectionPage.cs" />
+    <Compile Include="../../src/GolfSG/Views/CoursePreviewPage.cs" Link="Views/CoursePreviewPage.cs" />
     <Compile Include="../../src/GolfSG/Views/CoursePracticeMenuPage.cs" Link="Views/CoursePracticeMenuPage.cs" />
     <Compile Include="../../src/GolfSG/Views/CourseMapView.cs" Link="Views/CourseMapView.cs" />
     <Compile Include="../../src/GolfSG/Views/CourseSetupPage.cs" Link="Views/CourseSetupPage.cs" />

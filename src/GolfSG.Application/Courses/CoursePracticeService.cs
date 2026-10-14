@@ -113,7 +113,7 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
             var document = await store.LoadAsync();
             if (game is not null && document.Active is { } current && current.Id == roundId && current.Game == game)
                 return current;
-            if (document.Active is not null) throw new InvalidOperationException("Fortsæt eller opgiv den igangværende træningsrunde først.");
+            if (document.Active is not null) throw new InvalidOperationException("Fortsæt, afslut eller opgiv den igangværende træningsrunde først.");
             if (game is not null && await rounds.GetRoundAsync(roundId) is not null)
                 throw new InvalidOperationException("Dit resultat er allerede gemt. Åbn spillet for at indsende det.");
             // Freeze the layout and scale for this round, even if the reusable course is edited later.
@@ -243,14 +243,21 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
         finally { gate.Release(); }
     }
 
-    public async Task<Round> FinishAsync(string sessionId)
+    public Task<Round> FinishAsync(string sessionId) => ArchiveAsync(sessionId, allowEarlyFinish: false);
+
+    public Task<Round> FinishEarlyAsync(string sessionId) => ArchiveAsync(sessionId, allowEarlyFinish: true);
+
+    private async Task<Round> ArchiveAsync(string sessionId, bool allowEarlyFinish)
     {
         await gate.WaitAsync();
         try
         {
             var document = await store.LoadAsync();
             var active = RequireActive(document, sessionId);
-            if (!active.IsComplete) throw new InvalidOperationException("Registrer alle planlagte slag først.");
+            if (!active.IsComplete && (!allowEarlyFinish || active.Game is not null))
+                throw new InvalidOperationException("Registrer alle planlagte slag først.");
+            if (active.Results.Count == 0)
+                throw new InvalidOperationException("Registrer mindst ét slag, før du gemmer rundens resultat.");
             var round = BuildRound(active);
             await rounds.SaveRoundAsync(round); // Stable id makes recovery retries idempotent.
             await store.SaveAsync(document with { Active = null });
@@ -273,6 +280,18 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
 
     private static CoursePracticeSession RequireActive(CoursePracticeDocument document, string id) =>
         document.Active is { } active && active.Id == id ? active : throw new InvalidOperationException("Runden er ikke længere aktiv.");
+
+    public static void ValidateArchivedRound(Round round)
+    {
+        if (round.CoursePractice is not { } practice) return;
+        ValidateResults(practice.Course, practice.Results, requireComplete: !round.EndedEarly);
+        ValidateGameLink(practice.Game);
+        if (round.Holes is null || round.Holes.Count != practice.Results.Count ||
+            round.ConfiguredHoleCount != practice.Course.Shots.Sum(shot => shot.Attempts) ||
+            practice.Results.Count == 0 ||
+            round.EndedEarly && (practice.Game is not null || practice.Results.Count >= round.ConfiguredHoleCount))
+            throw new ArgumentException("Antallet af slag i rundens oversigt stemmer ikke med resultaterne.");
+    }
 
     private static IReadOnlyList<CourseShotResult> BindResults(CoursePracticeSession session)
     {
@@ -311,6 +330,9 @@ public sealed class CoursePracticeService(ICoursePracticeRepository store, IRoun
         }).ToArray();
         return new(session.Id, session.Date, holes, new(shots.Any(s => s.Category == PracticeShotCategory.Putting),
             shots.Any(s => s.Category == PracticeShotCategory.Approach), shots.Any(s => s.Category == PracticeShotCategory.AroundGreen)),
-            shots.Count, CoursePractice: new(session.Course with { Shots = shots.DistinctBy(shot => shot.Id, StringComparer.Ordinal).ToArray() }, results, session.Game));
+            session.TotalAttempts, EndedEarly: !session.IsComplete,
+            CoursePractice: new(session.IsComplete
+                ? session.Course with { Shots = shots.DistinctBy(shot => shot.Id, StringComparer.Ordinal).ToArray() }
+                : session.Course, results, session.Game));
     }
 }

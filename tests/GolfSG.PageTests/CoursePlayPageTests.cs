@@ -12,9 +12,110 @@ namespace GolfSG.Tests;
 public sealed class CoursePlayPageTests
 {
     [TestMethod]
+    public async Task EarlyFinishIsEnabledAfterRecordingAndDisabledAgainAfterUndo()
+    {
+        var (page, _) = await CreatePageAsync();
+        var finishEarly = GetField<Button>(page, "finishEarly");
+        Assert.IsTrue(finishEarly.IsVisible); Assert.IsFalse(finishEarly.IsEnabled);
+        await ChooseShotAsync(page, "bunker");
+        SetOutcome(page, "2", 0, 0);
+        await ClickAsync(page, GetField<Button>(page, "record"));
+        Assert.IsTrue(finishEarly.IsVisible); Assert.IsTrue(finishEarly.IsEnabled);
+        await ClickAsync(page, GetField<Button>(page, "undo"));
+        Assert.IsFalse(finishEarly.IsEnabled);
+    }
+
+    [TestMethod]
+    public async Task OverviewDefaultsToCurrentAndFiltersDoNotChangeRoundOrEnteredInput()
+    {
+        var (page, store) = await CreatePageAsync();
+        var overviewMap = GetField<CourseMapView>(page, "overviewMap");
+        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.SetEquals(["approach"]));
+        await ChooseShotAsync(page, "approach");
+        SetOutcome(page, "2", 0, 1);
+        var document = store.Document;
+
+        ((IButtonController)GetField<Button>(page, "allShotsFilter")).SendClicked();
+        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.SetEquals(["approach", "bunker", "putt"]));
+        PreviewShot(page, "putt");
+        ((IButtonController)GetField<Button>(page, "currentShotFilter")).SendClicked();
+        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.SetEquals(["putt"]));
+        Assert.AreSame(document, store.Document);
+        Assert.AreEqual("approach", store.Document.Active!.CurrentShot!.Id);
+        Assert.AreEqual("2", GetField<Entry>(page, "distance").Text);
+        Assert.AreEqual(1d, GetField<Stepper>(page, "penalties").Value);
+    }
+
+    [TestMethod]
+    public async Task HideCompletedKeepsPartialPositionsAndOriginalNumbersAndUndoRestoresVisibility()
+    {
+        var (page, store) = await CreatePageAsync(approachAttempts: 2);
+        ((IButtonController)GetField<Button>(page, "allShotsFilter")).SendClicked();
+        GetField<CheckBox>(page, "hideCompleted").IsChecked = true;
+        await ChooseShotAsync(page, "approach");
+        SetOutcome(page, "2", 0, 0);
+        await ClickAsync(page, GetField<Button>(page, "record"));
+        var overviewMap = GetField<CourseMapView>(page, "overviewMap");
+        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.Contains("approach"), "A position with remaining attempts must remain visible.");
+
+        SetOutcome(page, "1", 0, 0);
+        await ClickAsync(page, GetField<Button>(page, "record"));
+        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.SetEquals(["bunker", "putt"]));
+        var selectors = GetField<FlexLayout>(page, "shotSelector");
+        CollectionAssert.AreEqual(new[] { "2", "3" }, selectors.Children.OfType<Button>().Select(button => button.Text).ToArray());
+        Assert.AreEqual("bunker", overviewMap.SelectedShotId);
+        Assert.HasCount(3, overviewMap.SavedShots, "Filtering must not remove positions from the underlying course.");
+
+        await ClickAsync(page, GetField<Button>(page, "undo"));
+        Assert.AreEqual(1, store.Document.Active!.Results.Count);
+        Assert.IsTrue(GetField<CheckBox>(page, "hideCompleted").IsChecked);
+        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.Contains("approach"));
+        Assert.AreEqual("approach", overviewMap.SelectedShotId);
+    }
+
+    [TestMethod]
+    public async Task HidingSelectedCompletedPositionSelectsRemainingPositionAndCanBeToggledOff()
+    {
+        var (page, store) = await CreatePageAsync();
+        await ChooseShotAsync(page, "approach");
+        SetOutcome(page, "2", 0, 0);
+        await ClickAsync(page, GetField<Button>(page, "record"));
+        PreviewShot(page, "approach");
+        GetField<CheckBox>(page, "hideCompleted").IsChecked = true;
+        var overviewMap = GetField<CourseMapView>(page, "overviewMap");
+        Assert.AreEqual("bunker", overviewMap.SelectedShotId);
+        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.SetEquals(["bunker"]));
+        Assert.HasCount(1, store.Document.Active!.Results);
+
+        GetField<CheckBox>(page, "hideCompleted").IsChecked = false;
+        PreviewShot(page, "approach");
+        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.SetEquals(["approach"]));
+        Assert.IsTrue(overviewMap.CompletedShotIds.Contains("approach"));
+    }
+
+    [TestMethod]
+    public async Task HidingAllCompletedPositionsLeavesFinishActionAvailable()
+    {
+        var (page, _) = await CreatePageAsync();
+        ((IButtonController)GetField<Button>(page, "allShotsFilter")).SendClicked();
+        GetField<CheckBox>(page, "hideCompleted").IsChecked = true;
+        foreach (var shotId in new[] { "approach", "bunker", "putt" })
+        {
+            await ChooseShotAsync(page, shotId);
+            SetOutcome(page, "1", 0, 0);
+            await ClickAsync(page, GetField<Button>(page, "record"));
+        }
+        Assert.IsEmpty(GetField<CourseMapView>(page, "overviewMap").VisibleSavedShotIds!);
+        Assert.IsEmpty(GetField<FlexLayout>(page, "shotSelector").Children);
+        Assert.IsTrue(GetField<VerticalStackLayout>(page, "overview").IsVisible);
+        Assert.IsTrue(GetField<Button>(page, "finish").IsVisible);
+        Assert.IsTrue(GetField<VerticalStackLayout>(page, "shotList").Children.OfType<Label>().Any(label => label.Text!.StartsWith("Alle slag er færdige")));
+    }
+    [TestMethod]
     public async Task GameLocksAttemptControlsButStillAllowsChoosingPositionAndRecording()
     {
         var (page, store) = await CreatePageAsync(game: true);
+        Assert.IsFalse(GetField<Button>(page, "finishEarly").IsVisible);
         PreviewShot(page, "putt");
         Assert.IsFalse(CountControl<Button>(page, "CoursePractice.IncreaseAttempts-putt").IsEnabled);
         Assert.IsFalse(CountControl<Button>(page, "CoursePractice.DecreaseAttempts-putt").IsEnabled);
@@ -47,11 +148,13 @@ public sealed class CoursePlayPageTests
     {
         var (page, store) = await CreatePageAsync();
         await ChooseShotAsync(page, "putt");
+        Assert.AreEqual(3, GetField<CourseMapView>(page, "map").CurrentShotNumber);
 
         SetOutcome(page, "0,8", 0, 0);
         await ClickAsync(page, GetField<Button>(page, "record"));
 
         AssertRecorded(page, store, 1, "putt", .8, 0, "approach");
+        Assert.AreEqual(1, GetField<CourseMapView>(page, "map").CurrentShotNumber);
         AssertClearedInput(page);
     }
 
@@ -242,10 +345,9 @@ public sealed class CoursePlayPageTests
 
     private static void PreviewShot(CoursePlayPage page, string shotId)
     {
-        var selectors = GetField<HorizontalStackLayout>(page, "shotSelector");
-        var shotIndex = GetField<CoursePracticeSession>(page, "session").Course.Shots
-            .ToList().FindIndex(shot => shot.Id == shotId);
-        ((IButtonController)selectors.Children[shotIndex]).SendClicked();
+        var selectors = GetField<FlexLayout>(page, "shotSelector");
+        var selector = selectors.Children.OfType<Button>().Single(button => button.AutomationId == $"CoursePractice.PreviewShot-{shotId}");
+        ((IButtonController)selector).SendClicked();
     }
 
     private static T CountControl<T>(CoursePlayPage page, string automationId) where T : View

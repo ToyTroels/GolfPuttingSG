@@ -16,7 +16,13 @@ public sealed class CoursePracticeResultPage : ContentPage
         this.Accessible("CoursePractice.Result", "Resultat fra træningsrunde på banebillede");
         var layout = new VerticalStackLayout { Padding = 16, Spacing = 12 };
         layout.Children.Add(AppViews.PageTitle(details.Course.Name));
-        layout.Children.Add(new Label { Text = $"{round.Date:d} · {details.Results.Count} planlagte slag spillet · Beta", TextColor = GolfTheme.Colors.Text });
+        layout.Children.Add(new Label
+        {
+            Text = round.EndedEarly
+                ? $"{round.Date:d} · {details.Results.Count}/{round.ConfiguredHoleCount} slag spillet · Afsluttet tidligt"
+                : $"{round.Date:d} · {details.Results.Count} planlagte slag spillet · Beta",
+            TextColor = GolfTheme.Colors.Text
+        });
         layout.Children.Add(AppViews.PageTitle($"SG {details.Results.Sum(r => r.StrokesGained):+0.00;-0.00;0.00}"));
         layout.Children.Add(new Label { Text = "Hvert slag har sit eget resultat. SG bruger appens omtrentlige referenceværdier. Træningsrunden indgår ikke i statistik for almindelige runder.", TextColor = GolfTheme.Colors.MutedText });
         layout.Children.Add(new Label { Text = details.Course.ScaleNote, TextColor = GolfTheme.Colors.MutedText });

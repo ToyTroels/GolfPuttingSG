@@ -19,13 +19,7 @@ public static class RoundSyncValidation
             round.Holes.Select(h => h.HoleNumber).Distinct().Count() != round.Holes.Count)
             throw new ArgumentException("Runden indeholder ugyldige oplysninger.");
 
-        if (round.CoursePractice is { } practice)
-        {
-            CoursePracticeService.ValidateResults(practice.Course, practice.Results, requireComplete: true);
-            CoursePracticeService.ValidateGameLink(practice.Game);
-            if (round.Holes.Count != practice.Results.Count || round.ConfiguredHoleCount != practice.Results.Count)
-                throw new ArgumentException("Banetræningen mangler slagresultater.");
-        }
+        CoursePracticeService.ValidateArchivedRound(round);
 
         // Also rejects non-finite distances and scores throughout the complete payload.
         _ = JsonSerializer.Serialize(round, RoundSyncJsonContext.Default.Round);

@@ -169,6 +169,77 @@ public sealed class CoursePracticeTests
         Assert.IsEmpty(store.Document.Active!.Results);
     }
     [TestMethod]
+    public async Task EarlyFinishKeepsOnlyRecordedOutcomesAndPreservesCourseAcrossExportAndImport()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new Store(); var repository = new FileRoundRepository(directory);
+            var service = Service(store, repository); var course = RepeatedCourse();
+            await service.SaveCourseAsync(course);
+            var active = await service.StartAsync(course);
+            active = await service.SelectShotAsync(active.Id, "bunker", 0, "approach");
+            active = await service.RecordAsync(active.Id, 0, new(2, ShotLie.Green, 1, false), "bunker");
+            await service.SaveInputAsync(active.Id, new("4", ShotLie.Sand), 1, "bunker");
+            await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => service.FinishAsync(active.Id));
+
+            var round = await service.FinishEarlyAsync(active.Id);
+            Assert.IsTrue(round.EndedEarly); Assert.IsFalse(round.IsCompletedNormally);
+            Assert.AreEqual(5, round.ConfiguredHoleCount); Assert.HasCount(1, round.Holes);
+            CollectionAssert.AreEqual(active.Results.ToArray(), round.CoursePractice!.Results.ToArray());
+            CollectionAssert.AreEqual(course.Shots.ToArray(), round.CoursePractice.Course.Shots.ToArray());
+            Assert.AreEqual("bunker", round.CoursePractice.PlayedShots.Single().Id);
+            Assert.AreEqual(active.Results.Single().StrokesGained, round.Holes.Single().StrokesGainedAroundGreen);
+            Assert.IsNull(store.Document.Active); Assert.AreEqual(course, store.Document.Courses.Single());
+            GolfSG.Application.Rounds.Sync.RoundSyncValidation.Validate(round);
+            var export = Path.Combine(directory, "partial.json"); await repository.ExportRoundsAsync(export);
+            var imported = new FileRoundRepository(Path.Combine(directory, "imported")); await imported.ImportRoundsAsync(export);
+            var restored = (await imported.GetRoundAsync(round.Id))!;
+            Assert.IsTrue(restored.EndedEarly); Assert.AreEqual(5, restored.ConfiguredHoleCount);
+            CollectionAssert.AreEqual(round.CoursePractice.Results.ToArray(), restored.CoursePractice!.Results.ToArray());
+            CollectionAssert.AreEqual(course.Shots.ToArray(), restored.CoursePractice.Course.Shots.ToArray());
+            await service.StartAsync(course);
+            Assert.IsEmpty(store.Document.Active!.Results);
+
+            Assert.ThrowsExactly<ArgumentException>(() => CoursePracticeService.ValidateArchivedRound(round with { EndedEarly = false }));
+            Assert.ThrowsExactly<ArgumentException>(() => CoursePracticeService.ValidateArchivedRound(round with { ConfiguredHoleCount = 1 }));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [TestMethod]
+    public async Task EarlyFinishRejectsEmptyRoundsAndIncompleteSharedGames()
+    {
+        var store = new Store(); var rounds = new TestRoundRepository(); var service = Service(store, rounds);
+        var active = await service.StartAsync(RepeatedCourse());
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => service.FinishEarlyAsync(active.Id));
+        Assert.AreEqual(active, store.Document.Active); Assert.IsEmpty(rounds.Rounds);
+        await service.DiscardAsync(active.Id);
+        active = await service.StartGameAsync(RepeatedCourse(), Guid.NewGuid().ToString("N"),
+            new(Guid.NewGuid().ToString("N"), "account", "https://example.com/"));
+        active = await service.RecordAsync(active.Id, 0, new(0, ShotLie.Holed, 0, true));
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => service.FinishEarlyAsync(active.Id));
+        Assert.AreEqual(active, store.Document.Active); Assert.IsEmpty(rounds.Rounds);
+    }
+
+    [TestMethod]
+    public async Task FailedEarlyFinishPreservesResultsAndCanBeRetriedWithoutDuplicateHistory()
+    {
+        var store = new Store(); var rounds = new TestRoundRepository(); var service = Service(store, rounds);
+        var active = await service.StartAsync(RepeatedCourse());
+        active = await service.RecordAsync(active.Id, 0, new(3, ShotLie.Green, 0, false));
+        rounds.SaveException = new IOException();
+        await Assert.ThrowsExactlyAsync<IOException>(() => service.FinishEarlyAsync(active.Id));
+        Assert.AreEqual(active, store.Document.Active); Assert.IsEmpty(rounds.Rounds);
+        rounds.SaveException = null; store.Failure = new IOException();
+        await Assert.ThrowsExactlyAsync<IOException>(() => service.FinishEarlyAsync(active.Id));
+        Assert.AreEqual(active, store.Document.Active); Assert.HasCount(1, rounds.Rounds);
+        store.Failure = null;
+        var round = await Service(store, rounds).FinishEarlyAsync(active.Id);
+        Assert.HasCount(1, rounds.Rounds); Assert.IsNull(store.Document.Active); Assert.IsTrue(round.EndedEarly);
+    }
+
+    [TestMethod]
     public async Task FailedHistorySaveLeavesCompletedRoundForRetry()
     {
         var store = new Store(); var rounds = new TestRoundRepository(); var service = Service(store, rounds);

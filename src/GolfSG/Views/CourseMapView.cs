@@ -12,16 +12,16 @@ public sealed class CourseMapView : Grid, IDrawable
     private readonly Grid picture = new() { HeightRequest = 570, IsClippedToBounds = true };
     private readonly Label distanceValue = new()
     {
-        TextColor = GolfTheme.Colors.Text, FontSize = 24, FontAttributes = FontAttributes.Bold,
+        TextColor = GolfTheme.Colors.Text, FontSize = 20, FontAttributes = FontAttributes.Bold,
         HorizontalTextAlignment = TextAlignment.End, VerticalOptions = LayoutOptions.Center, InputTransparent = true
     };
     private readonly Label distanceCaption = new()
     {
-        TextColor = GolfTheme.Colors.MutedText, FontSize = 14,
+        TextColor = GolfTheme.Colors.MutedText, FontSize = 13,
         VerticalOptions = LayoutOptions.Center, InputTransparent = true
     };
     private readonly Border distanceBadge;
-    private bool movingFrom, interacting, hasGestureSnapshot, editable = true;
+    private bool movingFrom, interacting, hasGestureSnapshot, editable = true, showSavedShots = true;
     private CoursePoint? originalFrom, originalTarget, dragOrigin, grabbedPoint;
     private CoursePracticeShot? originalShot;
     private RectF imageBounds;
@@ -35,8 +35,23 @@ public sealed class CourseMapView : Grid, IDrawable
     public CoursePoint? From { get; set; }
     public CoursePoint? Target { get; set; }
     public IReadOnlyList<CoursePracticeShot> SavedShots { get; set; } = [];
+    public IReadOnlySet<string>? VisibleSavedShotIds { get; set; }
+    public bool ShowSavedShots
+    {
+        get => showSavedShots;
+        set
+        {
+            if (showSavedShots == value) return;
+            if (!value && interacting && originalShot is not null) Cancel();
+            showSavedShots = value;
+            if (!value) SelectedShotId = null;
+            Refresh();
+        }
+    }
     public string? SelectedShotId { get; set; }
     public string? EditingShotId { get; set; }
+    public int CurrentShotNumber { get; set; } = 1;
+    public bool IsCalibration { get; set; }
     public bool DragSavedShots { get; set; } = true;
     public bool MovingWholeShot { get; private set; }
     public double PictureHeight
@@ -52,7 +67,7 @@ public sealed class CourseMapView : Grid, IDrawable
         set
         {
             if (!value && interacting) Cancel();
-            if (!value) hasGestureSnapshot = false;
+            if (!value) { hasGestureSnapshot = false; selectionStart = null; }
             editable = value;
         }
     }
@@ -81,7 +96,7 @@ public sealed class CourseMapView : Grid, IDrawable
             Stroke = GolfTheme.Colors.PrimaryGreen,
             StrokeThickness = 1,
             StrokeShape = new RoundRectangle { CornerRadius = 8 },
-            Padding = new Thickness(12, 8), Margin = new Thickness(0, 8, 0, 0),
+            Padding = new Thickness(10, 4), Margin = new Thickness(0, 6, 0, 0),
             InputTransparent = true, IsVisible = false,
             Content = new Grid
             {
@@ -94,6 +109,7 @@ public sealed class CourseMapView : Grid, IDrawable
         overlay.StartInteraction += (_, e) =>
         {
             if (!interacting) hasGestureSnapshot = false;
+            selectionStart = null;
             if (e.Touches.Length != 1) { if (interacting) Cancel(); return; }
             if (!Editable && SelectSavedShots)
             {
@@ -120,16 +136,14 @@ public sealed class CourseMapView : Grid, IDrawable
                 movingFrom = fromHit && (!targetHit || PlaceFrom) || !targetHit && !fromHit && PlaceFrom;
                 MovingWholeShot = !fromHit && !targetHit && From is not null && Target is not null && LineDistance(From, Target, p) <= 12;
             }
-            dragOrigin = ToPoint(p);
-            var selected = originalShot is not null ? (movingFrom ? originalShot.From : originalShot.Target) : (movingFrom ? From : Target);
-            var markerHit = originalShot is not null || fromHit || targetHit;
-            grabbedPoint = markerHit && selected is not null ? selected : dragOrigin;
-            interacting = hasGestureSnapshot = true;
-            BlockParentScroll(true);
-            InteractionStarted?.Invoke();
-            SelectedShotId = originalShot?.Id;
-            ShotSelected?.Invoke(originalShot);
-            Move(p);
+            if (originalShot is null && !fromHit && !targetHit && !MovingWholeShot)
+            {
+                // An empty part of the picture may be a tap to place a point or a
+                // swipe to scroll. Leave scrolling enabled until a tap completes.
+                selectionStart = p;
+                return;
+            }
+            BeginInteraction(p);
         };
         overlay.DragInteraction += (_, e) =>
         {
@@ -141,19 +155,23 @@ public sealed class CourseMapView : Grid, IDrawable
         };
         overlay.EndInteraction += (_, e) =>
         {
-            if (!Editable && SelectSavedShots && selectionStart is { } start)
+            if (selectionStart is { } start)
             {
                 selectionStart = null;
-                if (e.Touches.Length == 1 && Math.Abs(e.Touches[0].X - start.X) <= 10 && Math.Abs(e.Touches[0].Y - start.Y) <= 10)
+                if (e.Touches.Length == 1 && imageBounds.Contains(e.Touches[0]) &&
+                    Math.Abs(e.Touches[0].X - start.X) <= 10 && Math.Abs(e.Touches[0].Y - start.Y) <= 10)
                 {
-                    var selected = FindSavedShot(e.Touches[0]);
-                    if (selected is not null)
+                    if (Editable) BeginInteraction(start, placingPoint: true);
+                    else if (SelectSavedShots)
                     {
-                        SelectedShotId = selected.Value.Shot.Id;
-                        Refresh(); ShotSelected?.Invoke(selected.Value.Shot);
+                        var selected = FindSavedShot(e.Touches[0]);
+                        if (selected is not null)
+                        {
+                            SelectedShotId = selected.Value.Shot.Id;
+                            Refresh(); ShotSelected?.Invoke(selected.Value.Shot);
+                        }
                     }
                 }
-                return;
             }
             if (!interacting) return;
             if (e.Touches.Length == 1) Move(e.Touches[0]);
@@ -163,14 +181,14 @@ public sealed class CourseMapView : Grid, IDrawable
             // Windows raises EndInteraction immediately before CancelInteraction on cancellation.
             // Keep the snapshot until the next gesture so cancellation can still restore it.
         };
-        overlay.CancelInteraction += (_, _) => { selectionStart = null; Cancel(); };
-        Unloaded += (_, _) => { if (interacting) Cancel(); BlockParentScroll(false); };
-        this.Accessible(automationId, "Banebillede. Tryk for at placere start og mål. Træk punkterne eller linjen for at flytte et slag.");
+        overlay.CancelInteraction += (_, _) => Cancel();
+        Unloaded += (_, _) => { selectionStart = null; if (interacting) Cancel(); BlockParentScroll(false); };
+        this.Accessible(automationId, "Banebillede. Tryk for at placere start og mål. Stryg på billedet for at rulle. Træk punkterne eller linjen for at flytte et slag.");
     }
 
-    public void SetImage(string path) { if (interacting) Cancel(); image.Source = ImageSource.FromFile(path); Refresh(); }
-    public void SetImage(ImageSource source) { if (interacting) Cancel(); image.Source = source; Refresh(); }
-    public void ToggleZoom() { if (interacting) Cancel(); Zoom = Zoom == 1 ? 2 : 1; image.Scale = Zoom; Refresh(); }
+    public void SetImage(string path) { selectionStart = null; if (interacting) Cancel(); image.Source = ImageSource.FromFile(path); Refresh(); }
+    public void SetImage(ImageSource source) { selectionStart = null; if (interacting) Cancel(); image.Source = source; Refresh(); }
+    public void ToggleZoom() { selectionStart = null; if (interacting) Cancel(); Zoom = Zoom == 1 ? 2 : 1; image.Scale = Zoom; Refresh(); }
     public void Refresh() => overlay.Invalidate();
 
     public void SetDistanceSummary(double? metres, bool measured = false)
@@ -203,8 +221,21 @@ public sealed class CourseMapView : Grid, IDrawable
         }
 #endif
     }
+    private void BeginInteraction(PointF p, bool placingPoint = false)
+    {
+        dragOrigin = ToPoint(p);
+        var selected = originalShot is not null ? (movingFrom ? originalShot.From : originalShot.Target) : (movingFrom ? From : Target);
+        grabbedPoint = placingPoint ? dragOrigin : selected ?? dragOrigin;
+        interacting = hasGestureSnapshot = true;
+        BlockParentScroll(true);
+        InteractionStarted?.Invoke();
+        SelectedShotId = originalShot?.Id;
+        ShotSelected?.Invoke(originalShot);
+        Move(p);
+    }
     private void Cancel()
     {
+        selectionStart = null;
         BlockParentScroll(false);
         if (!hasGestureSnapshot) return;
         interacting = hasGestureSnapshot = false;
@@ -230,9 +261,10 @@ public sealed class CourseMapView : Grid, IDrawable
     }
     private (CoursePracticeShot Shot, bool From, bool Whole)? FindSavedShot(PointF touch)
     {
+        if (!ShowSavedShots) return null;
         (CoursePracticeShot Shot, bool From, bool Whole)? best = null;
         double distance = 22;
-        foreach (var shot in SavedShots.OrderBy(s => s.Id == SelectedShotId ? 1 : 0))
+        foreach (var shot in SavedShots.Where(IsSavedShotVisible).OrderBy(s => s.Id == SelectedShotId ? 1 : 0))
         {
             var from = PointDistance(shot.From, touch); var target = PointDistance(shot.Target, touch);
             if (Math.Min(from, target) <= distance)
@@ -240,13 +272,15 @@ public sealed class CourseMapView : Grid, IDrawable
         }
         if (best is not null) return best;
         distance = 12;
-        foreach (var shot in SavedShots.OrderBy(s => s.Id == SelectedShotId ? 1 : 0))
+        foreach (var shot in SavedShots.Where(IsSavedShotVisible).OrderBy(s => s.Id == SelectedShotId ? 1 : 0))
         {
             var line = LineDistance(shot.From, shot.Target, touch);
             if (line <= distance) { best = (shot, false, true); distance = line; }
         }
         return best;
     }
+    private bool IsSavedShotVisible(CoursePracticeShot shot) => ShowSavedShots && shot.Id != EditingShotId &&
+        (VisibleSavedShotIds is null || VisibleSavedShotIds.Contains(shot.Id));
     private CoursePoint ToPoint(PointF p) => new((p.X - imageBounds.Left) / imageBounds.Width, (p.Y - imageBounds.Top) / imageBounds.Height);
     private void Move(PointF p)
     {
@@ -299,12 +333,13 @@ public sealed class CourseMapView : Grid, IDrawable
             if (from is not null && target is not null) canvas.DrawLine(Screen(from), Screen(target));
             Marker(from, fromLabel, completed ? Colors.DimGray : GolfTheme.Colors.PrimaryGreen); Marker(target, targetLabel, completed ? Colors.DimGray : Colors.OrangeRed);
         }
-        foreach (var item in SavedShots.Select((shot, index) => (Shot: shot, Number: index + 1)).Where(s => s.Shot.Id != EditingShotId).OrderBy(s => s.Shot.Id == SelectedShotId ? 1 : 0))
+        foreach (var item in SavedShots.Select((shot, index) => (Shot: shot, Number: index + 1)).Where(s => IsSavedShotVisible(s.Shot)).OrderBy(s => s.Shot.Id == SelectedShotId ? 1 : 0))
         {
             canvas.Alpha = item.Shot.Id == SelectedShotId ? 1 : .65f;
             Shot(item.Shot.From, item.Shot.Target, item.Number.ToString(), item.Number.ToString(), CompletedShotIds.Contains(item.Shot.Id));
         }
         canvas.Alpha = 1;
-        Shot(From, Target, "1", "2");
+        var currentLabel = CurrentShotNumber.ToString();
+        Shot(From, Target, IsCalibration ? "A" : currentLabel, IsCalibration ? "B" : currentLabel);
     }
 }

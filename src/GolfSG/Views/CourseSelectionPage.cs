@@ -9,10 +9,11 @@ public sealed class CourseSelectionPage : ContentPage
 {
     private readonly CoursePracticeService service;
     private readonly CourseCommunityWorkflow? community;
-    private readonly VerticalStackLayout layout = new() { Padding = 16, Spacing = 14 };
-    private readonly VerticalStackLayout courseList = new() { Spacing = 12 };
+    private readonly VerticalStackLayout layout = new() { Padding = 16, Spacing = 12 };
+    private readonly VerticalStackLayout courseList = new() { Spacing = 10 };
     private readonly Label activeDescription = new() { TextColor = GolfTheme.Colors.Text };
     private readonly Border activeCard;
+    private readonly Button finish = CompactButton("Afslut og gem");
     private readonly Border emptyCard;
     private readonly Label error = new() { TextColor = GolfTheme.Colors.DangerText };
     private readonly Button retry = CoursePracticeViews.SecondaryButton("Prøv at indlæse igen");
@@ -33,10 +34,12 @@ public sealed class CourseSelectionPage : ContentPage
         var discard = CoursePracticeViews.SecondaryButton("Opgiv træningsrunde").Accessible("CoursePractice.Courses.Discard", "Opgiv den igangværende træningsrunde");
         resume.Clicked += async (_, _) => await RunAsync(ResumeAsync);
         discard.Clicked += async (_, _) => await RunAsync(DiscardAsync);
+        finish.Accessible("CoursePractice.Courses.Finish", "Afslut runden og gem de registrerede slag");
+        finish.Clicked += async (_, _) => await RunAsync(FinishAsync);
         activeCard = AppViews.Card(new VerticalStackLayout
         {
             Spacing = 10,
-            Children = { AppViews.PageTitle("Igangværende runde", 20), activeDescription, resume, discard }
+            Children = { AppViews.PageTitle("Igangværende runde", 20), activeDescription, resume, finish, discard }
         });
         activeCard.IsVisible = false;
 
@@ -51,10 +54,10 @@ public sealed class CourseSelectionPage : ContentPage
         retry.IsVisible = false;
         retry.Clicked += async (_, _) => await RunAsync(ReloadAsync);
 
-        layout.Children.Add(AppViews.PageTitle("Vælg en bane"));
-        layout.Children.Add(new Label { Text = "Gemte baner kan spilles offline. Del en bane med billede og slag, eller importér en banefil fra en anden spiller. Delte kopier opdateres ikke automatisk; dine resultater deles ikke.", TextColor = GolfTheme.Colors.MutedText });
+        layout.Children.Add(AppViews.PageTitle("Vælg en bane", 26));
+        layout.Children.Add(new Label { Text = "Gemte baner kan spilles offline.", TextColor = GolfTheme.Colors.MutedText, FontSize = 14 });
         layout.Children.Add(activeCard);
-        var import = CoursePracticeViews.SecondaryButton("Importér bane fra fil").Accessible("CoursePractice.Courses.Import", "Importér en delt bane med billede");
+        var import = CompactButton("Importér bane fra fil").Accessible("CoursePractice.Courses.Import", "Importér en delt bane med billede");
         import.Clicked += async (_, _) => await RunAsync(ImportAsync);
         layout.Children.Add(import);
         layout.Children.Add(emptyCard);
@@ -74,55 +77,93 @@ public sealed class CourseSelectionPage : ContentPage
     {
         var document = await service.LoadAsync();
         activeCard.IsVisible = document.Active is not null;
+        finish.IsVisible = document.Active is { Results.Count: > 0 } activeRound && (activeRound.Game is null || activeRound.IsComplete);
+        finish.Text = document.Active?.IsComplete == true ? "Gem rundens resultat" : "Afslut og gem";
         if (document.Active is { } active)
             activeDescription.Text = active.IsComplete
                 ? $"{active.Course.Name} · Alle {active.TotalAttempts} slag er registreret. Fortsæt for at gemme resultatet."
-                : $"{active.Course.Name} · {active.Results.Count}/{active.TotalAttempts} slag registreret. Fortsæt eller opgiv runden, før du starter en ny.";
+                : $"{active.Course.Name} · {active.Results.Count}/{active.TotalAttempts} slag registreret.";
         emptyCard.IsVisible = document.Courses.Count == 0;
         courseList.Children.Clear();
         foreach (var course in document.Courses)
         {
-            var play = CoursePracticeViews.PrimaryButton("Spil bane").Accessible($"CoursePractice.Start-{course.Id}", $"Spil banen {course.Name}");
-            play.IsEnabled = document.Active is null;
-            play.Clicked += async (_, _) => await RunAsync(() => StartAsync(course.Id));
-            var edit = CoursePracticeViews.SecondaryButton("Rediger bane").Accessible($"CoursePractice.Edit-{course.Id}", $"Rediger banen {course.Name}");
-            edit.Clicked += async (_, _) => await RunAsync(() => EditAsync(course.Id));
-            var share = CoursePracticeViews.SecondaryButton("Del bane").Accessible($"CoursePractice.Share-{course.Id}", $"Del banen {course.Name} med billede og slag");
-            share.Clicked += async (_, _) => await RunAsync(() => ShareAsync(course.Id));
-            var card = new VerticalStackLayout
+            var menu = CompactButton("☰").Accessible($"CoursePractice.CourseMenu-{course.Id}", $"Flere muligheder for banen {course.Name}",
+                community is null ? "Rediger eller del banen" : "Rediger, del eller offentliggør banen");
+            menu.WidthRequest = 44;
+            menu.FontSize = 20;
+            menu.FontAttributes = FontAttributes.None;
+            menu.Padding = 0;
+            menu.BorderWidth = 0;
+            menu.BackgroundColor = Colors.Transparent;
+            menu.VerticalOptions = LayoutOptions.Start;
+            menu.Clicked += async (_, _) => await RunAsync(() => ShowCourseMenuAsync(course.Id));
+            var name = AppViews.PageTitle($"{course.Name} ›", 18);
+            name.VerticalOptions = LayoutOptions.Center;
+            var preview = new VerticalStackLayout
             {
-                Spacing = 10,
+                Spacing = 4, MinimumHeightRequest = 44, VerticalOptions = LayoutOptions.Center,
                 Children =
                 {
-                    AppViews.PageTitle(course.Name, 20),
-                    new Label { Text = $"{course.Shots.Count} positioner · {course.Shots.Sum(shot => shot.Attempts)} planlagte slag", TextColor = GolfTheme.Colors.MutedText },
-                    play,
-                    edit,
-                    share
+                    name,
+                    new Label
+                    {
+                        Text = $"{course.Shots.Count} {(course.Shots.Count == 1 ? "position" : "positioner")} · {course.Shots.Sum(shot => shot.Attempts)} slag",
+                        TextColor = GolfTheme.Colors.MutedText, FontSize = 14
+                    }
                 }
             };
-            if (community is not null)
+            preview.Accessible($"CoursePractice.Preview-{course.Id}", $"Se banen {course.Name} og dens slag", "Åbner en forhåndsvisning. Runden starter først, når du vælger Start runde.");
+            preview.GestureRecognizers.Add(new TapGestureRecognizer
             {
-                var publish = CoursePracticeViews.SecondaryButton("Offentliggør bane")
-                    .Accessible($"CoursePractice.Publish-{course.Id}", $"Offentliggør {course.Name} i banebiblioteket");
-                publish.Clicked += async (_, _) => await RunAsync(() => Navigation.PushAsync(new CoursePublishPage(community, course)));
-                card.Children.Add(publish);
-            }
-            courseList.Children.Add(AppViews.Card(card));
+                Command = new Command(async () => await RunAsync(() => PreviewAsync(course.Id)))
+            });
+            var card = new Grid
+            {
+                ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
+                ColumnSpacing = 8,
+                Children = { preview.Column(0), menu.Column(1) }
+            };
+            courseList.Children.Add(AppViews.Card(card, padding: GolfTheme.Spacing.CompactCardPadding));
         }
     }
 
-    private async Task StartAsync(string courseId)
+    private async Task ShowCourseMenuAsync(string courseId)
+    {
+        var course = FindCourse(await service.LoadAsync(), courseId);
+        string[] actions = community is null
+            ? ["Rediger bane", "Del bane"]
+            : ["Rediger bane", "Del bane", "Offentliggør bane"];
+        var choice = await DisplayActionSheetAsync(course.Name, "Annuller", null, actions);
+        switch (choice)
+        {
+            case "Rediger bane":
+                await EditAsync(courseId);
+                break;
+            case "Del bane":
+                await ShareAsync(courseId);
+                break;
+            case "Offentliggør bane" when community is not null:
+                course = FindCourse(await service.LoadAsync(), courseId);
+                await Navigation.PushAsync(new CoursePublishPage(community, course));
+                break;
+        }
+    }
+
+    private static Button CompactButton(string text)
+    {
+        var button = CoursePracticeViews.SecondaryButton(text);
+        button.FontSize = 14;
+        button.MinimumHeightRequest = 44;
+        button.Padding = new Thickness(10, 6);
+        button.BorderWidth = 1;
+        return button;
+    }
+
+    private async Task PreviewAsync(string courseId)
     {
         var document = await service.LoadAsync();
-        if (document.Active is not null)
-        {
-            await ReloadAsync();
-            throw new InvalidOperationException("Fortsæt eller opgiv den igangværende træningsrunde først.");
-        }
         var course = FindCourse(document, courseId);
-        var session = await service.StartAsync(course);
-        await Navigation.PushAsync(new CoursePlayPage(service, session, community));
+        await Navigation.PushAsync(new CoursePreviewPage(service, course, community));
     }
 
     private CourseShareService Sharing() => new(service, Path.GetDirectoryName(CoursePracticeImages.PathFor(CoursePracticeImages.SampleFile))!);
@@ -172,6 +213,18 @@ public sealed class CourseSelectionPage : ContentPage
         if (!await DisplayAlertAsync("Opgiv træningsrunde?", "De registrerede resultater slettes. Den gemte bane bevares.", "Opgiv", "Annuller")) return;
         await service.DiscardAsync(active.Id);
         await ReloadAsync();
+    }
+
+    private async Task FinishAsync()
+    {
+        var document = await service.LoadAsync();
+        if (document.Active is not { } active) { await ReloadAsync(); return; }
+        if (!active.IsComplete && !await DisplayAlertAsync("Afslut runden?",
+            $"Gem de {active.Results.Count} registrerede slag og spring resten over. En ikke registreret indtastning gemmes ikke som et resultat.",
+            "Afslut og gem", "Annuller")) return;
+        var round = await service.FinishEarlyAsync(active.Id);
+        await ReloadAsync();
+        await Navigation.PushAsync(new CoursePracticeResultPage(round, community));
     }
 
     protected override bool OnBackButtonPressed() => busy || base.OnBackButtonPressed();

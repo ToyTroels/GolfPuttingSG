@@ -8,7 +8,7 @@ The course-practice menu adds **Banebibliotek**, **Opret spil**, **Deltag med ko
 
 ### Quick start
 
-1. Save a local course, open **Spil bane → Offentliggør bane**, review the picture and disclosure, and press **Offentliggør i biblioteket**. Other signed-in users can find it in **Banebibliotek**, preview it, and choose **Gem kopi til offline spil**.
+1. Save a local course, open **Spil bane → ☰** at the top right of its card, choose **Offentliggør bane**, review the picture and disclosure, and press **Offentliggør i biblioteket**. Other signed-in users can find it in **Banebibliotek**, preview it, and choose **Gem kopi til offline spil**.
 2. Choose **Opret spil**, select a saved course or downloaded library copy, enter a game name and create it. Copy its six-character code for the other players. Creating a game does not publish the course to the public library.
 3. Players open **Deltag med kode**, preview the fixed settings and sharing disclosure, and join. In the game, choose **Spil eller fortsæt**; the host can also choose **Deltag og spil**.
 4. Save and resume offline through **Fortsæt træningsrunde**. After saving the completed round, use **Indsend til spil** on its result screen, or **Mine spil → Indsend mit resultat**. History can reopen the saved result for another attempt after a failed submission.
