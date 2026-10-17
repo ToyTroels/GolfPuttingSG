@@ -37,6 +37,10 @@ Remaining implementation and verification work. Exploratory features live in [pr
 - [ ] Improve round results with top gained/lost holes, category contribution, and specific next-practice recommendations.
 - [ ] Add shareable round/practice summaries suitable for coaching and personal records, beyond raw history-file export.
 
+## Security
+
+- [ ] Address the prioritized findings, hardening recommendations, and verification gaps in the [security TODO](docs/SECURITY_TODO.md). The review covers admin commit `2105d02` against `dev` base `44d3975`; deployment-dependent risks still need live verification.
+
 ## Technical follow-up
 
 - [ ] Verify saved-round sync recovery on the physical Android phone: save offline, restart the app, reconnect and sync, then repeat sync without duplicates. Include offline edits and deletions before expanding beyond the local pilot.
