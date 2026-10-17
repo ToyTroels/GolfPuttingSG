@@ -19,7 +19,9 @@ public class Program
         builder.Services.AddServerInfrastructure(builder.Configuration);
         builder.Services.AddAuthentication(IdentityConstants.BearerScheme)
             .AddBearerToken(IdentityConstants.BearerScheme);
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorization(options => options.AddPolicy(
+            GolfSG.Api.Auth.SuperAdminAccess.Policy, policy => policy.RequireAuthenticatedUser()
+                .RequireAssertion(context => GolfSG.Api.Auth.SuperAdminAccess.IsAllowed(context.User, builder.Configuration))));
         builder.Services.AddSingleton(TimeProvider.System);
         var dataProtection = builder.Services.AddDataProtection().SetApplicationName(
             builder.Environment.IsStaging() ? "GolfSG.Api.Staging" : "GolfSG.Api");
@@ -56,12 +58,35 @@ public class Program
 
         var app = builder.Build();
         app.UseExceptionHandler();
+        if (!app.Environment.IsDevelopment()) app.UseHsts();
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api/auth") ||
+                context.Request.Path.StartsWithSegments("/api/admin"))
+                context.Response.Headers.CacheControl = "no-store";
+            await next(context);
+        });
 
         if (app.Environment.IsDevelopment())
             app.MapOpenApi();
 
         app.UseHttpsRedirection();
         app.UseAuthentication();
+        app.Use(async (context, next) =>
+        {
+            if (context.User.Identity?.IsAuthenticated == true)
+            {
+                var signIns = context.RequestServices.GetRequiredService<SignInManager<IdentityUser>>();
+                var users = context.RequestServices.GetRequiredService<UserManager<IdentityUser>>();
+                var user = await signIns.ValidateSecurityStampAsync(context.User);
+                if (user is null || await users.IsLockedOutAsync(user))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return;
+                }
+            }
+            await next(context);
+        });
         app.UseRateLimiter();
         app.UseAuthorization();
         app.MapControllers();

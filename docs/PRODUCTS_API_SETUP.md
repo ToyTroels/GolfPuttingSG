@@ -1,5 +1,7 @@
 # Products API connection
 
+Current endpoint policy: users cannot configure connections, including in Debug builds. The deployment owner selects staging addresses at build time; see [super-admin setup](SUPER_ADMIN.md). Server-editor instructions below describe the previous development workflow and no longer apply.
+
 Products remains a temporary API connection-test feature during local development.
 The API returns response DTOs; PostgreSQL entities and queries belong to
 `GolfSG.Server.Infrastructure`. Database updates are run separately with

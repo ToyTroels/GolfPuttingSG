@@ -54,10 +54,28 @@ public sealed class AuthController(UserManager<IdentityUser> users, SignInManage
         var ticket = bearerOptions.Get(IdentityConstants.BearerScheme).RefreshTokenProtector
             .Unprotect(request.RefreshToken);
         if (ticket?.Properties.ExpiresUtc is not { } expiresUtc || timeProvider.GetUtcNow() >= expiresUtc ||
-            await signIns.ValidateSecurityStampAsync(ticket.Principal) is not { } user)
+            await signIns.ValidateSecurityStampAsync(ticket.Principal) is not { } user ||
+            await users.IsLockedOutAsync(user))
             return Unauthorized();
 
         var principal = await signIns.CreateUserPrincipalAsync(user);
+        return SignIn(principal, IdentityConstants.BearerScheme);
+    }
+
+    [HttpPost("admin-login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> AdminLogin(AccountCredentialsRequest request,
+        [FromServices] IConfiguration configuration)
+    {
+        // Admin sessions require a dedicated strong-password login even in Debug.
+        // Ordinary app access/refresh tokens never receive this claim.
+        if (!SuperAdminAccess.HasStrongPassword(request.Password)) return Unauthorized();
+        var user = await users.FindByNameAsync(request.Username.Trim());
+        if (user is null || !SuperAdminAccess.IsProvisioned(user.Id, configuration)) return Unauthorized();
+        var result = await signIns.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+        if (!result.Succeeded) return Unauthorized();
+        var principal = await signIns.CreateUserPrincipalAsync(user);
+        ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim(SuperAdminAccess.AuthenticationClaim, "true"));
         return SignIn(principal, IdentityConstants.BearerScheme);
     }
 

@@ -12,19 +12,13 @@ and does not run migrations at startup.
 
 ## Try it from the app
 
-Release builds always connect to `https://golfputtingsg.onrender.com/` and expose
-account management without endpoint configuration. The server-address steps below
-apply to Debug builds. Upgrading from a development endpoint signs out locally,
-resets sync tracking, and preserves rounds for manual sync after signing in on Render.
+Production builds, including Debug, use the fixed Render endpoint. Users cannot change it.
+For a local or staging API, the deployment owner creates a separate staging build using
+`GolfSGEnvironment=Staging` and `GolfSGStagingApiAddress`. See [super-admin setup](SUPER_ADMIN.md).
 
-1. Run the database setup command, rebuild the app and API, then start the API using its HTTPS profile.
-2. Signed-out users see the login/signup screen first on a fresh launch. Open
-   **Konto og serverindstillinger**, enter the server address and select **Gem serveradresse**.
-   You can also configure it under **Indstillinger → Konto og server**. For a USB phone,
-   use the forwarding described in [Products API setup](PRODUCTS_API_SETUP.md).
-   Choose **Tjek forbindelse** to check the API and account database without requiring login.
-   Opening the page and saving the address do not contact the server. The status distinguishes a ready server/database
-   from an unavailable database or an address/API error.
+1. Run database setup and start the API for the deployment being tested.
+2. Signed-out users see login/signup first. Choose **Kontoindstillinger → Tjek forbindelse**
+   to check API and database readiness. Opening account settings does not contact the server.
 3. Return to the login screen. It is also available via **Konto og login** on the main page,
    or **Indstillinger → Log ind / Opret konto**.
    Enter **Brugernavn** and **Adgangskode** to sign in. For a new account, select
@@ -86,12 +80,7 @@ verification are not part of this local pilot.
 Manual sync requires sign-in. The first successful sign-in binds that installation's
 sync history to the account ID and server. Signing out with **Log ud** clears saved
 tokens while leaving local history and the binding intact. Sign back into the same
-account to continue. In Debug builds, to change servers, enter the new HTTPS address in **Konto og server**,
-choose **Gem serveradresse**, and confirm **Skift server**. This signs out, releases
-the old account binding, and resets sync tracking, including old deletion records.
-Local rounds remain available. Sign in or register on the new server and manually
-sync to upload them to that account. Nothing is uploaded during the switch; old
-server data is unchanged. Changing accounts on the same server remains restricted.
+account to continue. Server selection is controlled by the deployment owner at build time; users cannot switch servers.
 Export local history before any app-data reset. Passwords are not persisted; tokens use the platform's
 secure storage. Expired sessions require sign-in again when token refresh cannot succeed.
 

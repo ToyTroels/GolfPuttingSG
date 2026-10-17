@@ -18,9 +18,9 @@ public sealed class ProductionEndpointTests
         settings.BaseAddress = "https://localhost:7151/";
         Assert.AreEqual(StagingApiAddress.Value, settings.BaseAddress);
     }
-#elif !DEBUG
+#else
     [TestMethod]
-    public void ReleaseAlwaysUsesRenderAndIgnoresEndpointWrites()
+    public void ProductionAlwaysUsesRenderAndIgnoresEndpointWritesIncludingDebug()
     {
         var settings = new PreferenceProductsApiSettings();
         Assert.IsFalse(settings.CanConfigureEndpoint);

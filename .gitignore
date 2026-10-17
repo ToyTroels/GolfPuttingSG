@@ -23,3 +23,10 @@ artifacts/
 *.p12
 *.pfx
 *signing*.txt
+
+# Local secrets and deployment overrides.
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json

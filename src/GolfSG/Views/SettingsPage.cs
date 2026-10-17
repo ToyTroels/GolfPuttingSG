@@ -129,11 +129,7 @@ public sealed partial class SettingsPage : ContentPage
                         () => services.GetRequiredService<LoginPage>(),
                         UiAutomationIds.LoginEntry),
                     ReferenceItem(
-#if DEBUG
-                        "Konto og server",
-#else
                         "Konto",
-#endif
                         "Se din konto, log ud og tjek serverforbindelsen",
                         () => services.GetRequiredService<AccountPage>(),
                         UiAutomationIds.AccountEntry),
