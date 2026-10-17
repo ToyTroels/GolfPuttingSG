@@ -11,6 +11,25 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import deliver_staging as shared
+from api_changes import affects_api
+
+
+def api_tree_matches(repository, staged_tree, environment):
+    tree = github_json(repository + "/git/trees/" + staged_tree + "?recursive=1", environment)
+    if tree.get("truncated") is not False or not isinstance(tree.get("tree"), list):
+        raise ValueError("The complete staging source tree is required for API verification.")
+    staged = {entry["path"]: (entry["mode"], entry["sha"])
+              for entry in tree["tree"]
+              if entry["type"] != "tree" and affects_api(entry["path"])}
+    local = subprocess.check_output(["git", "ls-tree", "-r", "-z", "HEAD"], cwd=shared.ROOT)
+    candidate = {}
+    for entry in local.decode("utf-8", errors="surrogateescape").split("\0"):
+        if entry:
+            metadata, path = entry.split("\t", 1)
+            mode, _, sha = metadata.split()
+            if affects_api(path):
+                candidate[path] = (mode, sha)
+    return staged == candidate
 
 
 def metadata():
@@ -65,8 +84,10 @@ def verify_release(environment=None, settings=None):
     staged_tree = github_json(repository + "/git/commits/" + staged_commit, environment).get("tree", {}).get("sha")
     candidate_tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=shared.ROOT, text=True).strip()
     checked_out = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=shared.ROOT, text=True).strip()
-    if checked_out != commit or staged_tree != candidate_tree:
-        raise ValueError("Production must contain exactly the source files verified in healthy staging.")
+    if checked_out != commit or not staged_tree:
+        raise ValueError("Production must contain the validated source commit.")
+    if staged_tree != candidate_tree and not api_tree_matches(repository, staged_tree, environment):
+        raise ValueError("Production API inputs must match the source files verified in healthy staging.")
     return commit, staged_commit
 
 
@@ -76,7 +97,7 @@ def review():
     migrations = sorted(path.name for path in (shared.ROOT / "src/GolfSG.Database.Setup/Sql/Migrations").glob("*.sql"))
     message = (
         "## Production release awaiting your approval\n\n"
-        f"Commit: `{commit}`\n\nHealthy staging: `{staged}` (identical source files).\n\n"
+        f"Commit: `{commit}`\n\nHealthy staging: `{staged}` (identical API inputs).\n\n"
         "Tests, database integration, API container and Android build have passed.\n\n"
         "After **ToyTroels** approves, the job checks the protection rules again, applies missing "
         "database migrations transactionally, deploys this exact commit, and verifies API/database readiness.\n\n"

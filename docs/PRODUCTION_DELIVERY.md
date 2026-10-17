@@ -4,11 +4,16 @@ Feature branches are for development. Merge them into `dev` for automatic tests,
 migrations and staging delivery. Once that version is ready, promote it to `master`.
 Production Render follows `master` with Auto-Deploy **Off**.
 
+Only pushes that change API build or delivery inputs enter production preparation
+and approval. App-only and documentation-only pushes still run CI but skip API
+migrations, deployment and the production approval request. The input paths are
+defined in `scripts/api_changes.py` and shared with staging delivery.
+
 The master CI run checks application/page tests, PostgreSQL integration tests,
 dependency audits, the API container and Android packaging. Apple and Windows remain
 disabled. A preparation job checks the GitHub protection rules and confirms that the
-master source tree matches healthy staging; a normal merge commit may differ in SHA
-while containing identical files. The release summary names the exact production SHA.
+master API inputs match healthy staging; commits may differ in SHA or app/documentation
+files while containing identical API inputs. The release summary names the exact production SHA.
 
 The final job waits at the `production` GitHub environment. In **Actions → CI → Review
 deployments**, select production and press **Approve and deploy** only when you want
@@ -50,7 +55,7 @@ products or saved rounds. It is tested on an isolated copy before production app
 ## Stale or unprepared releases
 
 The workflow stops if master changes while approval is pending, if staging is unhealthy,
-if its files differ from the release, or if the manual protection is removed. Review the
+if its API inputs differ from the release, or if the manual protection is removed. Review the
 latest validated release instead. Dev and master runs are serialized without cancelling
 an active migration or deploy.
 
