@@ -56,7 +56,7 @@ public sealed class CoursePlayPageTests
         SetOutcome(page, "2", 0, 0);
         await ClickAsync(page, GetField<Button>(page, "record"));
         var overviewMap = GetField<CourseMapView>(page, "overviewMap");
-        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.Contains("approach"), "A position with remaining attempts must remain visible.");
+        Assert.Contains("approach", overviewMap.VisibleSavedShotIds!, "A position with remaining attempts must remain visible.");
 
         SetOutcome(page, "1", 0, 0);
         await ClickAsync(page, GetField<Button>(page, "record"));
@@ -67,9 +67,9 @@ public sealed class CoursePlayPageTests
         Assert.HasCount(3, overviewMap.SavedShots, "Filtering must not remove positions from the underlying course.");
 
         await ClickAsync(page, GetField<Button>(page, "undo"));
-        Assert.AreEqual(1, store.Document.Active!.Results.Count);
+        Assert.HasCount(1, store.Document.Active!.Results);
         Assert.IsTrue(GetField<CheckBox>(page, "hideCompleted").IsChecked);
-        Assert.IsTrue(overviewMap.VisibleSavedShotIds!.Contains("approach"));
+        Assert.Contains("approach", overviewMap.VisibleSavedShotIds!);
         Assert.AreEqual("approach", overviewMap.SelectedShotId);
     }
 
@@ -90,7 +90,7 @@ public sealed class CoursePlayPageTests
         GetField<CheckBox>(page, "hideCompleted").IsChecked = false;
         PreviewShot(page, "approach");
         Assert.IsTrue(overviewMap.VisibleSavedShotIds!.SetEquals(["approach"]));
-        Assert.IsTrue(overviewMap.CompletedShotIds.Contains("approach"));
+        Assert.Contains("approach", overviewMap.CompletedShotIds);
     }
 
     [TestMethod]

@@ -19,11 +19,11 @@ jobs:
   changes:
     name: Check API delivery inputs
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       api: ${{ steps.changes.outputs.api }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Detect API changes across the push
@@ -32,11 +32,11 @@ jobs:
 
   test:
     name: Tests and dependency audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.401
 
@@ -70,7 +70,7 @@ jobs:
 
   backend:
     name: API boundaries and PostgreSQL integration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:18
@@ -89,9 +89,9 @@ jobs:
       ConnectionStrings__DatabaseSetup: Host=localhost;Port=5432;Database=golfsg_test_ci;Username=postgres;Password=local_test_password
       GOLFSG_TEST_DATABASE: Host=localhost;Port=5432;Database=golfsg_test_ci;Username=postgres;Password=local_test_password
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.401
 
@@ -115,14 +115,14 @@ jobs:
 
   android:
     name: Android Release build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test
     env:
       GOLFSG_BUILD_ENVIRONMENT: ${{ (github.ref == 'refs/heads/dev' || github.base_ref == 'dev') && 'Staging' || 'Production' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.401
 
@@ -151,7 +151,7 @@ jobs:
             -p:AndroidPackageFormats=aab%3Bapk \
             -o artifacts/android "${environment_args[@]}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: android-${{ env.GOLFSG_BUILD_ENVIRONMENT }}-packaging-check
           path: |
@@ -166,9 +166,9 @@ jobs:
     runs-on: windows-latest
     needs: test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.401
 
@@ -189,7 +189,7 @@ jobs:
           -p:RuntimeIdentifierOverride=win-x64
           -p:AppxPackageSigningEnabled=false
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: windows-msix-validation
           path: src/GolfSG/bin/Release/net10.0-windows10.0.19041.0/win-x64/AppPackages/**/*
@@ -202,9 +202,9 @@ jobs:
     runs-on: macos-26
     needs: test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.401
 
@@ -241,7 +241,7 @@ jobs:
     name: Migrate and deploy staging
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && needs.changes.outputs.api == 'true'
     needs: [changes, test, backend, android]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment: staging
     concurrency:
@@ -251,11 +251,11 @@ jobs:
       STAGING_DATABASE_SETUP_CONNECTION: ${{ secrets.STAGING_DATABASE_SETUP_CONNECTION }}
       STAGING_RENDER_DEPLOY_HOOK: ${{ secrets.STAGING_RENDER_DEPLOY_HOOK }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.401
 
@@ -272,12 +272,12 @@ jobs:
     name: Prepare production approval
     if: github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.changes.outputs.api == 'true'
     needs: [changes, test, backend, android]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
       - name: Verify protection and healthy staging; prepare release summary
@@ -289,7 +289,7 @@ jobs:
     name: Approve, migrate and deploy production
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: production-readiness
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     environment:
       name: production
@@ -305,10 +305,10 @@ jobs:
       PRODUCTION_DATABASE_SETUP_CONNECTION: ${{ secrets.PRODUCTION_DATABASE_SETUP_CONNECTION }}
       PRODUCTION_RENDER_DEPLOY_HOOK: ${{ secrets.PRODUCTION_RENDER_DEPLOY_HOOK }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.401
       - name: Recheck approval protection and production target
