@@ -8,6 +8,7 @@ The project follows semantic versioning where practical. Alpha releases may cont
 
 ### Added
 
+- Independent API and database setup build versions, initially `0.1.0-alpha`, while the app remains `0.3.0-alpha` build 4. Migration 004 records database schema release `0.1.0-alpha` transactionally. Component versioning documentation includes the initial compatibility requirements matrix.
 - Shot overview when starting or resuming a beta course round, with all positions numbered on the course picture and selected-shot details for names, whole-metre distances, starting lies, categories and played status. Choose remaining shots in any order; selected shots, SG, undo, resume and archived outcomes remain correctly matched.
 - Beta course practice rounds using the supplied offline facility picture, draggable start/target markers, reference-distance calibration, measured distance overrides, saved course layouts and per-shot lies. Set 1–100 independent attempts per position, record each finishing distance/lie, holed outcome and penalties, undo, save/resume, and archive the completed round in separately labelled history. Partly played positions can be continued in any order; existing courses default to one attempt per position.
 - Course-practice results remain separate from normal-round statistics and insights; saved result metadata survives round export/import.

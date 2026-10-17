@@ -9,11 +9,30 @@
     <VersionPrefix>0.3.0</VersionPrefix>
     <VersionSuffix>alpha</VersionSuffix>
     <ApplicationBuildNumber>4</ApplicationBuildNumber>
+    <!-- Independently released server components. App values above remain compatible
+         with Set-AppVersion.ps1 and the Android release tag validation. -->
+    <ApiVersionPrefix>0.1.0</ApiVersionPrefix>
+    <ApiVersionSuffix>alpha</ApiVersionSuffix>
+    <DatabaseSetupVersionPrefix>0.1.0</DatabaseSetupVersionPrefix>
+    <DatabaseSetupVersionSuffix>alpha</DatabaseSetupVersionSuffix>
+    <ComponentBuildNumber>$(ApplicationBuildNumber)</ComponentBuildNumber>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GolfSG.Api'">
+    <VersionPrefix>$(ApiVersionPrefix)</VersionPrefix>
+    <VersionSuffix>$(ApiVersionSuffix)</VersionSuffix>
+    <ComponentBuildNumber>0</ComponentBuildNumber>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GolfSG.Database.Setup'">
+    <VersionPrefix>$(DatabaseSetupVersionPrefix)</VersionPrefix>
+    <VersionSuffix>$(DatabaseSetupVersionSuffix)</VersionSuffix>
+    <ComponentBuildNumber>0</ComponentBuildNumber>
+  </PropertyGroup>
+  <PropertyGroup>
     <Version>$(VersionPrefix)</Version>
     <Version Condition="'$(VersionSuffix)' != ''">$(VersionPrefix)-$(VersionSuffix)</Version>
     <AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
-    <FileVersion>$(VersionPrefix).$(ApplicationBuildNumber)</FileVersion>
-    <InformationalVersion>$(VersionPrefix)+build.$(ApplicationBuildNumber)</InformationalVersion>
-    <InformationalVersion Condition="'$(VersionSuffix)' != ''">$(VersionPrefix)-$(VersionSuffix)+build.$(ApplicationBuildNumber)</InformationalVersion>
+    <FileVersion>$(VersionPrefix).$(ComponentBuildNumber)</FileVersion>
+    <InformationalVersion>$(VersionPrefix)+build.$(ComponentBuildNumber)</InformationalVersion>
+    <InformationalVersion Condition="'$(VersionSuffix)' != ''">$(VersionPrefix)-$(VersionSuffix)+build.$(ComponentBuildNumber)</InformationalVersion>
   </PropertyGroup>
 </Project>

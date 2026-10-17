@@ -85,6 +85,7 @@ public sealed class ArchitectureBoundaryTests
         Assert.Contains("GolfSG.Database.Setup.Sql.Migrations.001_initial.sql", resources);
         Assert.Contains("GolfSG.Database.Setup.Sql.Migrations.002_identity_round_ownership.sql", resources);
         Assert.Contains("GolfSG.Database.Setup.Sql.Migrations.003_course_library_games.sql", resources);
+        Assert.Contains("GolfSG.Database.Setup.Sql.Migrations.004_database_release_version.sql", resources);
         Assert.DoesNotContain("GolfSG.Api", references);
     }
 

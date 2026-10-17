@@ -4,6 +4,7 @@ Use this checklist for every distributable build. A green repository build is ne
 
 ## Repository gates
 
+- [ ] Record exact app/API versions and commits, installed database schema version and applied migrations, and cross-release test evidence in the [compatibility matrix](COMPONENT_VERSIONING.md); leave untested combinations marked unknown.
 - [ ] The release tag matches `VersionPrefix` and `VersionSuffix`, and `ApplicationBuildNumber` is greater than every previously published build.
 - [ ] Locked restore succeeds with the SDK in `global.json`.
 - [ ] All 203+ Release tests pass.

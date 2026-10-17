@@ -2,7 +2,7 @@
 
 GolfSG is an offline-first .NET MAUI app for tracking golf putting performance with strokes gained. It helps golfers record rounds and practice sessions, compare results with a general strokes-gained reference baseline, and identify where practice will have the greatest impact.
 
-> **Status: 0.2.0-alpha**
+> **Status: 0.3.0-alpha**
 >
 > The core experience is usable and repository-side release hardening is in place, but this remains prerelease software. Public distribution still requires production signing, reference-data provenance approval, store metadata, and physical-device acceptance.
 
@@ -91,6 +91,8 @@ For the local ASP.NET Core API and PostgreSQL database, follow
 | `tests/GolfSG.Api.Tests` | API responses, authentication boundaries, account isolation, and PostgreSQL integration |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for dependency rules and [TESTING_STRATEGY.md](TESTING_STRATEGY.md) for the testing roadmap.
+
+See [component versioning and compatibility](docs/COMPONENT_VERSIONING.md) for the current version inventory, initial feature requirements matrix, and proposed independent release policy.
 
 ## Scoring model
 

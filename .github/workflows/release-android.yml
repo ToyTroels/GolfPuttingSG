@@ -40,8 +40,9 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          version_prefix=$(sed -n 's:.*<VersionPrefix>\(.*\)</VersionPrefix>.*:\1:p' Directory.Build.props)
-          version_suffix=$(sed -n 's:.*<VersionSuffix>\(.*\)</VersionSuffix>.*:\1:p' Directory.Build.props)
+          # Read app literals, excluding component property expressions such as $(ApiVersionPrefix).
+          version_prefix=$(sed -n 's:.*<VersionPrefix>\([^<$]*\)</VersionPrefix>.*:\1:p' Directory.Build.props)
+          version_suffix=$(sed -n 's:.*<VersionSuffix>\([^<$]*\)</VersionSuffix>.*:\1:p' Directory.Build.props)
           expected_tag="v${version_prefix}"
           if [ -n "$version_suffix" ]; then
             expected_tag="${expected_tag}-${version_suffix}"
