@@ -16,6 +16,20 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Check API delivery inputs
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.changes.outputs.api }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect API changes across the push
+        id: changes
+        run: python3 scripts/api_changes.py
+
   test:
     name: Tests and dependency audit
     runs-on: ubuntu-latest
@@ -225,8 +239,8 @@ jobs:
 
   deploy-staging:
     name: Migrate and deploy staging
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    needs: [test, backend, android]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev' && needs.changes.outputs.api == 'true'
+    needs: [changes, test, backend, android]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: staging
@@ -256,8 +270,8 @@ jobs:
 
   production-readiness:
     name: Prepare production approval
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    needs: [test, backend, android]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.changes.outputs.api == 'true'
+    needs: [changes, test, backend, android]
     runs-on: ubuntu-latest
     permissions:
       contents: read

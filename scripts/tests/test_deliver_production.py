@@ -84,6 +84,7 @@ class ProductionDeliveryTests(unittest.TestCase):
         self.tree = "d" * 40
         with patch.object(production, "github_json", side_effect=[self.protection, self.rules, self.head,
                           {"tree": {"sha": "c" * 40}}]), \
+             patch.object(production, "api_tree_matches", return_value=False), \
              patch.object(shared, "read_json", side_effect=[self.deployment, self.health]), \
              patch.object(production.subprocess, "check_output", side_effect=[self.tree, self.sha]), \
              self.assertRaises(ValueError):
