@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="/" />
+    <link rel="stylesheet" href="admin.css" />
+    <HeadOutlet />
+</head>
+<body>
+    <Router AppAssembly="typeof(App).Assembly">
+        <Found Context="routeData"><RouteView RouteData="routeData" /></Found>
+        <NotFound><main><h1>Page not found</h1></main></NotFound>
+    </Router>
+</body>
+</html>

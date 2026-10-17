@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>GolfSG.Admin.Staging</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.12" />
+    <Compile Include="../../build/AdminAccess.cs" Link="Security/AdminAccess.cs" />
+    <Compile Include="../GolfSG.Application/Server/AdminDirectoryPage.cs" Link="Contracts/AdminDirectoryPage.cs" />
+    <Compile Include="../GolfSG.Application/Server/PersonalDataPage.cs" Link="Contracts/PersonalDataPage.cs" />
+    <Compile Include="../GolfSG.Application/Server/PersonalPerformance.cs" Link="Contracts/PersonalPerformance.cs" />
+  </ItemGroup>
+</Project>

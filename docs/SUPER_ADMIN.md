@@ -1,5 +1,10 @@
 # Super-admin account access
 
+The new [Blazor admin dashboard](ADMIN_DASHBOARD.md) uses separate OIDC/MFA
+authentication and read-only permissions. Enabling `AdminAuth:Enabled` on the API
+disables the legacy page, login and authorization described below. Do not use
+the password-only interface as a fallback for the MFA dashboard.
+
 The app uses its deployment's trusted endpoint in Debug and Release. Old saved endpoint preferences are ignored. Users cannot change connections. Production uses the Render API; an owner can build a separate staging app using `GolfSGEnvironment=Staging` and `GolfSGStagingApiAddress`. This is deployment configuration rather than an account permission.
 
 ## Provision an administrator

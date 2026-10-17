@@ -1,0 +1,33 @@
+@namespace GolfSG.Admin.Components
+@using GolfSG.Application.Server
+<div class="shell">
+    <aside><a class="brand" href="/my">GolfSG <span>MY ACCOUNT</span></a><p class="section-label">YOUR GOLF</p>
+    <a class="nav-link" href="/my/performance"><span class="nav-symbol" aria-hidden="true">↗</span>Performance</a>
+    @foreach (var section in new[] { "rounds", "courses", "games" }) { <a class="@(Section == section ? "selected" : "nav-link")" href="@($"/my?section={section}")"><span class="nav-symbol" aria-hidden="true">@(section == "rounds" ? "◷" : section == "courses" ? "⚑" : "◇")</span>My @section</a> }
+    <p class="sidebar-note">Your account, your data<br />Only your own records are shown</p></aside>
+    <div class="workspace"><header><span class="badge">@(IsPreview ? "Personal area preview" : "Personal account")</span><span>@Username</span>
+    @if (IsPreview) { <span class="preview-label">SAMPLE DATA</span> } else { <form method="post" action="/my/logout"><AntiforgeryToken /><button type="submit">Sign out</button></form> }</header>
+    <main><p class="eyebrow">MY GOLFSG</p><h1>My @Section</h1><p class="intro">A private view of your saved golf data.</p>
+    <a class="button" href="@($"/my?section={Section}&offset={Offset}&refresh=1")">Refresh data</a><p class="footnote">Synced data may be cached for up to 30 seconds.</p>
+    <p class="data-note">Only server-synced rounds and courses you have published are available here. Data saved only on your device stays on that device.</p>
+    @if (Error is not null) { <section role="alert"><h2>Data unavailable</h2><p>@Error</p><a class="button" href="/my/login">Sign in again</a></section> }
+    else if (Page is null || Page.Items.Count == 0) { <section><h2>No @Section yet</h2><p>Save and sync your data in the GolfSG app, then refresh this page.</p></section> }
+    else {
+        <section class="directory"><div class="directory-heading"><div><h2>Your @Section</h2><p>@Page.Items.Count records on this page</p></div></div>
+        <div class="table-scroll"><table><thead><tr><th scope="col">Record</th><th scope="col">Status</th><th scope="col">@(Section == "games" ? "Created (UTC)" : "Updated (UTC)")</th><th scope="col">Details</th></tr></thead><tbody>
+        @foreach (var row in Page.Items) { <tr><th scope="row">@row.Title<span class="record-id">@row.Id</span></th><td><span class="status-pill" data-status="@row.State">@row.State</span></td><td>@row.UpdatedAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm")</td><td>@row.Detail @if (row.Score is not null) { <p>My score: @row.Score.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) SG</p> }
+        @if (Section == "rounds") { <a class="button" href="@($"/my/rounds/{Uri.EscapeDataString(row.Id)}")">View round</a> @if (!IsPreview) { <a class="button" href="@($"/my/rounds/{Uri.EscapeDataString(row.Id)}/export")">Download my round</a> } }</td></tr> }
+        </tbody></table></div></section>
+    }
+    <nav class="pagination" aria-label="Pagination">@if (Offset > 0) { <a class="button" href="@($"/my?section={Section}&offset={Math.Max(0,Offset - 25)}")">Previous</a> }<span>Page @(Offset / 25 + 1)</span>@if (Page?.HasMore == true && Offset <= 99975) { <a class="button" href="@($"/my?section={Section}&offset={Offset + 25}")">Next</a> }</nav>
+    @if (IsPreview) { <p class="footnote">Sample personal records only. No real account is signed in.</p> }
+    </main></div>
+</div>
+@code {
+    [Parameter] public string Section { get; set; } = "rounds";
+    [Parameter] public PersonalDataPage? Page { get; set; }
+    [Parameter] public string Username { get; set; } = "";
+    [Parameter] public int Offset { get; set; }
+    [Parameter] public bool IsPreview { get; set; }
+    [Parameter] public string? Error { get; set; }
+}

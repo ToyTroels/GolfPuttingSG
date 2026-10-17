@@ -1,0 +1,29 @@
+@page "/"
+@using System.Net.Http.Headers
+@using System.Reflection
+@using Microsoft.AspNetCore.Authentication
+@inject IHttpContextAccessor Context
+@inject IHttpClientFactory Clients
+@inject IWebHostEnvironment Environment
+<SystemOverview Status="status" EnvironmentName="@Environment.EnvironmentName" AdminVersion="@AdminVersion" CheckedAt="checkedAt" />
+@code {
+    private AdminOverviewStatus? status;
+    private DateTime checkedAt;
+    private static string? AdminVersion => typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+    protected override async Task OnInitializedAsync()
+    {
+        var context = Context.HttpContext!;
+        var token = await context.GetTokenAsync("access_token");
+        if (string.IsNullOrWhiteSpace(token)) return;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "api/admin/status");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var response = await Clients.CreateClient("AdminApi").SendAsync(request, context.RequestAborted);
+            if (response.IsSuccessStatusCode) status = await response.Content.ReadFromJsonAsync<AdminOverviewStatus>(context.RequestAborted);
+        }
+        catch (HttpRequestException) { }
+        catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested) { }
+        checkedAt = DateTime.UtcNow;
+    }
+}

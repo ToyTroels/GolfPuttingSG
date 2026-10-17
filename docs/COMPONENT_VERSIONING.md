@@ -62,9 +62,10 @@ version numbers.
 | Item | Evidence in the current source | Limitation |
 | --- | --- | --- |
 | App | `Directory.Build.props`: `0.3.0-alpha`, build `4` | Does not identify an installed package's source commit by itself |
-| API | `0.1.0-alpha`, configured by `ApiVersionPrefix` / `ApiVersionSuffix` in `Directory.Build.props` | Initial independent baseline; not a deployment claim |
-| Database setup tool | `0.1.0-alpha`, configured by `DatabaseSetupVersionPrefix` / `DatabaseSetupVersionSuffix` in `Directory.Build.props` | Independent of both API and database schema versions |
-| Database | `0.1.0-alpha` after migrations 001–004 in `src/GolfSG.Database.Setup/Sql/Migrations` | Installed version must be read from the actual database |
+| API | `0.6.0-alpha`, configured by `ApiVersionPrefix` / `ApiVersionSuffix` in `Directory.Build.props` | Adds owner-scoped performance and round details; not a deployment claim |
+| Blazor website | `0.5.0-alpha`, configured by `AdminVersionPrefix` / `AdminVersionSuffix` | Admin and personal areas with performance and round detail views |
+| Database setup tool | `0.2.0-alpha`, configured by `DatabaseSetupVersionPrefix` / `DatabaseSetupVersionSuffix` in `Directory.Build.props` | Independent of both API and database schema versions |
+| Database | `0.2.0-alpha` after migrations 001–005 in `src/GolfSG.Database.Setup/Sql/Migrations` | Installed version must be read from the actual database |
 | Local course-practice storage | `FileCoursePracticeRepository` reads schemas 1–4 | This range applies only to that format |
 | Course sharing package | `CourseShareService` accepts schema 1 | Separate from local course storage |
 | Active putting-game file | `FileActivePuttingGameRepository` uses schema 1 | Separate from app release version |
@@ -77,6 +78,11 @@ Do not infer compatibility from matching version numbers or a successful build.
 | App / feature | Required API | Required database | Status / evidence |
 | --- | --- | --- | --- |
 | Current source: local rounds and practice | None for local use | None for local use | Offline behavior described in README; release acceptance still required |
+| Admin dashboard 0.1.0-alpha | API 0.2.0-alpha with configured OIDC, MFA and admin.read scope | Schema 0.2.0-alpha, migrations 001–005 and runtime role grants | Source requirement; actual identity-provider and deployment acceptance pending |
+| Admin dashboard 0.2.0-alpha directories | API 0.3.0-alpha with configured OIDC, MFA and admin.read scope | Schema 0.2.0-alpha; no additional migration | Read-only local query checks pass; identity-provider/deployment acceptance pending |
+| Admin dashboard 0.3.0-alpha password reset | API 0.4.0-alpha, reset scope, reset-operator allowlist and recent signed auth_time/MFA claims | Schema 0.2.0-alpha; no additional migration | Isolated local password/stamp test passed; identity-provider acceptance pending |
+| Website 0.4.0-alpha personal area | API 0.5.0-alpha and existing ordinary app-account login | Schema 0.2.0-alpha; no additional migration | Two-account ownership checks passed on disposable PostgreSQL |
+| Website 0.5.0-alpha performance | API 0.6.0-alpha, ordinary app-account login | Schema 0.2.0-alpha; no additional migration | Domain scoring, owner isolation and malformed-record checks passed |
 | Current source: shared course library and join-code games | API containing course-library/game endpoints | Migrations 001–003 applied | Source requirement documented in `product/course-library-and-games.md`; no deployment or cross-release certification implied |
 | Previously distributed app with current API | To be recorded | To be recorded | Unknown until tested with the actual distributed artifact |
 | Current app with previous API | To be recorded per feature | To be recorded | Unknown; missing online features must not prevent local play |

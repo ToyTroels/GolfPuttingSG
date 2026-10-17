@@ -15,6 +15,167 @@ namespace GolfSG.Api.Tests;
 public sealed class PostgresStoreIntegrationTests
 {
     [TestMethod]
+    public async Task PersonalPerformanceKeepsOwnershipPracticeAndMalformedRecordsSeparate()
+    {
+        await using var db = Context(TestConnection());
+        var marker = Guid.NewGuid().ToString("N");
+        var alice = "performance-a-" + marker; var bob = "performance-b-" + marker;
+        var normal = new GolfSG.Core.Models.Round("normal-" + marker, DateTime.Today,
+            [GolfSG.Core.StrokesGainedCalculator.BuildHole(1, 3, 2)], ConfiguredHoleCount: 9);
+        var practice = normal with { Id = "practice-" + marker, TrackingOptions = GolfSG.Core.Models.RoundTrackingOptions.PuttingGame };
+        var other = normal with { Id = "other-" + marker };
+        foreach (var (owner, round) in new[] { (alice, normal), (alice, practice), (bob, other) })
+            db.SavedRounds.Add(new() { UserId = owner, Id = round.Id, Version = Guid.NewGuid(), UpdatedAt = DateTime.UtcNow,
+                Payload = JsonSerializer.Serialize(round, RoundSyncJsonContext.Default.Round) });
+        var badId = "bad-" + marker;
+        db.SavedRounds.Add(new() { UserId = alice, Id = badId, Version = Guid.NewGuid(), UpdatedAt = DateTime.UtcNow,
+            Payload = JsonSerializer.Serialize(new { id = badId }) });
+        await db.SaveChangesAsync();
+        try
+        {
+            var performance = new PostgresPersonalPerformance(db);
+            var overview = await performance.OverviewAsync(alice, default);
+            Assert.AreEqual(1, overview.NormalRounds);
+            Assert.AreEqual(1, overview.PracticeRounds);
+            Assert.AreEqual(1, overview.Unavailable);
+            Assert.HasCount(1, overview.Trend);
+            Assert.AreEqual(normal.Id, overview.Trend[0].Id);
+            Assert.IsNull(await performance.DetailAsync(alice, other.Id, default));
+            Assert.IsNull(await performance.DetailAsync(alice, badId, default));
+            var detail = await performance.DetailAsync(alice, normal.Id, default);
+            Assert.IsNotNull(detail);
+            Assert.AreEqual(normal.Holes[0].StrokesGainedPutting, detail.Summary.TotalSg, 1e-10);
+        }
+        finally { await db.SavedRounds.Where(r => r.UserId == alice || r.UserId == bob).ExecuteDeleteAsync(); }
+    }
+
+    [TestMethod]
+    public async Task PersonalCoursesAndGamesAreScopedToOwnerOrParticipationAndOwnScore()
+    {
+        await using var db = Context(TestConnection());
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        var marker = Guid.NewGuid().ToString("N");
+        var alice = "own_a_" + marker; var bob = "own_b_" + marker;
+        db.Users.AddRange(new() { Id = alice, UserName = alice }, new() { Id = bob, UserName = bob });
+        var image = new GolfSG.Server.Infrastructure.Persistence.Models.SharedCourseImage { Id = marker, Bytes = new byte[8] };
+        db.CourseImages.Add(image);
+        foreach (var owner in new[] { alice, bob })
+        {
+            var courseId = Guid.NewGuid(); var revisionId = Guid.NewGuid();
+            db.SharedCourses.Add(new() { Id = courseId, OwnerId = owner, Creator = owner, SourceId = marker,
+                RevisionId = revisionId, Name = owner + " course", Positions = 1, Attempts = 1, Published = true, UpdatedAt = DateTimeOffset.UtcNow });
+            db.CourseRevisions.Add(new() { Id = revisionId, CourseId = courseId, ContentHash = marker, DefinitionJson = "{}", ImageId = marker });
+        }
+        var joined = Guid.NewGuid(); var privateGame = Guid.NewGuid();
+        var alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        string Code() => new(System.Security.Cryptography.RandomNumberGenerator.GetBytes(6).Select(b => alphabet[b % alphabet.Length]).ToArray());
+        foreach (var id in new[] { joined, privateGame }) db.CourseGames.Add(new() { Id = id, HostId = bob, HostName = bob,
+            Name = id == joined ? "Joined game" : "Other account game", Code = Code(), DefinitionJson = "{}", ImageId = marker,
+            ScoringVersion = "v1", CreatedAt = DateTimeOffset.UtcNow });
+        db.GameParticipants.Add(new() { GameId = joined, AccountId = alice, Name = alice, RoundId = marker, ResultsJson = "[]", TotalStrokesGained = 1.5 });
+        db.GameParticipants.Add(new() { GameId = joined, AccountId = bob, Name = bob, RoundId = Guid.NewGuid().ToString("N"), ResultsJson = "[]", TotalStrokesGained = 9.0 });
+        await db.SaveChangesAsync();
+        var data = new PostgresPersonalData(db);
+        var courses = await data.ReadAsync(alice, "courses", 0, default);
+        Assert.HasCount(1, courses.Items);
+        Assert.AreEqual(alice + " course", courses.Items[0].Title);
+        var games = await data.ReadAsync(alice, "games", 0, default);
+        Assert.HasCount(1, games.Items);
+        Assert.AreEqual("Joined game", games.Items[0].Title);
+        Assert.AreEqual(1.5, games.Items[0].Score);
+        var hosted = await data.ReadAsync(bob, "games", 0, default);
+        Assert.HasCount(2, hosted.Items);
+        await transaction.RollbackAsync();
+    }
+
+    [TestMethod]
+    public async Task PersonalDataNeverReturnsAnotherAccountsRowsOrDeletedRounds()
+    {
+        await using var database = Context(TestConnection());
+        var marker = Guid.NewGuid().ToString("N");
+        var alice = "personal_alice_" + marker;
+        var bob = "personal_bob_" + marker;
+        database.SavedRounds.AddRange(
+            new() { UserId = alice, Id = "alice-round", Version = Guid.NewGuid(), Payload = "{\"id\":\"alice-round\"}", UpdatedAt = DateTime.UtcNow },
+            new() { UserId = bob, Id = "bob-round", Version = Guid.NewGuid(), Payload = "{\"id\":\"bob-round\"}", UpdatedAt = DateTime.UtcNow },
+            new() { UserId = alice, Id = "deleted-round", Version = Guid.NewGuid(), Payload = null, UpdatedAt = DateTime.UtcNow });
+        await database.SaveChangesAsync();
+        try
+        {
+            var data = new PostgresPersonalData(database);
+            var page = await data.ReadAsync(alice, "rounds", 0, default);
+            Assert.HasCount(1, page.Items);
+            Assert.AreEqual("alice-round", page.Items[0].Id);
+            var bobPage = await data.ReadAsync(bob, "rounds", 0, default);
+            Assert.HasCount(1, bobPage.Items);
+            Assert.AreEqual("bob-round", bobPage.Items[0].Id);
+            Assert.IsEmpty((await data.ReadAsync(alice, "courses", 0, default)).Items);
+            Assert.IsEmpty((await data.ReadAsync(alice, "games", 0, default)).Items);
+        }
+        finally { await database.SavedRounds.Where(r => r.UserId == alice || r.UserId == bob).ExecuteDeleteAsync(); }
+    }
+
+    [TestMethod]
+    public async Task AdminResetChangesPasswordAndSecurityStampButPreservesLockout()
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            { ["ConnectionStrings:Default"] = TestConnection() }).Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddServerInfrastructure(config);
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+        var account = new IdentityUser { UserName = "reset_" + Guid.NewGuid().ToString("N") };
+        Assert.IsTrue((await users.CreateAsync(account, "Original!12345")).Succeeded);
+        try
+        {
+            await users.SetLockoutEndDateAsync(account, DateTimeOffset.UtcNow.AddDays(1));
+            var stamp = account.SecurityStamp;
+            var lockout = account.LockoutEnd;
+            var controller = new GolfSG.Api.Controllers.AdminPasswordResetController(users, config,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<GolfSG.Api.Controllers.AdminPasswordResetController>.Instance)
+                { ControllerContext = new() { HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext() } };
+            Assert.IsInstanceOfType<Microsoft.AspNetCore.Mvc.ConflictObjectResult>(await controller.Reset(account.Id,
+                new() { ConfirmUsername = "wrong", NewPassword = "Replacement!12345" }));
+            Assert.AreEqual(stamp, account.SecurityStamp);
+            Assert.IsInstanceOfType<Microsoft.AspNetCore.Mvc.NoContentResult>(await controller.Reset(account.Id,
+                new() { ConfirmUsername = account.UserName, NewPassword = "Replacement!12345" }));
+            Assert.AreNotEqual(stamp, account.SecurityStamp);
+            Assert.AreEqual(lockout, account.LockoutEnd);
+            Assert.IsTrue(await users.CheckPasswordAsync(account, "Replacement!12345"));
+            Assert.IsFalse(await users.CheckPasswordAsync(account, "Original!12345"));
+        }
+        finally { await users.DeleteAsync(account); }
+    }
+
+    [TestMethod]
+    [DataRow("users")]
+    [DataRow("courses")]
+    [DataRow("games")]
+    public async Task AdminDirectoryUsesBoundedReadOnlyProjections(string section)
+    {
+        await using var database = Context(TestConnection());
+        var directory = new PostgresAdminDirectory(database);
+        var page = await directory.ReadAsync(section, "", 0, 1, default);
+        Assert.IsTrue(page.Items.Count <= 1);
+        Assert.AreEqual(section, page.Section);
+        var empty = await directory.ReadAsync(section, "nonexistent_" + Guid.NewGuid().ToString("N"), 0, 25, default);
+        Assert.AreEqual(0, empty.Items.Count);
+        Assert.IsFalse(empty.HasMore);
+        Assert.IsFalse(database.ChangeTracker.HasChanges());
+    }
+
+    [TestMethod]
+    public async Task AdminStatusReadsTheInstalledDatabaseRelease()
+    {
+        await using var database = Context(TestConnection());
+        var result = await new PostgresAdminDatabaseStatus(database).ReadAsync(default);
+        Assert.IsTrue(result.Available);
+        Assert.AreEqual("0.2.0-alpha", result.Version);
+    }
+
+    [TestMethod]
     public async Task ReadinessRequiresReadableIdentitySchemaBeyondDatabaseConnectivity()
     {
         var connection = TestConnection();

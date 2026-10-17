@@ -4,6 +4,8 @@ Remaining implementation and verification work. Exploratory features live in [pr
 
 ## Round entry and usability
 
+- [ ] Allow users to enter and edit their own round and practice results in the web browser, with validated inputs, secure owner-only saving, and cache invalidation after successful writes.
+
 - [ ] Add course name at round setup and preserve it through autosave/resume, history, editing, import/export, results, and summaries. Older rounds may omit it.
 - [ ] Add an in-round scoreboard showing registered holes, unfinished holes, and running SG by configured category, with entered values preserved when returning to hole entry.
 - [ ] Fix history date contrast on supported themes/devices.

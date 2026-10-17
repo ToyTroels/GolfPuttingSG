@@ -14,6 +14,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddServerInfrastructure(this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddDataProtection();
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("Default")
                 ?? throw new InvalidOperationException("ConnectionStrings:Default is not configured.")));
@@ -21,6 +22,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICourseCommunityStore, PostgresCourseCommunityStore>();
         services.AddScoped<IServerProductStore, PostgresProductStore>();
         services.AddScoped<IServerConnectionCheck, PostgresConnectionCheck>();
+        services.AddScoped<IAdminDatabaseStatus, PostgresAdminDatabaseStatus>();
+        services.AddScoped<IAdminDirectory, PostgresAdminDirectory>();
+        services.AddScoped<IPersonalData, PostgresPersonalData>();
+        services.AddScoped<IPersonalPerformance, PostgresPersonalPerformance>();
         services.AddIdentityCore<IdentityUser>(options =>
             {
                 var allowSimplePasswords = configuration.GetValue<bool>("Auth:AllowSimplePasswordsForLocalTesting");
@@ -38,6 +43,7 @@ public static class ServiceCollectionExtensions
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
             })
             .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders()
             .AddSignInManager();
         return services;
     }

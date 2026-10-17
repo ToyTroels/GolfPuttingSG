@@ -1,0 +1,29 @@
+@namespace GolfSG.Admin.Components
+<PageTitle>GolfSG Admin · Overview</PageTitle>
+<div class="shell">
+    <aside><a class="brand" href="/">GolfSG <span>ADMIN</span></a><p class="section-label">WORKSPACE</p><a class="selected" href="/" aria-current="page"><span class="nav-symbol" aria-hidden="true">▦</span>Overview</a><a class="nav-link" href="/users"><span class="nav-symbol" aria-hidden="true">◎</span>Users</a><a class="nav-link" href="/courses"><span class="nav-symbol" aria-hidden="true">⚑</span>Courses</a><a class="nav-link" href="/games"><span class="nav-symbol" aria-hidden="true">◇</span>Games</a><p class="sidebar-note">Read-only administration<br />@(IsPreview ? "Sample data · no API access" : "Access restricted · MFA required")</p></aside>
+    <div class="workspace">
+        <header><span class="badge">@EnvironmentName</span>@if (IsPreview) { <span class="preview-label">LOCAL PREVIEW · SAMPLE DATA</span> } else { <form method="post" action="/logout"><AntiforgeryToken /><button type="submit">Sign out</button></form> }</header>
+        <main>
+            <p class="eyebrow">OPERATIONS</p><h1>System overview</h1><p class="intro">Component versions and deployment status in one place.</p>
+            @if (Status is null)
+            {
+                <section role="status"><h2>Status unavailable</h2><p>The API could not provide an authorized status response. Check access or try again after the service wakes.</p><a class="button" href="/">Try again</a></section>
+            }
+            else
+            {
+                <div class="cards"><section><p class="section-label">API</p><h2>@Status.ApiVersion</h2><p>@Status.Environment environment</p></section><section><p class="section-label">DATABASE</p><h2>@(Status.DatabaseVersion ?? "Unknown")</h2><p>@(Status.DatabaseAvailable ? "Available" : "Version check unavailable")</p></section><section><p class="section-label">ADMIN DASHBOARD</p><h2>@AdminVersion</h2><p>Read-only access</p></section></div>
+                <section><h2>Deployment details</h2><dl><dt>API source commit</dt><dd><code>@(Status.Commit ?? "Not reported")</code></dd><dt>Compatibility</dt><dd>@Status.Compatibility</dd><dt>Last checked</dt><dd>@CheckedAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'")</dd></dl><a class="button" href="/">Refresh status</a></section>
+            }
+            <p><a class="button" href="/my">Open my personal area →</a></p>
+            <p class="footnote">@(IsPreview ? "Preview only. These values are sample data, not the state of your database or API. Admin sign-in remains protected by MFA." : "Status is fetched only when you open or refresh this page. Database updates run through the deployment workflow.")</p>
+        </main>
+    </div>
+</div>
+@code {
+    [Parameter] public AdminOverviewStatus? Status { get; set; }
+    [Parameter] public string EnvironmentName { get; set; } = "Unknown";
+    [Parameter] public string? AdminVersion { get; set; }
+    [Parameter] public DateTime CheckedAt { get; set; }
+    [Parameter] public bool IsPreview { get; set; }
+}

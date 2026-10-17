@@ -67,6 +67,7 @@ public sealed class AuthController(UserManager<IdentityUser> users, SignInManage
     public async Task<IActionResult> AdminLogin(AccountCredentialsRequest request,
         [FromServices] IConfiguration configuration)
     {
+        if (configuration.GetValue<bool>("AdminAuth:Enabled")) return NotFound();
         // Admin sessions require a dedicated strong-password login even in Debug.
         // Ordinary app access/refresh tokens never receive this claim.
         if (!SuperAdminAccess.HasStrongPassword(request.Password)) return Unauthorized();

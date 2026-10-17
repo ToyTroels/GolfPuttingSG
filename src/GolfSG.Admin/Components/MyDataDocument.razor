@@ -1,0 +1,21 @@
+@namespace GolfSG.Admin.Components
+@using GolfSG.Application.Server
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>My GolfSG</title><link rel="stylesheet" href="/admin.css" /></head><body>
+@if (Login) {
+    <div class="reset-wrap"><a class="brand" href="/my">GolfSG <span>MY ACCOUNT</span></a><h1>Welcome back</h1><p class="intro">Sign in with the same account you use in the GolfSG app.</p>
+    @if (Error is not null) { <p role="alert">@Error</p> }
+    <section><form method="post" action="/my/login" class="reset-form"><AntiforgeryToken />
+    <label for="username">Username</label><input id="username" name="username" required maxlength="50" autocomplete="username" />
+    <label for="password">Password</label><input id="password" name="password" type="password" required maxlength="128" autocomplete="current-password" />
+    <div class="reset-actions"><button type="submit">Sign in</button></div></form></section><p class="footnote">This personal area grants no administrator access.</p></div>
+} else { <MyDataView Section="@Section" Page="Page" Username="@Username" Offset="Offset" Error="@Error" IsPreview="IsPreview" /> }
+</body></html>
+@code {
+    [Parameter] public bool Login { get; set; }
+    [Parameter] public string Section { get; set; } = "rounds";
+    [Parameter] public PersonalDataPage? Page { get; set; }
+    [Parameter] public string Username { get; set; } = "";
+    [Parameter] public int Offset { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public bool IsPreview { get; set; }
+}

@@ -18,6 +18,8 @@ public static class SuperAdminAccess
     // Provision existing account IDs through server configuration, never registration input.
     public static bool IsAllowed(ClaimsPrincipal principal, IConfiguration configuration)
     {
+        // Enabling the MFA dashboard retires legacy password-only admin tokens.
+        if (configuration.GetValue<bool>("AdminAuth:Enabled")) return false;
         var id = principal.FindFirstValue(ClaimTypes.NameIdentifier);
         return principal.Identity?.IsAuthenticated == true && !string.IsNullOrWhiteSpace(id) &&
             principal.HasClaim(AuthenticationClaim, "true") && IsProvisioned(id, configuration);

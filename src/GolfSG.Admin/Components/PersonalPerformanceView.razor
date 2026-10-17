@@ -1,0 +1,75 @@
+@namespace GolfSG.Admin.Components
+@using GolfSG.Application.Server
+@using System.Globalization
+<div class="performance-wrap">
+    <div class="performance-top"><a class="brand" href="/my">GolfSG <span>MY ACCOUNT</span></a><a class="button" href="/my?section=rounds">Round history →</a></div>
+    <a class="button" href="/my/performance?refresh=1">Refresh data</a><p class="footnote">Synced data may be cached for up to 30 seconds. Refresh data to check for updates now.</p>
+    <p class="eyebrow">MY PERFORMANCE</p><h1>Your game, over time.</h1><p class="intro">Recent results and a clearer picture of where you gain and lose strokes.</p>
+    @if (IsPreview) { <p class="preview-banner">SAMPLE DATA · This is a demonstration, not your personal performance.</p> }
+    <section class="dashboard-controls" aria-label="Dashboard preferences">
+        <form method="get" action="/my/performance">
+            <input type="hidden" name="apply" value="1" />
+            <fieldset><legend>SG lines</legend>
+            @foreach (var series in Series) { <label><input type="checkbox" name="lines" value="@series.Key" checked="@Preferences.Shows(series.Key)" /> @series.Name</label> }
+            </fieldset>
+            <div class="date-controls"><label>Date range<select name="range" value="@Preferences.Range"><option value="all" selected="@(Preferences.Range == "all")">All available records</option><option value="30" selected="@(Preferences.Range == "30")">Last 30 days</option><option value="90" selected="@(Preferences.Range == "90")">Last 90 days</option><option value="custom" selected="@(Preferences.Range == "custom")">Custom dates</option></select></label>
+            <label>From<input type="date" name="from" value="@Preferences.From" /></label><label>To<input type="date" name="to" value="@Preferences.To" /></label><button type="submit">Apply view</button>
+            <a href="/my/performance?apply=1&amp;range=all&amp;lines=total&amp;lines=putting&amp;lines=approach&amp;lines=around">Reset view</a></div>
+            <p>Choices are remembered for this account in this browser. Custom dates are inclusive; rolling ranges use UTC dates. Filters apply within the 30-record synced window.</p>
+        </form>
+    </section>
+    @if (Data is null) { <section role="status"><h2>Performance unavailable</h2><p>@(Error ?? "Sync a round from the app, then refresh this page.")</p></section> }
+    else {
+        <p class="data-note">Based on up to @Data.Window most recently updated synced records, not your complete history. Practice is excluded from normal-round SG. Scores are per recorded round, including partial rounds, rather than per 18 holes.</p>
+        @if (Data.Unavailable > 0) { <p role="status">@Data.Unavailable record(s) could not be read and were excluded. Your stored data has not been changed.</p> }
+        <div class="cards"><section><p class="section-label">NORMAL ROUNDS</p><h2>@Data.NormalRounds</h2><p>Within the selected dates</p></section><section><p class="section-label">AVERAGE STROKES GAINED</p><h2>@(Data.AverageSg is { } average ? Sg(average) : "—")</h2><p>Per normal round with recorded results</p></section><section><p class="section-label">PRACTICE SESSIONS</p><h2>@Data.PracticeRounds</h2><p>Kept separate from normal-round statistics</p></section></div>
+        <section><h2>Recent normal-round trend</h2><p>Oldest to newest by played date · up to 12 normal rounds. Positive SG means strokes gained against the app’s reference baseline.</p>
+            @if (!VisibleSeries.Any()) { <p>Select an SG line above to display the chart.</p> }
+            else if (Data.Trend.Count < 2) { <p>Record at least two normal rounds with results to see a trend.</p> }
+            else { <svg class="sg-chart" viewBox="0 0 720 230" role="img" aria-label="Total, putting, approach and around-green strokes gained over time; exact values are listed below"><line x1="40" y1="100" x2="680" y2="100" class="chart-zero" /><text x="5" y="104">0</text>
+            @foreach (var series in VisibleSeries) {
+                <path d="@PathFor(series.Score)" class="@($"chart-line series-{series.Key}")" />
+                @for (var i = 0; i < Data.Trend.Count; i++) { var point = Data.Trend[i]; if (series.Score(point) is { } score) { <circle cx="@X(i)" cy="@Y(score)" r="4" class="@($"chart-point series-{series.Key}")"><title>@point.Date.ToString("yyyy-MM-dd"): @series.Name @Sg(score) SG</title></circle> } }
+            }
+            </svg> }
+            <div class="chart-legend" aria-label="Chart legend">@foreach (var series in VisibleSeries) { <span><i class="@($"legend-line series-{series.Key}")" aria-hidden="true"></i>@series.Name</span> }</div>
+            <p>Missing category results appear as gaps, not zero. Categories can cover different numbers of holes.</p>
+            @if (Data.Trend.Count > 0) { <div class="trend-values">@foreach (var point in Data.Trend) { <a href="@RoundUrl(point.Id)"><span>@point.Date.ToString("dd MMM", CultureInfo.InvariantCulture)</span>@foreach (var series in VisibleSeries) { <span><b>@series.Name</b> @ScoreText(series.Score(point))</span> }<small>@point.Completed/@point.Planned holes</small></a> }</div> }
+        </section>
+        <section><h2>Where you gain and lose strokes</h2><p>Only categories with recorded results are included. Different round lengths and tracking coverage affect these averages.</p>
+        @if (Data.Categories.Count == 0) { <p>No category results yet.</p> } else {
+            <div class="category-grid">@foreach (var category in Data.Categories.OrderByDescending(c => c.AverageSg)) { <div><h3>@category.Name</h3><strong class="@(category.AverageSg >= 0 ? "positive-score" : "negative-score")">@Sg(category.AverageSg)</strong><p>Average SG · @category.Rounds recorded round(s)</p></div> }</div>
+            @if (Data.Categories.Count >= 2 && Data.Categories.All(c => c.Rounds >= 3)) { <p><strong>Highest observed average:</strong> @Data.Categories.MaxBy(c => c.AverageSg)!.Name. <strong>Lowest:</strong> @Data.Categories.MinBy(c => c.AverageSg)!.Name. Compare similar round formats before drawing conclusions.</p> }
+        }</section>
+        <section class="directory"><div class="directory-heading"><div><h2>Recent activity</h2><p>Normal rounds and practice are individually labelled</p></div></div><div class="table-scroll"><table><thead><tr><th scope="col">Session</th><th scope="col">Played</th><th scope="col">Progress</th><th scope="col">SG</th></tr></thead><tbody>
+        @foreach (var round in Data.Recent) { <tr><th scope="row"><a class="round-title" href="@RoundUrl(round.Id)">@round.Title</a><span class="record-id">@round.Kind</span></th><td>@round.Date.ToString("yyyy-MM-dd")</td><td>@round.Completed/@round.Planned</td><td>@Sg(round.TotalSg)</td></tr> }
+        </tbody></table></div>@if (Data.Recent.Count == 0) { <p class="empty-performance">No synced sessions match these dates. Try a wider date range.</p> }</section>
+    }
+</div>
+@code {
+    [Parameter] public DashboardPreferences Preferences { get; set; } = new();
+    private IEnumerable<(string Key, string Name, Func<PersonalRoundSummary, double?> Score)> VisibleSeries => Series.Where(s => Preferences.Shows(s.Key));
+    [Parameter] public PersonalPerformance? Data { get; set; }
+    [Parameter] public bool IsPreview { get; set; }
+    [Parameter] public string? Error { get; set; }
+    private static string Sg(double value) => value.ToString("+0.00;-0.00;0.00", CultureInfo.InvariantCulture);
+    private static string RoundUrl(string id) => "/my/rounds/" + Uri.EscapeDataString(id);
+    private string X(int index) => (40 + index * 640.0 / Math.Max(1, Data!.Trend.Count - 1)).ToString("0.##", CultureInfo.InvariantCulture);
+    private string Y(double score) => (100 - score / Math.Max(1, Data!.Trend.SelectMany(r => VisibleSeries.Select(s => s.Score(r))).Where(v => v.HasValue).Select(v => Math.Abs(v!.Value)).DefaultIfEmpty(1).Max()) * 75).ToString("0.##", CultureInfo.InvariantCulture);
+    private static string ScoreText(double? value) => value is { } score ? Sg(score) : "—";
+    private static readonly (string Key, string Name, Func<PersonalRoundSummary, double?> Score)[] Series =
+    [ ("total", "Total", r => r.TotalSg), ("putting", "Putting", r => r.PuttingSg),
+      ("approach", "Approach", r => r.ApproachSg), ("around", "Around green", r => r.AroundGreenSg) ];
+    private string PathFor(Func<PersonalRoundSummary, double?> score)
+    {
+        var commands = new List<string>();
+        var connected = false;
+        for (var i = 0; i < Data!.Trend.Count; i++)
+        {
+            if (score(Data.Trend[i]) is not { } value) { connected = false; continue; }
+            commands.Add((connected ? "L" : "M") + X(i) + " " + Y(value));
+            connected = true;
+        }
+        return string.Join(" ", commands);
+    }
+}

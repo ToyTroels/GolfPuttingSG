@@ -1,0 +1,26 @@
+@using GolfSG.Admin.Components
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GolfSG Admin · Local preview</title>
+    <link rel="stylesheet" href="/admin.css" />
+</head>
+<body>
+    @if (ResetUserId is not null) { <PasswordResetView UserId="@ResetUserId" Username="@ResetUsername" IsPreview="true" Success="ResetSuccess" /> }
+    else if (Section is null) { <SystemOverview Status="Sample" EnvironmentName="Local preview" AdminVersion="0.5.0-alpha" CheckedAt="DateTime.UtcNow" IsPreview="true" /> }
+    else { <AdminDirectoryView Section="@Section" Page="Page" Search="@Search" Offset="Offset" EnvironmentName="Local preview" IsPreview="true" /> }
+</body>
+</html>
+@code {
+    [Microsoft.AspNetCore.Components.Parameter] public string? ResetUserId { get; set; }
+    [Microsoft.AspNetCore.Components.Parameter] public string ResetUsername { get; set; } = "";
+    [Microsoft.AspNetCore.Components.Parameter] public bool ResetSuccess { get; set; }
+    [Microsoft.AspNetCore.Components.Parameter] public string? Section { get; set; }
+    [Microsoft.AspNetCore.Components.Parameter] public GolfSG.Application.Server.AdminDirectoryPage? Page { get; set; }
+    [Microsoft.AspNetCore.Components.Parameter] public string Search { get; set; } = "";
+    [Microsoft.AspNetCore.Components.Parameter] public int Offset { get; set; }
+    private static readonly AdminOverviewStatus Sample = new("Sample staging", "0.6.0-alpha", "Sample deployment — not a live commit",
+        true, "0.2.0-alpha", "Unknown — sample preview, no live compatibility check");
+}

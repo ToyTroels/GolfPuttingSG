@@ -1,0 +1,24 @@
+@namespace GolfSG.Admin.Components
+@using GolfSG.Application.Server
+@using System.Globalization
+<div class="performance-wrap"><div class="performance-top"><a class="back-link" href="/my/performance">← My performance</a><a class="button" href="/my?section=rounds">Round history</a></div>
+@if (Detail is null) { <section role="status"><h1>Round unavailable</h1><p>This round was not found, is no longer available, or could not be read for your account.</p></section> }
+else { var round = Detail.Summary;
+    <a class="button" href="@($"/my/rounds/{Uri.EscapeDataString(round.Id)}?refresh=1")">Refresh data</a><p class="footnote">Synced results may be cached for up to 30 seconds.</p>
+    <p class="eyebrow">@round.Kind</p><h1>@round.Title</h1><p class="intro">Played @round.Date.ToString("yyyy-MM-dd") · @round.Completed of @round.Planned @(round.Practice ? "attempts" : "holes") recorded</p>
+    @if (IsPreview) { <p class="preview-banner">SAMPLE ROUND · Not your live account data.</p> }
+    @if (round.Practice) { <p class="data-note">Practice results are excluded from normal-round performance statistics.</p> }
+    <div class="cards"><section><p class="section-label">STROKES GAINED</p><h2>@Sg(round.TotalSg)</h2><p>For the recorded results</p></section><section><p class="section-label">RECORDED STROKES</p><h2>@round.Strokes</h2><p>Includes recorded penalties</p></section><section><p class="section-label">PROGRESS</p><h2>@round.Completed / @round.Planned</h2><p>@(round.Completed >= round.Planned ? "All planned results recorded" : "Partial or ended early")</p></section></div>
+    <section class="directory"><div class="directory-heading"><div><h2>@(round.Practice ? "Practice outcomes" : "Hole-by-hole results")</h2><p>Distances in metres · — means no recorded result for that category</p></div></div><div class="table-scroll"><table><thead><tr><th scope="col">@(round.Practice ? "Attempt" : "Hole")</th><th scope="col">Strokes</th><th scope="col">Penalties</th><th scope="col">Putting SG</th><th scope="col">Approach SG</th><th scope="col">Around green SG</th><th scope="col">Total SG</th></tr></thead><tbody>
+    @foreach (var row in Detail.Rows) { <tr><th scope="row">@row.Label<span class="record-description">@row.Description</span></th><td>@row.Strokes</td><td>@row.Penalties</td><td>@Maybe(row.PuttingSg)</td><td>@Maybe(row.ApproachSg)</td><td>@Maybe(row.AroundGreenSg)</td><td>@(row.PuttingSg is null && row.ApproachSg is null && row.AroundGreenSg is null ? "—" : Sg(row.TotalSg))</td></tr> }
+    </tbody></table></div></section>
+    @if (!IsPreview) { <a class="button" href="@($"/my/rounds/{Uri.EscapeDataString(round.Id)}/export")">Download round JSON</a> }
+    <p class="footnote">The same scoring summaries as the GolfSG app are used. Incomplete categories contribute no recorded score; SG is not normalized to an 18-hole round. Scores use the app reference baseline, not an official handicap.</p>
+}
+</div>
+@code {
+    [Parameter] public PersonalRoundDetail? Detail { get; set; }
+    [Parameter] public bool IsPreview { get; set; }
+    private static string Sg(double value) => value.ToString("+0.00;-0.00;0.00", CultureInfo.InvariantCulture);
+    private static string Maybe(double? value) => value is { } v ? Sg(v) : "—";
+}

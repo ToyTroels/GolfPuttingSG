@@ -5,6 +5,9 @@ separately; the app continues saving locally and talks only to the API.
 Migration `003_course_library_games.sql` adds shared course revisions, durable picture storage, games and participant submissions. Apply it before using the new library/game screens; the setup tool grants the configured application role access to these tables.
 `GolfSG.Database.Setup` applies database updates explicitly. Starting the API does
 not create or modify tables.
+Migration 004 records the initial schema release; migration 005 advances it to
+`0.2.0-alpha` for the read-only admin status feature. Configure the application
+role so setup also grants SELECT on the database release metadata table.
 Use the same process for a fresh local database and the existing `MauiAppDB`.
 
 ## 1. Prepare a fresh database (skip for an existing installation)
@@ -100,6 +103,7 @@ In pgAdmin, connected to `MauiAppDB` as its owner, verify:
 
 ```sql
 SELECT name, applied_at FROM public.golfsg_schema_versions ORDER BY name;
+SELECT version, applied_at FROM public.golfsg_database_release;
 SELECT COUNT(*) FROM public.products;
 SELECT COUNT(*) FROM public.saved_rounds;
 SELECT user_id, COUNT(*) FROM public.saved_rounds GROUP BY user_id;
@@ -114,7 +118,7 @@ for connecting the app.
 ## Adding a database change
 
 Add the next numbered SQL file under `src/GolfSG.Database.Setup/Sql/Migrations`, for example
-`003_add_round_index.sql`. Files are embedded in the setup executable and applied in filename order;
+`006_add_round_index.sql`. Files are embedded in the setup executable and applied in filename order;
 use zero-padded numbers. Do not edit or rename an applied migration: its checksum is
 verified, and setup refuses to continue if it changes. Line-ending differences between
 Windows and Unix are ignored.

@@ -13,7 +13,7 @@ class ApiChangesTests(unittest.TestCase):
         for path in ["GolfSG.Api/Program.cs", "src/GolfSG.Core/Round.cs",
                      "src/GolfSG.Application/Rounds.cs", "src/GolfSG.Server.Infrastructure/Store.cs",
                      "src/GolfSG.Database.Setup/Sql/Migrations/004.sql", "Dockerfile",
-                     "global.json", "Directory.Build.props", "deploy/staging.json",
+                     "global.json", "Directory.Build.props", "build/AdminAccess.cs", "deploy/staging.json",
                      "scripts/deliver_staging.py", ".github/workflows/ci.yml"]:
             with self.subTest(path=path):
                 self.assertTrue(api_changes.affects_api(path))

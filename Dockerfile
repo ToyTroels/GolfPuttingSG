@@ -2,6 +2,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
 COPY global.json Directory.Build.props ./
+COPY build/AdminAccess.cs build/
 COPY GolfSG.Api/ GolfSG.Api/
 COPY src/GolfSG.Core/ src/GolfSG.Core/
 COPY src/GolfSG.Application/ src/GolfSG.Application/
