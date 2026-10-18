@@ -28,7 +28,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>XSAppIconAssets</key>
+	<key>NSMotionUsageDescription</key>
+<string>GolfSG bruger skridt til at estimere afstanden fra bolden til hullet, når du vælger Mål med skridt.</string>
+<key>XSAppIconAssets</key>
 	<string>Assets.xcassets/appicon.appiconset</string>
 </dict>
 </plist>

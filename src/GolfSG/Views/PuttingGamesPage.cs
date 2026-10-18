@@ -41,6 +41,10 @@ public sealed class PuttingGamesPage : ContentPage
                     resumeButton,
                     discardButton,
                     GameItem(
+                        "Vaterpas til green",
+                        "Mål lokal sidehældning og hældning mod hullet.",
+                        () => this.RunNavigationOnceAsync(() => Navigation.PushAsync(new GreenLevelPage()))),
+                    GameItem(
                         "Træningsspil",
                         "Vælg antal putts og afstandsinterval.",
                         OpenConfiguredGameAsync),

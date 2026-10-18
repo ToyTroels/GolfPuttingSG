@@ -92,3 +92,11 @@ Public hosting, additional account features, telemetry, advertising, or third-pa
 
 Privacy questions and reproducible issues can be submitted through the public repository:
 [GolfSG GitHub issues](https://github.com/ToyTroels/GolfPuttingSG/issues). Please do not include sensitive personal information in public issues.
+
+## Optional step measurement
+
+When you choose Measure distance with steps, GolfSG requests motion/activity permission and counts steps only while the measurement screen is open. Step length is saved locally. Raw step counts are not retained or uploaded. An estimated distance you apply becomes part of the ordinary round data. No location or health history is accessed.
+
+## Optional green spirit level
+
+The green spirit level uses accelerometer readings while its screen is active. Readings and slope estimates are not saved or uploaded. Calibration offsets are saved locally and can be reset on the measurement screen. This feature does not access location.
