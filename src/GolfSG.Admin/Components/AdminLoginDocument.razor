@@ -1,0 +1,16 @@
+@namespace GolfSG.Admin.Components
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>GolfSG Admin sign in</title><link rel="stylesheet" href="/admin.css" /></head><body>
+<main class="reset-wrap"><a class="brand" href="/">GolfSG <span>ADMIN</span></a><h1>Administrator sign in</h1>
+<p>Sign in with your approved GolfSG account.</p>
+@if (Failed) { <p role="alert">Sign-in failed or the server is unavailable. Check your account and try again.</p> }
+@if (Expired) { <p role="status">The sign-in form expired. Please try again using this refreshed form.</p> }
+<section><form method="post" action="@(Reauthenticate ? "/login?reauth=1" : "/login")" class="reset-form"><AntiforgeryToken />
+<label for="username">Username</label><input id="username" name="username" required maxlength="50" autocomplete="username" />
+<label for="password">Password</label><input id="password" name="password" type="password" required maxlength="128" autocomplete="current-password" />
+<button type="submit">Sign in</button></form></section><a href="/my">Personal area</a></main>
+</body></html>
+@code {
+    [Parameter] public bool Failed { get; set; }
+    [Parameter] public bool Expired { get; set; }
+    [Parameter] public bool Reauthenticate { get; set; }
+}

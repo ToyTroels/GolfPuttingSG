@@ -29,6 +29,69 @@ automatically by the existing API workflow. The API is `0.6.0-alpha`; setup rema
 `0.2.0-alpha`; database migration 005 establishes schema `0.2.0-alpha` and setup
 grants the runtime role SELECT access only to the release metadata table.
 
+## Run from Visual Studio
+
+Open `GolfSG.sln`, select **Dashboard + API (local password)** in the startup
+selector, then press **F5**. The shared `GolfSG.slnLaunch` profile starts the API
+on `https://localhost:7151` and the website on `https://localhost:53412/login`.
+Reload the solution if the new profile does not appear. You can also select it
+under solution Properties > Configure Startup Projects.
+
+Both projects have named local-password launch profiles. They enable password
+mode only for that launch. The website enables the personal area against the
+local API. A local PostgreSQL connection and applied migrations are required
+(see [local database setup](LOCAL_DATABASE_SETUP.md)). The current machine is
+configured privately for `trch`; sign in with its existing strong GolfSG password.
+Other developers must approve their own account ID in both projects' User Secrets.
+Keep passwords and connection strings out of launch settings. The HTTPS development
+certificate must be trusted; Visual Studio normally prompts when needed.
+Starting the API does not apply database migrations.
+
+## Password login for the initial deployment
+
+Password mode permits explicitly approved existing GolfSG accounts without Entra.
+It remains restricted to Development or Staging. The default mode is OIDC.
+
+Set these on **both the API and dashboard**:
+
+| Setting | Value |
+| --- | --- |
+| `AdminAuth__Enabled` | `true` |
+| `AdminAuth__Mode` | `Password` |
+| `AdminAuth__Subjects__0` | Approved existing GolfSG account ID, not username |
+
+Add further approved IDs at indices 1, 2, etc. Create accounts through ordinary
+registration first and obtain their ID from authenticated `GET /api/auth/me`.
+Registration never grants administrator access.
+
+On the **dashboard**, set `ASPNETCORE_ENVIRONMENT=Staging`, `AllowedHosts` to its
+exact hostname and `AdminApi__BaseUrl` to the HTTPS API origin. Use Staging for
+the API too. Deploy the real dashboard project, not the preview. Keep HTTPS,
+trusted proxy forwarding and one website instance as described below. No OIDC
+client secret or Entra settings are required in Password mode. Open `/login`.
+
+Passwords require 12-128 characters, uppercase, lowercase, a number and a symbol.
+The dedicated `POST /api/auth/dashboard-login` applies account lockout and rate
+limiting. Ordinary app tokens do not grant dashboard access, even for an approved
+account. Browser login requires antiforgery protection and uses Secure/HttpOnly
+cookies. API tokens stay server-side. Sessions and API administrator privileges
+expire within 15 minutes; refreshing tokens does not retain administrator claims.
+Each website request rechecks API access. Removing either allowlist entry,
+revoking sessions or locking the account denies subsequent access.
+
+Password resets additionally require the operator's ID in API configuration
+`AdminAuth__PasswordResetSubjects__0` and sign-in within five minutes. Password
+mode does not require a reset scope or MFA claim. Sign in again at `/login` and
+return to the target user if needed. Approved administrator accounts cannot be
+reset here. Legacy super-admin routes remain disabled while admin auth is enabled.
+
+To enable Entra/MFA later, configure the identity provider and settings below,
+replace the allowlists with identity-provider IDs, set `AdminAuth__Mode=Oidc` on
+both services and restart them. Verify the actual MFA login. Password dashboard
+login is then disabled and existing password tokens cannot authorize admin routes.
+
+The following identity/MFA instructions describe **OIDC mode**.
+
 ## Access model
 
 The website also hosts a separate [personal account area](PERSONAL_AREA.md) at
@@ -216,3 +279,8 @@ verification; automated local tests do not certify those external controls.
 References: [Microsoft Blazor OIDC guidance](https://learn.microsoft.com/en-us/aspnet/core/blazor/security/blazor-web-app-with-oidc?view=aspnetcore-10.0),
 [Entra authentication context](https://learn.microsoft.com/en-us/entra/identity-platform/developer-guide-conditional-access-authentication-context),
 [Entra ID token claims](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference).
+
+Password-session validation uses `GET /api/admin/session`, which checks the admin
+policy and current account security stamp without loading dashboard status. Admin
+session/status/directory reads share a separate 120-request/minute budget. They
+do not consume the 20-request/minute account-login budget.

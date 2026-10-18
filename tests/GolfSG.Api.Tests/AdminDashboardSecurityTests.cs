@@ -22,6 +22,34 @@ namespace GolfSG.Api.Tests;
 public sealed class AdminDashboardSecurityTests
 {
     [TestMethod]
+    public void PasswordModeRequiresDedicatedFreshLoginAndCurrentAllowlist()
+    {
+        var config = Settings();
+        config["AdminAuth:Mode"] = "Password";
+        var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "owner")], "test");
+        var user = new ClaimsPrincipal(identity);
+        Assert.IsFalse(AdminAccess.IsAllowed(user, config, true));
+        identity.AddClaim(new Claim(AdminAccess.PasswordClaim, "true"));
+        Assert.IsFalse(AdminAccess.IsAllowed(user, config, true));
+        identity.AddClaim(new Claim("auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()));
+        Assert.IsTrue(AdminAccess.IsAllowed(user, config, true));
+        Assert.IsFalse(SuperAdminAccess.IsAllowed(user, config));
+        Assert.IsFalse(AdminAccess.CanResetPasswords(user, config, DateTimeOffset.UtcNow));
+        config["AdminAuth:PasswordResetSubjects:0"] = "owner";
+        Assert.IsTrue(AdminAccess.CanResetPasswords(user, config, DateTimeOffset.UtcNow));
+        Assert.IsFalse(AdminAccess.CanResetPasswords(user, config, DateTimeOffset.UtcNow.AddMinutes(6)));
+        config["AdminAuth:Mode"] = "Oidc";
+        Assert.IsFalse(AdminAccess.IsAllowed(user, config, true));
+        config["AdminAuth:Mode"] = "Password";
+        config["AdminAuth:Subjects:0"] = "removed";
+        Assert.IsFalse(AdminAccess.IsAllowed(user, config, true));
+        config["AdminAuth:Subjects:0"] = "owner";
+        identity.RemoveClaim(identity.FindFirst("auth_time")!);
+        identity.AddClaim(new Claim("auth_time", DateTimeOffset.UtcNow.AddMinutes(-16).ToUnixTimeSeconds().ToString()));
+        Assert.IsFalse(AdminAccess.IsAllowed(user, config, true));
+    }
+
+    [TestMethod]
     public void ReadAccessRequiresPinnedIssuerAllowlistMfaAndDelegatedScope()
     {
         var config = Settings();
@@ -178,6 +206,36 @@ public sealed class AdminDashboardSecurityTests
         using var response = await client.GetAsync($"/api/admin/directory/{section}{query}");
         Assert.AreEqual(expected, response.StatusCode);
         Assert.AreEqual("no-store", response.Headers.CacheControl?.ToString());
+    }
+
+    [TestMethod]
+    public async Task RepeatedGamesNavigationDoesNotConsumeLoginBudgetAndStillHasReadLimit()
+    {
+        await using var factory = new SignedDashboardApi("Staging");
+        using var client = factory.CreateClient(new() { BaseAddress = new Uri("https://localhost"), AllowAutoRedirect = false });
+        using var anonymous = await client.GetAsync("/api/admin/session");
+        Assert.AreEqual(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+        var token = new JwtSecurityToken("https://identity.example", "admin-api",
+            [new("sub", "owner"), new("amr", "mfa"), new("scope", "admin.read")], DateTime.UtcNow.AddMinutes(-1),
+            DateTime.UtcNow.AddMinutes(5), new SigningCredentials(SignedDashboardApi.Key, SecurityAlgorithms.HmacSha256));
+        client.DefaultRequestHeaders.Authorization = new("Bearer", new JwtSecurityTokenHandler().WriteToken(token));
+        for (var i = 0; i < 30; i++)
+        {
+            using var session = await client.GetAsync("/api/admin/session");
+            Assert.AreEqual(HttpStatusCode.OK, session.StatusCode);
+            using var games = await client.GetAsync("/api/admin/directory/games");
+            Assert.AreEqual(HttpStatusCode.OK, games.StatusCode);
+        }
+        // Login endpoints still have their own budget after sixty admin reads.
+        using var login = await client.PostAsJsonAsync("/api/auth/dashboard-login", new { username = "owner", password = "TestOnly!12345" });
+        Assert.AreEqual(HttpStatusCode.NotFound, login.StatusCode); // Password mode is disabled in this OIDC fixture.
+        for (var i = 0; i < 59; i++)
+        {
+            using var read = await client.GetAsync("/api/admin/session");
+            Assert.AreEqual(HttpStatusCode.OK, read.StatusCode);
+        }
+        using var limited = await client.GetAsync("/api/admin/session");
+        Assert.AreEqual(HttpStatusCode.TooManyRequests, limited.StatusCode);
     }
 
     private static ClaimsPrincipal User(string issuer = "https://identity.example", string subject = "owner",

@@ -94,7 +94,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for dependency rules and [TESTING_STRATEG
 
 See [component versioning and compatibility](docs/COMPONENT_VERSIONING.md) for the current version inventory, initial feature requirements matrix, and proposed independent release policy.
 
-A separate [Blazor admin dashboard](docs/ADMIN_DASHBOARD.md) provides a read-only staging overview with OpenID Connect, mandatory MFA evidence and explicit administrator access. It is disabled until configured.
+A separate [Blazor admin dashboard](docs/ADMIN_DASHBOARD.md) provides a staging overview with explicitly approved administrators. It supports GolfSG password login for initial deployment or OpenID Connect with mandatory MFA, and is disabled until configured.
 
 The website also has a separate [personal account area](docs/PERSONAL_AREA.md) for ordinary users to view their own synced rounds, courses and games using their existing GolfSG account.
 

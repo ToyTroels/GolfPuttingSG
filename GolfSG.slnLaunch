@@ -1,0 +1,17 @@
+[
+  {
+    "Name": "Dashboard + API (local password)",
+    "Projects": [
+      {
+        "Path": "GolfSG.Api\\GolfSG.Api.csproj",
+        "Action": "Start",
+        "DebugTarget": "Dashboard API (local password)"
+      },
+      {
+        "Path": "src\\GolfSG.Admin\\GolfSG.Admin.csproj",
+        "Action": "Start",
+        "DebugTarget": "Dashboard (local password)"
+      }
+    ]
+  }
+]

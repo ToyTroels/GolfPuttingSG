@@ -21,6 +21,8 @@ app.Use(async (context, next) =>
     context.Response.Headers.CacheControl = "no-store";
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["Content-Security-Policy"] = "default-src 'none'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
+    if (context.Request.Path == "/my/setup")
+        context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
     await next(context);
 });
 app.UseStaticFiles(new StaticFileOptions
@@ -29,6 +31,7 @@ app.UseStaticFiles(new StaticFileOptions
         "../../src/GolfSG.Admin/wwwroot")))
 });
 app.MapGet("/", () => new RazorComponentResult<PreviewPage>());
+app.MapGet("/my/setup", () => new RazorComponentResult<GolfSG.Admin.Components.CourseSetupDocument>(new { IsPreview = true }));
 app.MapGet("/my", (HttpContext context) =>
 {
     var section = context.Request.Query["section"].ToString();

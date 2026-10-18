@@ -26,12 +26,15 @@ public class Program
             {
                 if (!builder.Environment.IsStaging() && !builder.Environment.IsDevelopment())
                     throw new InvalidOperationException("The admin dashboard is currently restricted to staging/development.");
-                foreach (var key in new[] { "Authority", "Issuer", "ClientId", "ClientSecret", "ApiScope", "MfaClaim", "MfaValue" })
-                    if (string.IsNullOrWhiteSpace(config[$"AdminAuth:{key}"]))
-                        throw new InvalidOperationException($"AdminAuth:{key} is required.");
-                foreach (var key in new[] { "Authority", "Issuer" })
-                    if (!Uri.TryCreate(config[$"AdminAuth:{key}"], UriKind.Absolute, out var identityUri) || identityUri.Scheme != "https")
-                        throw new InvalidOperationException($"AdminAuth:{key} must use HTTPS.");
+                if (!AdminAccess.UsesPassword(config))
+                {
+                    foreach (var key in new[] { "Authority", "Issuer", "ClientId", "ClientSecret", "ApiScope", "MfaClaim", "MfaValue" })
+                        if (string.IsNullOrWhiteSpace(config[$"AdminAuth:{key}"]))
+                            throw new InvalidOperationException($"AdminAuth:{key} is required.");
+                    foreach (var key in new[] { "Authority", "Issuer" })
+                        if (!Uri.TryCreate(config[$"AdminAuth:{key}"], UriKind.Absolute, out var identityUri) || identityUri.Scheme != "https")
+                            throw new InvalidOperationException($"AdminAuth:{key} must use HTTPS.");
+                }
                 if (string.IsNullOrWhiteSpace(config["AllowedHosts"]) || config["AllowedHosts"]!.Contains('*'))
                     throw new InvalidOperationException("Configure explicit AllowedHosts for the admin service.");
                 if (!Uri.TryCreate(config["AdminApi:BaseUrl"], UriKind.Absolute, out var api) || api.Scheme != "https" ||
@@ -50,18 +53,24 @@ public class Program
         builder.Services.AddAuthentication(options =>
         {
             options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = AdminAccess.Scheme;
+            options.DefaultChallengeScheme = AdminAccess.UsesPassword(config) ? CookieAuthenticationDefaults.AuthenticationScheme : AdminAccess.Scheme;
         }).AddCookie(options =>
         {
             options.Cookie.Name = "__Host-GolfSG.Admin";
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
+            options.LoginPath = "/login";
             options.AccessDeniedPath = "/access-denied";
             options.ExpireTimeSpan = TimeSpan.FromMinutes(15);
             options.SlidingExpiration = false;
             options.Events.OnValidatePrincipal = async context =>
             {
+                if (AdminAccess.UsesPassword(config))
+                {
+                    if (!await PasswordAdmin.ValidateSession(context.HttpContext, context.Principal!, context.Properties)) context.RejectPrincipal();
+                    return;
+                }
                 if (!AdminAccess.IsAllowed(context.Principal!, config, false, false) ||
                     !context.Principal!.HasClaim("golfsg:api-mfa-verified", "true"))
                 {
@@ -73,7 +82,7 @@ public class Program
         {
             options.Authority = config["AdminAuth:Authority"];
             options.ClientId = config["AdminAuth:ClientId"] ?? "disabled-admin";
-            if (!config.GetValue<bool>("AdminAuth:Enabled"))
+            if (!config.GetValue<bool>("AdminAuth:Enabled") || AdminAccess.UsesPassword(config))
                 options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration { Issuer = "https://disabled.invalid" };
             options.ClientSecret = config["AdminAuth:ClientSecret"];
             options.ResponseType = "code";
@@ -135,7 +144,7 @@ public class Program
         });
         builder.Services.AddAuthorization(options => options.AddPolicy(AdminAccess.Policy,
             policy => policy.RequireAuthenticatedUser().RequireAssertion(c =>
-                AdminAccess.IsAllowed(c.User, config, false, false) && c.User.HasClaim("golfsg:api-mfa-verified", "true"))));
+                AdminAccess.IsAllowed(c.User, config, false, false) && (AdminAccess.UsesPassword(config) || c.User.HasClaim("golfsg:api-mfa-verified", "true")))));
         builder.Services.AddCascadingAuthenticationState();
         builder.Services.Configure<ForwardedHeadersOptions>(options =>
         {
@@ -179,6 +188,8 @@ public class Program
             context.Response.Headers["Referrer-Policy"] = "no-referrer";
             context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
             context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+            if (context.Request.Path.StartsWithSegments("/my/setup"))
+                context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
             var personal = context.Request.Path.StartsWithSegments("/my");
             var playerEnabled = config.GetValue<bool>("PlayerPortal:Enabled");
             if ((personal && !playerEnabled) || (!personal && !config.GetValue<bool>("AdminAuth:Enabled") && !(playerEnabled && context.Request.Path == "/admin.css")))
@@ -194,6 +205,8 @@ public class Program
         app.UseRateLimiter();
         app.UseAntiforgery();
         app.MapPlayerPortal();
+        app.MapCourseSetup();
+        app.MapPasswordAdmin();
         app.MapGet("/access-denied", () => Results.Text("Admin access denied.", statusCode: 403)).AllowAnonymous();
         app.MapPost("/logout", async (HttpContext context, IAntiforgery antiforgery) =>
         {
@@ -206,6 +219,7 @@ public class Program
         app.MapGet("/password-reset-sign-in", (string id) =>
         {
             if (id.Length > 128) return (IResult)Results.BadRequest();
+            if (AdminAccess.UsesPassword(config)) return (IResult)Results.Redirect("/login?reauth=1");
             var properties = new AuthenticationProperties { RedirectUri = $"/users/{Uri.EscapeDataString(id)}/reset-password" };
             properties.Items["password-reset-reauth"] = "true";
             return Results.Challenge(properties, [AdminAccess.Scheme]);
@@ -235,7 +249,7 @@ public class Program
                 using var response = await clients.CreateClient("AdminApi").SendAsync(request, context.RequestAborted);
                 if (!response.IsSuccessStatusCode) return Results.Redirect(returnUrl + "?result=failed");
                 var receipt = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
-                var actor = context.User.FindFirst(config["AdminAuth:SubjectClaim"] ?? "sub")!.Value;
+                var actor = context.User.FindFirst(AdminAccess.SubjectClaim(config))!.Value;
                 cache.Set("password-reset-" + receipt, new PasswordResetOutcome(id, actor), TimeSpan.FromMinutes(2));
                 return Results.Redirect(returnUrl + "?receipt=" + receipt);
             }

@@ -46,6 +46,26 @@ public sealed class AuthController(UserManager<IdentityUser> users, SignInManage
         return new EmptyResult();
     }
 
+    [HttpPost("dashboard-login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> DashboardLogin(AccountCredentialsRequest request,
+        [FromServices] IConfiguration config, [FromServices] IWebHostEnvironment environment)
+    {
+        if (!config.GetValue<bool>("AdminAuth:Enabled") || !GolfSG.Security.AdminAccess.UsesPassword(config) ||
+            (!environment.IsDevelopment() && !environment.IsStaging())) return NotFound();
+        var user = await users.FindByNameAsync(request.Username.Trim());
+        if (user is null) return Unauthorized();
+        var result = await signIns.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+        if (!result.Succeeded || !SuperAdminAccess.HasStrongPassword(request.Password) ||
+            config.GetSection("AdminAuth:Subjects").Get<string[]>()?.Contains(user.Id, StringComparer.Ordinal) != true)
+            return Unauthorized();
+        var principal = await signIns.CreateUserPrincipalAsync(user);
+        ((ClaimsIdentity)principal.Identity!).AddClaims([
+            new Claim(GolfSG.Security.AdminAccess.PasswordClaim, "true"),
+            new Claim("auth_time", timeProvider.GetUtcNow().ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture))]);
+        return SignIn(principal, IdentityConstants.BearerScheme);
+    }
+
     [HttpPost("refresh")]
     [AllowAnonymous]
     [ProducesResponseType<AccessTokenResponse>(StatusCodes.Status200OK)]

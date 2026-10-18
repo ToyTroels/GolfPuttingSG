@@ -97,3 +97,37 @@ The performance trend plots total, putting, approach, and around-green SG separa
 Dashboard preferences: users can choose SG lines and all available, last 30/90 days, or inclusive custom dates. Dates filter cards, category averages, recent activity and the trend within the 30-record synced window before limiting the chart to 12 rounds. Preferences persist for one year in an HttpOnly cookie scoped to the account and browser; they do not follow the user to other devices. Reset view restores all lines and all available dates. No database migration is needed.
 
 Personal API caching: the website keeps successful directory, performance, and round-detail responses in a dedicated 32 MiB in-process memory cache for 30 seconds. Keys include the account, a hash of the access token, and resource path (including pagination). Concurrent ordinary reads share a fetch. Errors, sign-in checks, authentication decisions, exports and password-reset actions are not cached. Every protected page still validates the current token with the API before using cached data; revocation or an identity-service failure therefore denies access. Page responses remain `no-store` for browsers and proxies. Refresh data bypasses the relevant cache entry; failed refreshes do not fall back to stale data. Cached entries become inaccessible on logout and expire within 30 seconds. Each web instance has its own cache. Future browser writes must invalidate affected account data before redirecting.
+
+## Picture-based course and game setup
+
+Use **Create course or game** in the personal sidebar, or open `/my/setup`.
+Choose a JPEG/PNG picture (up to 10 MB), calibrate it by clicking two points with
+a known distance, then click start and target for each shot. Markers can be dragged,
+moved with arrow keys when focused, or positioned using percentage coordinates.
+Choose Putting, Approach or Around green and a compatible starting lie; specify
+1-100 attempts and optionally a measured distance. Add or update each shot before
+saving. Moving a marker clears its measured-distance override. Up to 100 positions
+and 1000 total attempts are supported, using the app's existing validation rules.
+
+Save private course stores an owner-scoped course revision without publishing it.
+You can reload saved courses in the editor (the most recent 30 are offered), edit
+shots or use them to create a game. Saving a previously published course privately
+also removes it from public discovery. Existing games keep their frozen setup.
+The existing app publish behavior remains public by default.
+
+To create a game, name it and explicitly confirm sharing its picture and shot
+setup with joined players. The returned join code works in the GolfSG app.
+Creating a game does not publish its course. Retry uses the same game ID to avoid
+duplicates; after a timeout check My games before starting a different game.
+Playing and submitting results still happen in the app.
+
+The editor keeps unsaved changes in the current page and warns before leaving;
+it does not provide durable browser drafts. Save before closing. API tokens stay
+server-side; writes require the personal session and antiforgery protection. The
+server forces website course saves to private and the API validates all shot data.
+Successful writes invalidate the personal response cache. The editor loads its
+local JavaScript only on `/my/setup`; the other pages retain their script-free
+policy. No database migration is needed beyond the existing course/game tables.
+
+The sample editor is available at `http://localhost:7247/my/setup`; it accepts a
+picture and demonstrates setup without writing to the API or database.

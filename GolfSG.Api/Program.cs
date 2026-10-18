@@ -15,7 +15,7 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
         void ValidateAdminConfiguration()
         {
-            if (builder.Configuration.GetValue<bool>("AdminAuth:Enabled"))
+            if (builder.Configuration.GetValue<bool>("AdminAuth:Enabled") && !GolfSG.Security.AdminAccess.UsesPassword(builder.Configuration))
             {
                 foreach (var key in new[] { "Authority", "Issuer", "Audience", "MfaClaim", "MfaValue" })
                     if (string.IsNullOrWhiteSpace(builder.Configuration[$"AdminAuth:{key}"]))
@@ -45,7 +45,7 @@ public class Program
                 options.TokenValidationParameters.ClockSkew = TimeSpan.FromSeconds(30);
             });
         builder.Services.AddAuthorization(options => options.AddPolicy(GolfSG.Security.AdminAccess.Policy,
-            policy => policy.AddAuthenticationSchemes(GolfSG.Security.AdminAccess.Scheme)
+            policy => policy.AddAuthenticationSchemes(GolfSG.Security.AdminAccess.UsesPassword(builder.Configuration) ? IdentityConstants.BearerScheme : GolfSG.Security.AdminAccess.Scheme)
                 .RequireAuthenticatedUser().RequireAssertion(context =>
                     (builder.Environment.IsStaging() || builder.Environment.IsDevelopment()) &&
                     GolfSG.Security.AdminAccess.IsAllowed(context.User, builder.Configuration, requireScope: true))));
@@ -54,7 +54,7 @@ public class Program
                 .RequireAssertion(context => GolfSG.Api.Auth.SuperAdminAccess.IsAllowed(context.User, builder.Configuration))));
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddAuthorization(options => options.AddPolicy(GolfSG.Security.AdminAccess.PasswordResetPolicy,
-            policy => policy.AddAuthenticationSchemes(GolfSG.Security.AdminAccess.Scheme).RequireAuthenticatedUser()
+            policy => policy.AddAuthenticationSchemes(GolfSG.Security.AdminAccess.UsesPassword(builder.Configuration) ? IdentityConstants.BearerScheme : GolfSG.Security.AdminAccess.Scheme).RequireAuthenticatedUser()
                 .RequireAssertion(context => (builder.Environment.IsStaging() || builder.Environment.IsDevelopment()) &&
                     GolfSG.Security.AdminAccess.CanResetPasswords(context.User, builder.Configuration, DateTimeOffset.UtcNow))));
         var dataProtection = builder.Services.AddDataProtection().SetApplicationName(
@@ -66,6 +66,12 @@ public class Program
         }
         builder.Services.AddRateLimiter(options =>
         {
+            // Authenticated navigation must not consume the password-login budget.
+            options.AddPolicy("admin-reads", context => RateLimitPartition.GetFixedWindowLimiter(
+                context.User.FindFirst(GolfSG.Security.AdminAccess.SubjectClaim(builder.Configuration))?.Value
+                    ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
             options.AddPolicy("game-codes", context => RateLimitPartition.GetFixedWindowLimiter(
                 context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 15, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));

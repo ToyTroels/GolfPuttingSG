@@ -28,10 +28,11 @@ public sealed class AdminPasswordResetController(UserManager<IdentityUser> users
     [HttpPost("{id}")]
     public async Task<IActionResult> Reset(string id, AdminPasswordResetRequest request)
     {
-        var actor = User.FindFirst(configuration["AdminAuth:SubjectClaim"] ?? "sub")?.Value;
+        var actor = User.FindFirst(AdminAccess.SubjectClaim(configuration))?.Value;
         if (id.Length > 128 || !SuperAdminAccess.HasStrongPassword(request.NewPassword))
             return BadRequest(new ProblemDetails { Title = "Use 12–128 characters with uppercase, lowercase, a number and a symbol." });
-        if (SuperAdminAccess.IsProvisioned(id, configuration)) return Conflict(new ProblemDetails { Title = "Protected administrator accounts cannot be reset here." });
+        if (SuperAdminAccess.IsProvisioned(id, configuration) ||
+            configuration.GetSection("AdminAuth:Subjects").Get<string[]>()?.Contains(id, StringComparer.Ordinal) == true) return Conflict(new ProblemDetails { Title = "Protected administrator accounts cannot be reset here." });
         var user = await users.FindByIdAsync(id);
         if (user is null) return NotFound();
         if (!string.Equals(user.UserName, request.ConfirmUsername, StringComparison.Ordinal))

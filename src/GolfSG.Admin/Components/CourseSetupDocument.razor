@@ -1,0 +1,32 @@
+@namespace GolfSG.Admin.Components
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>GolfSG · Course and game setup</title><link rel="stylesheet" href="/admin.css" /><link rel="stylesheet" href="/setup.css" /><script src="/setup.js" defer></script></head>
+<body><main class="setup-page" id="setup-editor" data-preview="@IsPreview.ToString().ToLowerInvariant()">
+<a href="/my?section=courses">← My courses</a><p class="eyebrow">BUILD YOUR PRACTICE</p><h1>Your picture. Your shots.</h1><p>Place a start and target for each shot, then save a private course or invite players to a game.</p>
+@if (IsPreview) { <p class="preview-banner">LOCAL PREVIEW · Try the editor with a picture. Saves use sample data only.</p> }
+@if (!IsPreview) { <form id="setup-token"><AntiforgeryToken /></form> }
+<noscript>This picture editor requires JavaScript.</noscript>
+<div class="setup-grid"><section class="map-panel"><h2>1. Choose a picture</h2>
+<label for="picture">Course picture (JPEG or PNG, up to 10 MB)</label><input id="picture" type="file" accept="image/png,image/jpeg" />
+@if (!IsPreview) { <label for="saved-course">Or load one of your saved courses</label><select id="saved-course"><option value="">Choose a saved course</option></select><button id="load-course" type="button">Load course</button> }
+<div class="map-tools"><button type="button" id="place-start">Place start</button><button type="button" id="place-target">Place target</button><button type="button" id="calibrate">Calibrate distance</button></div>
+<p id="map-help">Choose a picture to begin. Then click start and target, or drag their markers.</p>
+<div class="picture-wrap"><svg id="course-map" viewBox="0 0 1000 600" role="img" aria-label="Course picture with shot positions" tabindex="0"><image id="map-picture" width="1000" height="600" preserveAspectRatio="none" /><g id="map-shots"></g></svg><p id="picture-empty">Your course picture appears here</p></div>
+<div class="calibration-fields"><label for="reference-distance">Known distance (metres)</label><input id="reference-distance" type="number" min="0.1" max="1000" step="any" value="10" /><button type="button" id="apply-scale">Apply calibration</button><p id="scale-status">Calibrate using two points with a known distance before saving.</p></div>
+</section><section class="shot-panel"><h2>2. Set up a shot</h2>
+<label for="shot-name">Shot name</label><input id="shot-name" maxlength="100" placeholder="Shot 1" />
+<label for="category">Shot type</label><select id="category"><option value="0">Putting</option><option value="1" selected>Approach</option><option value="2">Around green / chip / bunker</option></select>
+<label for="lie">Starting lie</label><select id="lie"><option value="0">Tee</option><option value="1" selected>Fairway</option><option value="2">Green</option><option value="3">Fairway cut / fringe</option><option value="4">Rough</option><option value="5">Sand</option><option value="6">Recovery</option></select>
+<label for="attempts">Attempts from this position (1–100)</label><input id="attempts" type="number" min="1" max="100" value="1" />
+<label for="measured">Measured distance, metres (optional)</label><input id="measured" type="number" min="0.1" max="1000" step="any" /><p id="shot-distance">Place both markers to see the distance.</p>
+<details><summary>Precise marker positions / keyboard controls</summary><p>Coordinates are percentages of the picture. You can also focus a marker and move it with arrow keys.</p><div class="coordinates">
+@foreach (var field in new[] { ("from-x", "Start X"), ("from-y", "Start Y"), ("target-x", "Target X"), ("target-y", "Target Y") }) { <label for="@field.Item1">@field.Item2<input id="@field.Item1" type="number" min="0" max="100" step="0.1" /></label> }
+</div></details>
+<div class="setup-actions"><button id="save-shot" type="button">Add shot</button><button id="new-shot" type="button">New shot</button></div>
+<h3>Planned shots</h3><p id="shot-count">No shots yet</p><ol id="shot-list"></ol>
+</section></div>
+<section class="save-panel"><h2>3. Save your setup</h2><label for="course-name">Course name</label><input id="course-name" maxlength="100" required placeholder="My practice course" /><p>Your course stays private. Games share a fixed copy of the picture and shots with joined players.</p>
+<button id="save-course" type="button">Save private course</button><label for="game-name">Game name</label><input id="game-name" maxlength="100" placeholder="Weekend practice" /><label class="share-confirm"><input id="share-confirm" type="checkbox" /> I want to share this picture and shot setup with players who join my game.</label><button id="create-game" type="button">Create game</button><p>Players join and play in the GolfSG app. Later course edits do not change an existing game.</p>
+</section><p id="setup-status" role="status" aria-live="polite"></p><a id="game-result" hidden href="/my?section=games&refresh=1">View My games</a>
+</main></body></html>
+@code { [Parameter] public bool IsPreview { get; set; } }

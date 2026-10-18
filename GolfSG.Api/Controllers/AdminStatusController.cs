@@ -10,7 +10,7 @@ namespace GolfSG.Api.Controllers;
 [ApiController]
 [Route("api/admin/status")]
 [Authorize(Policy = AdminAccess.Policy)]
-[EnableRateLimiting("accounts")]
+[EnableRateLimiting("admin-reads")]
 public sealed class AdminStatusController(IAdminDatabaseStatus database, IConfiguration configuration,
     IWebHostEnvironment environment, ILogger<AdminStatusController> logger) : ControllerBase
 {
@@ -20,7 +20,7 @@ public sealed class AdminStatusController(IAdminDatabaseStatus database, IConfig
         var status = await database.ReadAsync(cancellationToken);
         var commit = configuration["RENDER_GIT_COMMIT"];
         if (commit is not { Length: 40 } || !commit.All(char.IsAsciiHexDigit)) commit = null;
-        logger.LogInformation("Admin status read by {Subject}", User.FindFirst(configuration["AdminAuth:SubjectClaim"] ?? "sub")?.Value);
+        logger.LogInformation("Admin status read by {Subject}", User.FindFirst(AdminAccess.SubjectClaim(configuration))?.Value);
         return Ok(new
         {
             environment = environment.EnvironmentName,

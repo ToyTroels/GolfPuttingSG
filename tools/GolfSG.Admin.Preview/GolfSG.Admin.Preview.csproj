@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/CourseSetupDocument.razor" Link="CourseSetupDocument.razor" />
     <Compile Include="../../src/GolfSG.Admin/Components/DashboardPreferences.cs" Link="DashboardPreferences.cs" />
     <RazorComponent Include="../../src/GolfSG.Admin/Components/SystemOverview.razor" Link="SystemOverview.razor" />
     <Compile Include="../../src/GolfSG.Admin/Components/AdminOverviewStatus.cs" Link="AdminOverviewStatus.cs" />

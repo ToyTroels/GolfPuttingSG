@@ -28,5 +28,6 @@ public sealed class PersonalApiCache : IDisposable
         }
         finally { gate.Release(); }
     }
+    public void Invalidate() => cache.Compact(1);
     public void Dispose() { cache.Dispose(); foreach (var gate in gates) gate.Dispose(); }
 }

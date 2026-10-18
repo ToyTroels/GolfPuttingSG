@@ -25,6 +25,12 @@ public static class PlayerPortal
             client.Timeout = TimeSpan.FromMinutes(2);
             client.MaxResponseContentBufferSize = 2 * 1024 * 1024;
         }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
+        builder.Services.AddHttpClient("CourseSetupApi", client =>
+        {
+            client.BaseAddress = new Uri(builder.Configuration["PlayerPortal:ApiBaseUrl"] ?? "https://localhost:7151/");
+            client.Timeout = TimeSpan.FromMinutes(2);
+            client.MaxResponseContentBufferSize = 15 * 1024 * 1024;
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
         builder.Services.AddAuthentication().AddCookie(Scheme, options =>
         {
             options.Cookie.Name = "__Host-GolfSG.Player";

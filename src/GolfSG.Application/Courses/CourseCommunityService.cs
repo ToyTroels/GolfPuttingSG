@@ -45,7 +45,7 @@ public sealed class CourseCommunityService(ICourseCommunityStore store)
     public Task<LibraryCourse> PublishAsync(string userId, string username, PublishCourseRequest request, CancellationToken token)
     {
         ValidatePackage(request.Package);
-        return store.PublishAsync(userId, username, request.Package, token);
+        return store.PublishAsync(userId, username, request.Package, token, request.Published);
     }
 
     public Task<CourseGameInfo> CreateGameAsync(string userId, string username, CreateCourseGameRequest request, CancellationToken token)

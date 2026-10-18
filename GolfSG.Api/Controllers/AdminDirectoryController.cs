@@ -9,7 +9,7 @@ namespace GolfSG.Api.Controllers;
 [ApiController]
 [Route("api/admin/directory/{section}")]
 [Authorize(Policy = AdminAccess.Policy)]
-[EnableRateLimiting("accounts")]
+[EnableRateLimiting("admin-reads")]
 public sealed class AdminDirectoryController(IAdminDirectory directory, IConfiguration configuration,
     ILogger<AdminDirectoryController> logger) : ControllerBase
 {
@@ -22,7 +22,7 @@ public sealed class AdminDirectoryController(IAdminDirectory directory, IConfigu
         var page = await directory.ReadAsync(section, search?.Trim() ?? "", offset, limit, cancellationToken);
         // Deliberately omit search terms and returned account data from audit logs.
         logger.LogInformation("Admin {Subject} read directory {Section} at offset {Offset}",
-            User.FindFirst(configuration["AdminAuth:SubjectClaim"] ?? "sub")?.Value, section, offset);
+            User.FindFirst(AdminAccess.SubjectClaim(configuration))?.Value, section, offset);
         return Ok(page);
     }
 }
