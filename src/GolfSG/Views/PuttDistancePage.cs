@@ -1,43 +1,70 @@
 using GolfSG.Services;
+using GolfSG.Application.Services;
 using GolfSG.Application.ViewModels;
 
 namespace GolfSG.Views;
 
 public sealed class PuttDistancePage : ContentPage
 {
+    private static readonly TimeSpan WarmupDelay = TimeSpan.FromMilliseconds(2500);
+    private static readonly TimeSpan FinishDelay = TimeSpan.FromSeconds(3);
+    private const string StepLengthKey = "putt-step-length-cm";
     private readonly Label status = new() { Text = "Stå ved bolden. Tryk Start og vent på Klar, før du går til hullet med telefonen i lommen.", FontSize = 18 };
     private readonly Entry stepLength = new() { Keyboard = Keyboard.Numeric, AutomationId = "putt-measure.step-length" };
-    private readonly Button start = new() { Text = "Start" };
-    private readonly Button done = new() { Text = "Færdig", IsEnabled = false };
-    private readonly Button apply = new() { Text = "Brug afstand", IsEnabled = false };
+    private readonly Button start = AppViews.PrimaryButton("Start");
+    private readonly Button done = AppViews.SecondaryButton("Færdig");
+    private readonly Button apply = AppViews.PrimaryButton("Brug afstand");
     private readonly Action<double> selectDistance;
-    private PuttStepCounter? counter;
-    private int steps;
-    private double lengthMeters;
-    private bool active;
-    private bool finishing;
-    private bool ready;
+    private readonly Func<IPuttStepCounter> createCounter;
+    private readonly Func<TimeSpan, CancellationToken, Task> delay;
+    private readonly IPreferences preferences;
     private readonly HorizontalStackLayout corrections = new() { Spacing = 12, IsVisible = false };
+    private IPuttStepCounter? counter;
+    private CancellationTokenSource? session;
+    private int steps;
+    private double lengthCentimeters;
+    private bool ready;
+    private bool finishing;
+    private bool hasResult;
+    private bool visible;
+    private bool foreground;
+    private CancellationTokenSource? permissionRequest;
 
-    public PuttDistancePage(Action<double> selectDistance)
+    public PuttDistancePage(Action<double> selectDistance,
+        Func<IPuttStepCounter>? createCounter = null, IPreferences? preferences = null,
+        Func<TimeSpan, CancellationToken, Task>? delay = null)
     {
         this.selectDistance = selectDistance;
+        this.createCounter = createCounter ?? (() => new PuttStepCounter());
+        this.preferences = preferences ?? Preferences.Default;
+        this.delay = delay ?? ((duration, token) => Task.Delay(duration, token));
         Title = "Mål med skridt";
-        stepLength.Text = Preferences.Default.Get("putt-step-length-cm", 75d).ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
+        BackgroundColor = GolfTheme.Colors.PageBackground;
+        var savedLength = this.preferences.Get(StepLengthKey, PuttDistanceEstimate.DefaultStepLengthCentimeters);
+        if (!PuttDistanceEstimate.IsValidStepLength(savedLength)) savedLength = PuttDistanceEstimate.DefaultStepLengthCentimeters;
+        stepLength.Text = savedLength.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
+        start.AutomationId = "putt-measure.start";
+        done.AutomationId = "putt-measure.done";
+        apply.AutomationId = "putt-measure.apply";
+        done.IsEnabled = apply.IsEnabled = false;
         start.Clicked += async (_, _) => await StartAsync();
         done.Clicked += async (_, _) => await FinishAsync();
-        var fewer = new Button { Text = "− 1 skridt", AutomationId = "putt-measure.remove-step" };
-        var more = new Button { Text = "+ 1 skridt", AutomationId = "putt-measure.add-step" };
-        fewer.Clicked += (_, _) => { steps = Math.Max(0, steps - 1); UpdateResult(); };
-        more.Clicked += (_, _) => { steps++; UpdateResult(); };
+        var fewer = AppViews.SecondaryButton("− 1 skridt");
+        var more = AppViews.SecondaryButton("+ 1 skridt");
+        fewer.AutomationId = "putt-measure.remove-step";
+        more.AutomationId = "putt-measure.add-step";
+        fewer.Clicked += (_, _) => { if (hasResult) { steps = Math.Max(0, steps - 1); UpdateResult(); } };
+        more.Clicked += (_, _) => { if (hasResult && steps < int.MaxValue) { steps++; UpdateResult(); } };
         corrections.Children.Add(fewer);
         corrections.Children.Add(more);
-        apply.Clicked += async (_, _) =>
+        apply.Clicked += async (_, _) => await this.RunNavigationOnceAsync(async () =>
         {
-            apply.IsEnabled = false;
-            selectDistance(Math.Round(steps * lengthMeters, 1));
+            if (!hasResult) return;
+            var meters = PuttDistanceEstimate.Meters(steps, lengthCentimeters);
+            if (!PuttDistanceEstimate.CanApply(meters)) return;
+            selectDistance(meters);
             await Navigation.PopAsync();
-        };
+        });
         Content = new ScrollView { Content = new VerticalStackLayout
         {
             Padding = 24, Spacing = 18,
@@ -56,100 +83,140 @@ public sealed class PuttDistancePage : ContentPage
 
     private async Task StartAsync()
     {
-        if (!DistanceInputParser.TryParse(stepLength.Text, out var cm) || cm < 20 || cm > 150)
+        if (!visible || !foreground || session is not null) return;
+        if (!DistanceInputParser.TryParse(stepLength.Text, out var cm) || !PuttDistanceEstimate.IsValidStepLength(cm))
         {
             await DisplayAlertAsync("Skridtlængde", "Angiv en skridtlængde mellem 20 og 150 cm.", "OK");
             return;
         }
-        Preferences.Default.Set("putt-step-length-cm", cm);
-        lengthMeters = cm / 100;
+        preferences.Set(StepLengthKey, cm);
+        lengthCentimeters = cm;
         steps = 0;
-        active = true;
-        ready = finishing = false;
+        ready = finishing = hasResult = false;
         corrections.IsVisible = false;
-        start.IsEnabled = stepLength.IsEnabled = apply.IsEnabled = false;
-        var measurement = new PuttStepCounter();
-        counter = measurement;
-        measurement.StepsChanged += count => MainThread.BeginInvokeOnMainThread(() =>
-        {
-            if (!active || counter != measurement) return;
-            if (count < 0) { Stop(); status.Text = "Motionstilladelse mangler, eller skridtmålingen kunne ikke fortsætte."; apply.IsEnabled = false; return; }
-            steps = count;
-            if (ready) status.Text = finishing
-                ? $"Stå stille · modtager de sidste skridt ({steps})…"
-                : $"{steps} skridt · ca. {steps * lengthMeters:0.0} m";
-        });
-        status.Text = "Klargør skridtmåler · bliv stående ved bolden…";
+        start.IsEnabled = stepLength.IsEnabled = apply.IsEnabled = done.IsEnabled = false;
+        var run = new CancellationTokenSource();
+        session = run;
+        var cancellationToken = run.Token;
         try
         {
-            await measurement.StartAsync();
-            await Task.Delay(2500);
-            if (active && counter == measurement)
+            var measurement = createCounter();
+            counter = measurement;
+            measurement.StepsChanged += count => Dispatcher.Dispatch(() =>
+            {
+                if (session != run || run.IsCancellationRequested) return;
+                steps = Math.Max(0, count);
+                if (ready) status.Text = finishing
+                    ? $"Stå stille · modtager de sidste skridt ({steps})…"
+                    : $"{steps} skridt · ca. {PuttDistanceEstimate.Meters(steps, lengthCentimeters):0.0} m";
+            });
+            measurement.Failed += message => Dispatcher.Dispatch(() =>
+            {
+                if (session == run) CancelSession(message);
+            });
+            status.Text = "Klargør skridtmåler · bliv stående ved bolden…";
+            permissionRequest = run;
+            try { await measurement.StartAsync(cancellationToken); }
+            finally { if (permissionRequest == run) permissionRequest = null; }
+            if (!visible || !foreground) CancelSession("Målingen blev afbrudt. Tryk Start for at prøve igen.");
+            await delay(WarmupDelay, cancellationToken);
+            if (session == run && !run.IsCancellationRequested)
             {
                 ready = true;
                 done.IsEnabled = true;
-                status.Text = $"Klar · gå nu til hullet. {steps} skridt · ca. {steps * lengthMeters:0.0} m";
+                status.Text = $"Klar · gå nu til hullet. {steps} skridt · ca. {PuttDistanceEstimate.Meters(steps, lengthCentimeters):0.0} m";
             }
         }
-        catch (Exception)
+        catch (OperationCanceledException) when (run.IsCancellationRequested) { }
+        catch (Exception error)
         {
-            if (!active || counter != measurement) return;
-            Stop();
-            status.Text = "Skridtmåling kunne ikke startes. Kontrollér telefonens understøttelse og tilladelse til fysisk aktivitet/bevægelse. Du kan stadig indtaste afstanden manuelt.";
-            apply.IsEnabled = false;
+            System.Diagnostics.Trace.TraceError("Step measurement startup failed: {0}", error);
+            if (session == run) CancelSession(error is InvalidOperationException ? error.Message
+                : "Skridtmåling kunne ikke startes. Du kan stadig indtaste afstanden manuelt.");
+        }
+        finally
+        {
+            // The session stays alive while walking; failed/cancelled starts release it.
+            if (session != run) run.Dispose();
         }
     }
 
     private async Task FinishAsync()
     {
-        if (!active || finishing) return;
+        if (!ready || finishing || session is not { } run) return;
         finishing = true;
         done.IsEnabled = false;
-        var measurement = counter;
         status.Text = "Stå stille · modtager de sidste skridt…";
-        await Task.Delay(3000);
-        if (!active || counter != measurement) return;
-        Stop();
-        corrections.IsVisible = true;
+        try
+        {
+            await delay(FinishDelay, run.Token);
+            if (session != run || run.IsCancellationRequested) return;
+            EndSession();
+            hasResult = true;
+            corrections.IsVisible = true;
+            UpdateResult();
+        }
+        catch (OperationCanceledException) when (run.IsCancellationRequested) { }
+        finally { run.Dispose(); }
     }
 
-    private void Stop()
+    private void EndSession()
     {
-        active = false;
+        var previous = session;
+        session = null;
+        previous?.Cancel();
+        previous?.Dispose();
         counter?.Dispose();
         counter = null;
         done.IsEnabled = false;
         start.IsEnabled = stepLength.IsEnabled = true;
-        UpdateResult();
+    }
+
+    private void CancelSession(string message)
+    {
+        EndSession();
+        hasResult = false;
+        corrections.IsVisible = false;
+        apply.IsEnabled = false;
+        status.Text = message;
     }
 
     private void UpdateResult()
     {
-        var distance = Math.Round(steps * lengthMeters, 1);
-        apply.IsEnabled = distance > 0 && distance <= 30;
-        status.Text = distance > 30 ? "Afstanden overstiger 30 m. Prøv igen eller indtast manuelt."
+        var distance = PuttDistanceEstimate.Meters(steps, lengthCentimeters);
+        apply.IsEnabled = hasResult && PuttDistanceEstimate.CanApply(distance);
+        status.Text = distance > PuttDistanceEstimate.MaximumDistanceMeters ? "Afstanden overstiger 30 m. Prøv igen eller indtast manuelt."
             : $"{steps} skridt · ca. {distance:0.0} m. Kontrollér estimatet før du bruger det.";
     }
 
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        if (Window is { } window) window.Deactivated += OnWindowDeactivated;
+        visible = foreground = true;
+        if (Window is { } window)
+        {
+            window.Deactivated += OnWindowDeactivated;
+            window.Activated += OnWindowActivated;
+        }
     }
 
+    private void OnWindowActivated(object? sender, EventArgs e) => foreground = true;
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
-        if (!active || !ready) return;
-        Stop();
-        apply.IsEnabled = false;
-        status.Text = "Målingen blev afbrudt. Tryk Start for at prøve igen.";
+        foreground = false;
+        if (session is not null && session != permissionRequest)
+            CancelSession("Målingen blev afbrudt. Tryk Start for at prøve igen.");
     }
 
     protected override void OnDisappearing()
     {
-        if (Window is { } window) window.Deactivated -= OnWindowDeactivated;
-        Stop();
-        apply.IsEnabled = false;
+        visible = foreground = false;
+        if (Window is { } window)
+        {
+            window.Deactivated -= OnWindowDeactivated;
+            window.Activated -= OnWindowActivated;
+        }
+        if (session is not null) CancelSession("Målingen blev afbrudt. Tryk Start for at prøve igen.");
         base.OnDisappearing();
     }
 }

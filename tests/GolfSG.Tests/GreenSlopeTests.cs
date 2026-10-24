@@ -6,10 +6,14 @@ namespace GolfSG.Tests;
 public class GreenSlopeTests
 {
     [TestMethod]
-    public void HoleAtRightEdgeMapsBothDirectionsRelativeToPutt()
+    [DataRow(GreenLevelHoleDirection.Top, 2d, 3d)]
+    [DataRow(GreenLevelHoleDirection.Right, -3d, 2d)]
+    [DataRow(GreenLevelHoleDirection.Bottom, -2d, -3d)]
+    [DataRow(GreenLevelHoleDirection.Left, 3d, -2d)]
+    public void HoleDirectionMapsBothAxesRelativeToPutt(GreenLevelHoleDirection direction, double right, double forward)
     {
-        Assert.AreEqual(new GreenSlope(-3, 2), new GreenSlope(2, 3).WithHoleAtRightEdge());
-        Assert.AreEqual(new GreenSlope(3, -2), new GreenSlope(-2, -3).WithHoleAtRightEdge());
+        Assert.AreEqual(new GreenSlope(right, forward), new GreenSlope(2, 3).WithHoleDirection(direction));
+        Assert.AreEqual(new GreenSlope(-right, -forward), new GreenSlope(-2, -3).WithHoleDirection(direction));
     }
 
     [TestMethod]

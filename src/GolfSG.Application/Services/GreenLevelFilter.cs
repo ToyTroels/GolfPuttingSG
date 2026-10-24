@@ -1,9 +1,13 @@
 namespace GolfSG.Application.Services;
 
-// Filters gravity, while treating stability as feedback rather than a display gate.
+// Smooths normalized gravity and checks short-term repeatability, not absolute accuracy.
 public sealed class GreenLevelFilter
 {
-    private readonly Queue<(double X, double Y, double Z)> recent = new();
+    private const int WindowSize = 12;
+    private const int MinimumSamples = 10;
+    private const double SmoothingFactor = 0.2;
+    private const double MaximumRmsVariation = 0.006;
+    private readonly Queue<(double X, double Y, double Z)> recent = new(WindowSize);
     public double X { get; private set; }
     public double Y { get; private set; }
     public double Z { get; private set; }
@@ -21,17 +25,27 @@ public sealed class GreenLevelFilter
         x /= magnitude;
         y /= magnitude;
         z /= magnitude;
-        if (!HasReading) { X = x; Y = y; Z = z; }
-        else { X += 0.2 * (x - X); Y += 0.2 * (y - Y); Z += 0.2 * (z - Z); }
+        if (!HasReading)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+        }
+        else
+        {
+            X += SmoothingFactor * (x - X);
+            Y += SmoothingFactor * (y - Y);
+            Z += SmoothingFactor * (z - Z);
+        }
         HasReading = true;
         recent.Enqueue((x, y, z));
-        if (recent.Count > 12) recent.Dequeue();
+        if (recent.Count > WindowSize) recent.Dequeue();
         var mx = recent.Average(s => s.X);
         var my = recent.Average(s => s.Y);
         var mz = recent.Average(s => s.Z);
         var variance = recent.Average(s =>
             (s.X - mx) * (s.X - mx) + (s.Y - my) * (s.Y - my) + (s.Z - mz) * (s.Z - mz));
-        IsStable = recent.Count >= 10 && variance < 0.006 * 0.006;
+        IsStable = recent.Count >= MinimumSamples && variance < MaximumRmsVariation * MaximumRmsVariation;
         return true;
     }
 

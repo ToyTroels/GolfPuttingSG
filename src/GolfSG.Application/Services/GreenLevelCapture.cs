@@ -1,28 +1,56 @@
 namespace GolfSG.Application.Services;
 
-// Times are relative to sensor start; the tap-settling pause is outside the capture.
+public readonly record struct GreenLevelReading(double X, double Y, double Z)
+{
+    public GreenSlope ToSlope(double rightOffsetRadians = 0, double forwardOffsetRadians = 0) =>
+        GreenSlope.FromGravity(X, Y, Z, rightOffsetRadians, forwardOffsetRadians);
+}
+
+// A capture is single-use. Sensor callbacks can arrive on another thread; freeze the
+// first valid result at sample time, independently of when the UI next checks it.
 public sealed class GreenLevelCapture
 {
     public static TimeSpan MaxDuration { get; } = TimeSpan.FromSeconds(3);
-    public GreenLevelFilter Filter { get; } = new();
+    private static readonly TimeSpan MaximumSampleGap = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan RequiredStableDuration = TimeSpan.FromMilliseconds(500);
+    private readonly object gate = new();
+    private readonly GreenLevelFilter filter = new();
     private TimeSpan? stableSince;
     private TimeSpan? lastReading;
+    private GreenLevelReading? result;
 
     public void Add(double x, double y, double z, TimeSpan elapsed)
     {
-        if (lastReading is { } previous && elapsed - previous > TimeSpan.FromMilliseconds(250))
+        lock (gate)
         {
-            Filter.Reset();
-            stableSince = null;
+            if (result.HasValue || elapsed < TimeSpan.Zero || elapsed > MaxDuration ||
+                lastReading is { } last && elapsed <= last)
+                return;
+
+            if (lastReading is { } previous && elapsed - previous > MaximumSampleGap)
+            {
+                filter.Reset();
+                stableSince = null;
+            }
+            filter.Add(x, y, z);
+            lastReading = elapsed;
+            if (!filter.IsStable)
+            {
+                stableSince = null;
+                return;
+            }
+            stableSince ??= elapsed;
+            if (elapsed - stableSince.Value >= RequiredStableDuration)
+                result = new GreenLevelReading(filter.X, filter.Y, filter.Z);
         }
-        Filter.Add(x, y, z);
-        lastReading = elapsed;
-        if (Filter.IsStable) stableSince ??= elapsed;
-        else stableSince = null;
     }
 
-    public bool IsComplete(TimeSpan elapsed) =>
-        elapsed <= MaxDuration && Filter.IsStable &&
-        stableSince is { } stable && elapsed - stable >= TimeSpan.FromMilliseconds(500) &&
-        lastReading is { } last && elapsed - last <= TimeSpan.FromMilliseconds(250);
+    public bool TryGetResult(out GreenLevelReading reading)
+    {
+        lock (gate)
+        {
+            reading = result.GetValueOrDefault();
+            return result.HasValue;
+        }
+    }
 }

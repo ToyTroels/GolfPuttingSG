@@ -55,15 +55,20 @@ public sealed partial class HoleEntryPage
             value => viewModel.FirstPuttDistanceMeters = value,
             carriedPuttingDistance,
             puttingSg);
-        var measure = new Button { Text = "Mål afstand med skridt", AutomationId = "hole.measure-putt" };
-        measure.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() =>
-            Navigation.PushAsync(new PuttDistancePage(value => viewModel.FirstPuttDistanceMeters = value)));
-        measure.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsPuttingDistanceInputVisible));
         var level = AppViews.SecondaryButton("Vaterpas til green");
         level.AutomationId = "hole.green-level";
         level.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() => Navigation.PushAsync(new GreenLevelPage()));
         var gir = BuildGirChoices();
-        var section = new VerticalStackLayout { Spacing = 8, Children = { gir, puttingSection, measure, level } };
+        var section = new VerticalStackLayout { Spacing = 8, Children = { gir, puttingSection } };
+        if (FeatureSettings.EnableStepDistanceMeasurement)
+        {
+            var measure = new Button { Text = "Mål afstand med skridt", AutomationId = "hole.measure-putt" };
+            measure.Clicked += async (_, _) => await this.RunNavigationOnceAsync(() =>
+                Navigation.PushAsync(new PuttDistancePage(value => viewModel.FirstPuttDistanceMeters = value)));
+            measure.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsPuttingDistanceInputVisible));
+            section.Children.Add(measure);
+        }
+        section.Children.Add(level);
         if (!useGuidedInput)
         {
             section.SetBinding(VisualElement.IsVisibleProperty, nameof(HoleInputViewModel.IsPuttingInputVisible));

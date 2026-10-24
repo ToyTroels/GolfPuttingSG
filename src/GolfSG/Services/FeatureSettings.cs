@@ -4,6 +4,9 @@ namespace GolfSG.Application.Services;
 
 public static class FeatureSettings
 {
+    // Temporarily unavailable while short-distance step detection is unreliable.
+    public static bool EnableStepDistanceMeasurement => false;
+
     public static bool RecordGreenInRegulation
     {
         get => Preferences.Default.Get("record-green-in-regulation", false);
