@@ -1,0 +1,39 @@
+@page "/users"
+@page "/courses"
+@page "/games"
+@using System.Net.Http.Headers
+@using Microsoft.AspNetCore.Authentication
+@using GolfSG.Application.Server
+@inject IHttpContextAccessor Context
+@inject IHttpClientFactory Clients
+@inject IWebHostEnvironment Environment
+<AdminDirectoryView Section="@section" Page="page" Search="@search" Offset="offset" EnvironmentName="@Environment.EnvironmentName" Error="@error" />
+@code {
+    private string section = "users", search = "";
+    private int offset;
+    private AdminDirectoryPage? page;
+    private string? error;
+    protected override async Task OnInitializedAsync()
+    {
+        var context = Context.HttpContext!;
+        section = context.Request.Path.Value!.Trim('/');
+        search = context.Request.Query["search"].ToString();
+        var rawOffset = context.Request.Query["offset"].ToString();
+        if (search.Length > 100 || (rawOffset.Length > 0 && !int.TryParse(rawOffset, out offset)) || offset is < 0 or > 100000)
+        { error = "Use a search of at most 100 characters and a valid page number."; offset = 0; return; }
+        search = search.Trim();
+        var token = await context.GetTokenAsync("access_token");
+        if (string.IsNullOrWhiteSpace(token)) { error = "Please sign in again."; return; }
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"api/admin/directory/{section}?search={Uri.EscapeDataString(search)}&offset={offset}&limit=25");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var response = await Clients.CreateClient("AdminApi").SendAsync(request, context.RequestAborted);
+            if (response.IsSuccessStatusCode) page = await response.Content.ReadFromJsonAsync<AdminDirectoryPage>(context.RequestAborted);
+            if (page is null) error = "The API could not provide an authorized response. Check access or try again.";
+        }
+        catch (HttpRequestException) { error = "The API is unavailable. Try again shortly."; }
+        catch (System.Text.Json.JsonException) { error = "The API returned an unexpected response."; }
+        catch (OperationCanceledException) when (!context.RequestAborted.IsCancellationRequested) { error = "The request timed out. Try again shortly."; }
+    }
+}

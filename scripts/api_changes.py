@@ -15,6 +15,7 @@ API_FILES = {
     "Dockerfile", ".dockerignore", "global.json", "Directory.Build.props",
     "Directory.Build.targets", "Directory.Packages.props", "NuGet.Config",
     "nuget.config", ".github/workflows/ci.yml",
+    "build/AdminAccess.cs",
 }
 
 

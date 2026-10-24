@@ -94,6 +94,10 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for dependency rules and [TESTING_STRATEG
 
 See [component versioning and compatibility](docs/COMPONENT_VERSIONING.md) for the current version inventory, initial feature requirements matrix, and proposed independent release policy.
 
+A separate [Blazor admin dashboard](docs/ADMIN_DASHBOARD.md) provides a staging overview with explicitly approved administrators. It supports GolfSG password login for initial deployment or OpenID Connect with mandatory MFA, and is disabled until configured.
+
+The website also has a separate [personal account area](docs/PERSONAL_AREA.md) for ordinary users to view their own synced rounds, courses and games using their existing GolfSG account.
+
 ## Scoring model
 
 The putting calculation uses the reference table in [`StrokesGainedCalculator.cs`](src/GolfSG.Core/StrokesGainedCalculator.cs). Values between known baseline points use linear interpolation. Values below the lowest supported distance use the lowest baseline, and values above the highest supported distance use the highest baseline rather than extrapolating beyond the available data.

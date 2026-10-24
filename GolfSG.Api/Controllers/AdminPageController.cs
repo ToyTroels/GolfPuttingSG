@@ -4,12 +4,15 @@ using Microsoft.AspNetCore.Mvc;
 namespace GolfSG.Api.Controllers;
 
 [ApiController]
-public sealed class AdminPageController : ControllerBase
+public sealed class AdminPageController(IConfiguration? configuration = null) : ControllerBase
 {
     [HttpGet("/admin")]
     [AllowAnonymous]
     public ContentResult Index()
     {
+        if (configuration?.GetValue<bool>("AdminAuth:Enabled") == true)
+            return new ContentResult { StatusCode = 410, ContentType = "text/plain",
+                Content = "Legacy administration is disabled. Use the separately hosted MFA admin dashboard." };
         var nonce = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         Response.Headers.CacheControl = "no-store";
         Response.Headers["X-Content-Type-Options"] = "nosniff";

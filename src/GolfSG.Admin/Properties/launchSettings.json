@@ -1,0 +1,42 @@
+{
+  "profiles": {
+    "Dashboard (local password)": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "login",
+      "applicationUrl": "https://localhost:53412;http://localhost:53413",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AdminAuth__Enabled": "true",
+        "AdminAuth__Mode": "Password",
+        "AdminApi__BaseUrl": "https://localhost:7151/",
+        "PlayerPortal__Enabled": "true",
+        "PlayerPortal__ApiBaseUrl": "https://localhost:7151/",
+        "AllowedHosts": "localhost"
+      }
+    },
+    "GolfSG.Admin": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:53412;http://localhost:53413"
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  },
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:57690/",
+      "sslPort": 44305
+    }
+  }
+}

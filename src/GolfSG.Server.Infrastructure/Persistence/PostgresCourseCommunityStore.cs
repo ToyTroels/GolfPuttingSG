@@ -18,7 +18,7 @@ public sealed class PostgresCourseCommunityStore(AppDbContext db) : ICourseCommu
             .Skip(offset).Take(CourseCommunityService.PageSize).ToListAsync(token)).Select(ToLibrary).ToArray();
     }
 
-    public async Task<LibraryCourse> PublishAsync(string userId, string username, CoursePackage package, CancellationToken token)
+    public async Task<LibraryCourse> PublishAsync(string userId, string username, CoursePackage package, CancellationToken token, bool published = true)
     {
         var (definition, imageId) = Normalize(package);
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(definition)));
@@ -41,7 +41,7 @@ public sealed class PostgresCourseCommunityStore(AppDbContext db) : ICourseCommu
             course.RevisionId = revision.Id;
             course.Name = package.Course.Name; course.Positions = package.Course.Shots.Count;
             course.Attempts = package.Course.Shots.Sum(s => s.Attempts);
-            course.Published = true; course.UpdatedAt = DateTimeOffset.UtcNow;
+            course.Published = published; course.UpdatedAt = DateTimeOffset.UtcNow;
             // Persist a newly created parent before the revision's immediate FK is checked.
             await db.SaveChangesAsync(token);
             db.CourseRevisions.Add(revision);
@@ -49,7 +49,7 @@ public sealed class PostgresCourseCommunityStore(AppDbContext db) : ICourseCommu
         course.RevisionId = revision.Id;
         course.Name = package.Course.Name; course.Positions = package.Course.Shots.Count;
         course.Attempts = package.Course.Shots.Sum(s => s.Attempts);
-        course.Published = true; course.UpdatedAt = DateTimeOffset.UtcNow;
+        course.Published = published; course.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(token); await transaction.CommitAsync(token);
         return ToLibrary(course);
     }

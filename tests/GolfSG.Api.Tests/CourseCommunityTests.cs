@@ -29,6 +29,17 @@ public sealed class CourseCommunityTests
         Assert.IsFalse(document.RootElement.GetProperty("players")[0].TryGetProperty("results", out _));
         TestContext.WriteLine($"100-player, 1,000-attempt leaderboard summary: {json.Length} uncompressed bytes.");
     }
+    [TestMethod]
+    public async Task WebPrivateSaveDoesNotPublishAndExistingAppPublishKeepsItsDefault()
+    {
+        var store = new Store();
+        var service = new CourseCommunityService(store);
+        await service.PublishAsync("owner", "Owner", new PublishCourseRequest(Package(), false), default);
+        Assert.IsFalse(store.Published!.Value);
+        await service.PublishAsync("owner", "Owner", new PublishCourseRequest(Package()), default);
+        Assert.IsTrue(store.Published!.Value);
+    }
+
     internal static CoursePackage Package(int attempts = 2) => new(new("local-course", "Practice", "sample.png", 1, 100, "Measured",
         [new("putt", "Putting", new(.1, .1), new(.2, .2), ShotLie.Green, PracticeShotCategory.Putting, 3, attempts),
          new("chip", "Chip", new(.3, .3), new(.4, .4), ShotLie.Rough, PracticeShotCategory.AroundGreen, 12)]),
@@ -128,7 +139,13 @@ public sealed class CourseCommunityTests
         public Task SubmitAsync(string userId, Guid id, string roundId, IReadOnlyList<CourseShotResult> results, CancellationToken token)
         { LastUserId = userId; Token = token; Results = results; return Task.CompletedTask; }
         public Task<IReadOnlyList<LibraryCourse>> BrowseAsync(string userId, string search, int offset, bool mine, CancellationToken token) => throw new NotSupportedException();
-        public Task<LibraryCourse> PublishAsync(string userId, string username, CoursePackage package, CancellationToken token) => throw new NotSupportedException();
+        public bool? Published { get; private set; }
+        public Task<LibraryCourse> PublishAsync(string userId, string username, CoursePackage package, CancellationToken token, bool published = true)
+        {
+            Published = published;
+            return Task.FromResult(new LibraryCourse(Guid.NewGuid(), Guid.NewGuid(), userId, username, package.Course.Name,
+                package.Course.Shots.Count, 3, published, DateTimeOffset.UtcNow));
+        }
         public Task<LibraryCourse> SetVisibilityAsync(string userId, Guid id, bool published, CancellationToken token) => throw new NotSupportedException();
         public Task<CoursePackage> DownloadAsync(string userId, Guid id, Guid revisionId, CancellationToken token) => throw new NotSupportedException();
         public Task<CourseGameInfo> CreateGameAsync(string userId, string username, CreateCourseGameRequest request, CancellationToken token) => throw new NotSupportedException();

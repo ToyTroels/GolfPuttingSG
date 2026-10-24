@@ -1,5 +1,15 @@
 {
   "profiles": {
+    "Dashboard API (local password)": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "applicationUrl": "https://localhost:7151;http://localhost:5081",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AdminAuth__Enabled": "true",
+        "AdminAuth__Mode": "Password"
+      }
+    },
     "http": {
       "commandName": "Project",
       "environmentVariables": {

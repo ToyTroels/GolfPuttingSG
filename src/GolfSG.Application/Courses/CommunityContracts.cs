@@ -7,7 +7,7 @@ namespace GolfSG.Application.Courses;
 public sealed record CoursePackage(PracticeCourse Course, byte[] Image);
 public sealed record LibraryCourse(Guid Id, Guid RevisionId, string OwnerId, string Creator, string Name,
     int Positions, int Attempts, bool Published, DateTimeOffset UpdatedAt);
-public sealed record PublishCourseRequest(CoursePackage Package);
+public sealed record PublishCourseRequest(CoursePackage Package, bool Published = true);
 public sealed record CourseVisibilityRequest(bool Published);
 public sealed record CreateCourseGameRequest(Guid Id, string Name, CoursePackage Package);
 public sealed record CourseGameInfo(Guid Id, string Name, string Code, string HostId, string HostName,
@@ -34,7 +34,7 @@ public sealed class CourseCommunityException(CommunityError error, string messag
 public interface ICourseCommunityStore
 {
     Task<IReadOnlyList<LibraryCourse>> BrowseAsync(string userId, string search, int offset, bool mine, CancellationToken token);
-    Task<LibraryCourse> PublishAsync(string userId, string username, CoursePackage package, CancellationToken token);
+    Task<LibraryCourse> PublishAsync(string userId, string username, CoursePackage package, CancellationToken token, bool published = true);
     Task<LibraryCourse> SetVisibilityAsync(string userId, Guid id, bool published, CancellationToken token);
     Task<CoursePackage> DownloadAsync(string userId, Guid id, Guid revisionId, CancellationToken token);
     Task<CourseGameInfo> CreateGameAsync(string userId, string username, CreateCourseGameRequest request, CancellationToken token);

@@ -72,6 +72,7 @@ public static class DatabaseSetup
             using var commandBuilder = new NpgsqlCommandBuilder();
             var quotedRole = commandBuilder.QuoteIdentifier(role);
             await Execute($"GRANT USAGE ON SCHEMA public TO {quotedRole}");
+            await Execute($"GRANT SELECT ON public.golfsg_database_release TO {quotedRole}");
             await Execute($"GRANT SELECT, INSERT, UPDATE, DELETE ON public.products TO {quotedRole}");
             await Execute($"GRANT SELECT, INSERT, UPDATE ON public.saved_rounds TO {quotedRole}");
             await Execute($"GRANT SELECT, INSERT, UPDATE ON public.shared_courses, public.course_revisions, public.course_images, public.course_games, public.course_game_participants TO {quotedRole}");

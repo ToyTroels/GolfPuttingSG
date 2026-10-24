@@ -11,15 +11,22 @@
     <ApplicationBuildNumber>4</ApplicationBuildNumber>
     <!-- Independently released server components. App values above remain compatible
          with Set-AppVersion.ps1 and the Android release tag validation. -->
-    <ApiVersionPrefix>0.1.0</ApiVersionPrefix>
+    <ApiVersionPrefix>0.6.0</ApiVersionPrefix>
     <ApiVersionSuffix>alpha</ApiVersionSuffix>
-    <DatabaseSetupVersionPrefix>0.1.0</DatabaseSetupVersionPrefix>
+    <DatabaseSetupVersionPrefix>0.2.0</DatabaseSetupVersionPrefix>
     <DatabaseSetupVersionSuffix>alpha</DatabaseSetupVersionSuffix>
+    <AdminVersionPrefix>0.5.0</AdminVersionPrefix>
+    <AdminVersionSuffix>alpha</AdminVersionSuffix>
     <ComponentBuildNumber>$(ApplicationBuildNumber)</ComponentBuildNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GolfSG.Api'">
     <VersionPrefix>$(ApiVersionPrefix)</VersionPrefix>
     <VersionSuffix>$(ApiVersionSuffix)</VersionSuffix>
+    <ComponentBuildNumber>0</ComponentBuildNumber>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GolfSG.Admin'">
+    <VersionPrefix>$(AdminVersionPrefix)</VersionPrefix>
+    <VersionSuffix>$(AdminVersionSuffix)</VersionSuffix>
     <ComponentBuildNumber>0</ComponentBuildNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GolfSG.Database.Setup'">

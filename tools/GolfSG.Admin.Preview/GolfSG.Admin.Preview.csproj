@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/CourseSetupDocument.razor" Link="CourseSetupDocument.razor" />
+    <Compile Include="../../src/GolfSG.Admin/Components/DashboardPreferences.cs" Link="DashboardPreferences.cs" />
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/SystemOverview.razor" Link="SystemOverview.razor" />
+    <Compile Include="../../src/GolfSG.Admin/Components/AdminOverviewStatus.cs" Link="AdminOverviewStatus.cs" />
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/AdminDirectoryView.razor" Link="AdminDirectoryView.razor" />
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/PasswordResetView.razor" Link="PasswordResetView.razor" />
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/MyDataView.razor" Link="MyDataView.razor" />
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/MyDataDocument.razor" Link="MyDataDocument.razor" />
+    <Compile Include="../../src/GolfSG.Application/Server/PersonalDataPage.cs" Link="PersonalDataPage.cs" />
+    <Compile Include="../../src/GolfSG.Application/Server/PersonalPerformance.cs" Link="PersonalPerformance.cs" />
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/PersonalPerformanceView.razor" Link="PersonalPerformanceView.razor" />
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/PersonalRoundView.razor" Link="PersonalRoundView.razor" />
+    <RazorComponent Include="../../src/GolfSG.Admin/Components/PersonalPerformanceDocument.razor" Link="PersonalPerformanceDocument.razor" />
+    <Compile Include="../../src/GolfSG.Application/Server/AdminDirectoryPage.cs" Link="AdminDirectoryPage.cs" />
+  </ItemGroup>
+</Project>

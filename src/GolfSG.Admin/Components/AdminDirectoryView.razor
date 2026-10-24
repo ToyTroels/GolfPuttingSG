@@ -1,0 +1,43 @@
+@namespace GolfSG.Admin.Components
+@using GolfSG.Application.Server
+<PageTitle>GolfSG Admin · @Title</PageTitle>
+<div class="shell">
+    <aside><a class="brand" href="/">GolfSG <span>ADMIN</span></a><p class="section-label">WORKSPACE</p>
+        @foreach (var item in new[] { "overview", "users", "courses", "games" })
+        { <a class="@(Section == item ? "selected" : "nav-link")" href="@(item == "overview" ? "/" : "/" + item)" aria-current="@(Section == item ? "page" : null)"><span class="nav-symbol" aria-hidden="true">@(item switch { "users" => "◎", "courses" => "⚑", "games" => "◇", _ => "▦" })</span>@Label(item)</a> }
+        <p class="sidebar-note">Read-only administration<br />@(IsPreview ? "Sample data · no API access" : "Access restricted · MFA required")</p>
+    </aside>
+    <div class="workspace">
+        <header><span class="badge">@EnvironmentName</span>@if (IsPreview) { <span class="preview-label">LOCAL PREVIEW · SAMPLE DATA</span> } else { <form method="post" action="/logout"><AntiforgeryToken /><button type="submit">Sign out</button></form> }</header>
+        <main><p class="eyebrow">ADMINISTRATION</p><h1>@Title</h1><p class="intro">@Description</p>
+            <form method="get" action="/@Section" class="search-form"><label for="search">Search @Title.ToLowerInvariant()</label><div><input id="search" name="search" value="@Search" maxlength="100" placeholder="@(Section == "users" ? "Username or account ID" : "Name or creator")" /><button type="submit">Search</button><a class="button" href="/@Section">Clear</a></div></form>
+            @if (Error is not null) { <section role="alert"><h2>Unable to load @Title.ToLowerInvariant()</h2><p>@Error</p><a class="button" href="@PageUrl(Offset)">Try again</a></section> }
+            else if (Page is null) { <p role="status">No data available.</p> }
+            else if (Page.Items.Count == 0) { <section><h2>No @Title.ToLowerInvariant() found</h2><p>Try another search or clear the filter.</p></section> }
+            else
+            {
+                <section class="directory"><div class="directory-heading"><div><h2>@Title directory</h2><p>@Page.Items.Count records on this page</p></div><span class="read-badge">Read-only access</span></div><div class="table-scroll"><table><caption>@Title — @Page.Items.Count shown</caption><thead><tr><th scope="col">@(Section == "users" ? "Username" : "Name")</th>@if (Section != "users") { <th scope="col">@(Section == "games" ? "Host" : "Creator")</th> }<th scope="col">Status</th><th scope="col">Details</th></tr></thead>
+                    <tbody>@foreach (var row in Page.Items) { <tr><th scope="row">@row.Name<span class="record-id">@row.Id</span></th>@if (Section != "users") { <td><span class="owner-dot" aria-hidden="true"></span>@row.Owner</td> }<td><span class="status-pill" data-status="@row.Status">@row.Status</span></td><td><details><summary>View details</summary><dl class="row-details"><dt>ID</dt><dd><code>@row.Id</code></dd>
+                        @if (Section == "courses") { <dt>Positions</dt><dd>@row.Positions</dd><dt>Attempts</dt><dd>@row.Attempts</dd> }
+                        @if (Section == "games") { <dt>Participants</dt><dd>@row.Participants</dd><dt>Submitted</dt><dd>@row.Submitted</dd><dt>Scoring version</dt><dd>@row.ScoringVersion</dd> }
+                        @if (row.UpdatedAt is not null) { <dt>@(Section == "games" ? "Created (UTC)" : "Updated (UTC)")</dt><dd>@row.UpdatedAt.Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm")</dd> }
+                    </dl>@if (Section == "users") { <a class="button reset-link" href="@($"/users/{Uri.EscapeDataString(row.Id)}/reset-password")">Reset password</a> }</details></td></tr> }</tbody></table></div></section>
+            }
+            <nav class="pagination" aria-label="Pagination">@if (Offset > 0) { <a class="button" href="@PageUrl(Math.Max(0, Offset - 25))">Previous</a> }<span>Page @(Offset / 25 + 1)</span>@if (Page?.HasMore == true && Offset <= 99975) { <a class="button" href="@PageUrl(Offset + 25)">Next</a> }</nav>
+            <p class="footnote">@(IsPreview ? "Sample records only. No local or server account data is accessed." : "Read-only access. No account, course or game changes can be made here.")</p>
+        </main>
+    </div>
+</div>
+@code {
+    [Parameter] public string Section { get; set; } = "users";
+    [Parameter] public AdminDirectoryPage? Page { get; set; }
+    [Parameter] public string Search { get; set; } = "";
+    [Parameter] public int Offset { get; set; }
+    [Parameter] public string EnvironmentName { get; set; } = "Unknown";
+    [Parameter] public bool IsPreview { get; set; }
+    [Parameter] public string? Error { get; set; }
+    private string Title => Label(Section);
+    private string Description => Section switch { "users" => "Find accounts and inspect their current access status.", "courses" => "Review shared courses, publication status and practice setup.", _ => "Inspect hosted games, participation and submission progress." };
+    private static string Label(string value) => char.ToUpperInvariant(value[0]) + value[1..];
+    private string PageUrl(int offset) => $"/{Section}?search={Uri.EscapeDataString(Search)}&offset={offset}";
+}

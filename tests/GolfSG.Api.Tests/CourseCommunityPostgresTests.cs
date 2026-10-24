@@ -15,6 +15,22 @@ namespace GolfSG.Api.Tests;
 public sealed class CourseCommunityPostgresTests
 {
     [TestMethod]
+    public async Task PrivateWebCourseCanBeReloadedByOwnerAndDoesNotAppearInPublicLibrary()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var saved = await fixture.Use(s => s.PublishAsync(fixture.Host, "Host", fixture.Package, default, published: false));
+        Assert.IsFalse(saved.Published);
+        var mine = await fixture.Use(s => s.BrowseAsync(fixture.Host, "", 0, true, default));
+        Assert.IsTrue(mine.Any(c => c.Id == saved.Id));
+        var browse = await fixture.Use(s => s.BrowseAsync(fixture.Other, "", 0, false, default));
+        Assert.IsFalse(browse.Any(c => c.Id == saved.Id));
+        var loaded = await fixture.Use(s => s.DownloadAsync(fixture.Host, saved.Id, saved.RevisionId, default));
+        Assert.AreEqual(fixture.Package.Course.Name, loaded.Course.Name);
+        await Assert.ThrowsExactlyAsync<CourseCommunityException>(() =>
+            fixture.Use(s => s.DownloadAsync(fixture.Other, saved.Id, saved.RevisionId, default)));
+    }
+
+    [TestMethod]
     public async Task SummariesAndSubmissionUseBoundedQueriesWithoutLoadingOtherOutcomes()
     {
         await using var fixture = await Fixture.CreateAsync();

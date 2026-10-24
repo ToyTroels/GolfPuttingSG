@@ -104,6 +104,19 @@ jobs:
       - name: Run backend tests
         run: dotnet test tests/GolfSG.Api.Tests/GolfSG.Api.Tests.csproj -c Release --no-restore
 
+      - name: Restore and test the Blazor admin dashboard
+        run: |
+          dotnet restore tests/GolfSG.Admin.Tests/GolfSG.Admin.Tests.csproj --locked-mode
+          dotnet test tests/GolfSG.Admin.Tests/GolfSG.Admin.Tests.csproj -c Release --no-restore
+          dotnet restore tools/GolfSG.Admin.Preview/GolfSG.Admin.Preview.csproj --locked-mode
+          dotnet build tools/GolfSG.Admin.Preview/GolfSG.Admin.Preview.csproj -c Release --no-restore
+
+      - name: Check admin dependencies for known vulnerabilities
+        shell: bash
+        run: |
+          dotnet list tests/GolfSG.Admin.Tests/GolfSG.Admin.Tests.csproj package --vulnerable --include-transitive --no-restore --format json --output-version 1 > admin-vulnerability-report.json
+          jq -e '((.errors // []) | length == 0) and (.projects | type == "array") and ([.projects[] | (.frameworks // [])[] | ((.topLevelPackages // []) + (.transitivePackages // []))[] | select((.vulnerabilities // []) | length > 0)] | length == 0)' admin-vulnerability-report.json
+
       - name: Build the API container
         run: docker build --tag golfsg-api-ci:${{ github.sha }} .
 

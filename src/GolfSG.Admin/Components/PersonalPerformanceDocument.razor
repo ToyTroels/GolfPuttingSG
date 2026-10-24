@@ -1,0 +1,14 @@
+@namespace GolfSG.Admin.Components
+@using GolfSG.Application.Server
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>My GolfSG performance</title><link rel="stylesheet" href="/admin.css" /></head><body>
+@if (RoundPage) { <PersonalRoundView Detail="Detail" IsPreview="IsPreview" /> } else { <PersonalPerformanceView Data="Filtered" IsPreview="IsPreview" Error="@(Preferences.Error ?? Error)" Preferences="Preferences" /> }
+</body></html>
+@code {
+    [Parameter] public DashboardPreferences Preferences { get; set; } = new();
+    private PersonalPerformance? Filtered => Data is null || Preferences.Error is not null ? null : Preferences.Filter(Data, DateOnly.FromDateTime(DateTime.UtcNow));
+    [Parameter] public PersonalPerformance? Data { get; set; }
+    [Parameter] public PersonalRoundDetail? Detail { get; set; }
+    [Parameter] public bool RoundPage { get; set; }
+    [Parameter] public bool IsPreview { get; set; }
+    [Parameter] public string? Error { get; set; }
+}
